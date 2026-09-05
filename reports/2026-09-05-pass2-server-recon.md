@@ -392,4 +392,17 @@ Nothing else was written. No file under `~/Xcode/Marlin DVR TV` other than this 
 
 Recorded in the follow-up commit section at the end of this file (a report cannot contain the hash of the commit that includes it).
 
-- PASS2_VERIFY_PLACEHOLDER
+Pass 2 commit ("Pass 2: server recon report"): `fa4e540be03054fa1d299c770c846c78a178135e`.
+
+`git status --short` before the commit showed only `?? reports/2026-09-05-pass2-server-recon.md`.
+
+```
+git push origin main
+git fetch origin
+local HEAD      : fa4e540be03054fa1d299c770c846c78a178135e
+origin/main     : fa4e540be03054fa1d299c770c846c78a178135e
+ls-remote main  : fa4e540be03054fa1d299c770c846c78a178135e
+MATCH
+```
+
+What was pushed: this one file, in that commit. A follow-up commit ("Pass 2: record pushed SHA in report") then wrote the SHA and this block into the file and was pushed and verified the same way (fetch, then compare `HEAD`, `origin/main` and `git ls-remote origin main`); its own SHA is the current `origin/main` and is stated in the closing summary.
