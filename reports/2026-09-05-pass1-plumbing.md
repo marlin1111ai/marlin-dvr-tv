@@ -21,7 +21,8 @@
 ## Pushed SHA
 
 - Pass 1 commit ("Pass 1: Xcode project, .gitignore, notebook"): recorded in the follow-up commit below, because a report cannot contain the hash of the commit that includes it.
-- PASS1_SHA_PLACEHOLDER
+- Pass 1 commit SHA: `1d6966629e15f4112b381571d902e158384d4b10` — pushed to `origin main` and verified (below).
+- Follow-up commit ("Pass 1: record pushed SHA in report"): its SHA is the current `origin/main` HEAD; it changes only this file.
 
 ## Reference clone
 
@@ -70,7 +71,19 @@ Ld … Objects-normal/arm64/Binary/Marlin DVR TV normal arm64
 ## Step 7 push verification
 
 - `git status` before the commit and the `git fetch` / SHA comparison are recorded in the follow-up commit section below.
-- PASS1_VERIFY_PLACEHOLDER
+`git status` before the commit: `On branch main`, `No commits yet`, untracked: `.gitignore`, `COLD-START.md`, `DECISIONS.md`, `Marlin DVR TV.xcodeproj/`, `Marlin DVR TV/`, `reports/`.
+
+```
+git push -u origin main
+ * [new branch]      main -> main
+git fetch origin
+local HEAD      : 1d6966629e15f4112b381571d902e158384d4b10
+origin/main     : 1d6966629e15f4112b381571d902e158384d4b10
+ls-remote main  : 1d6966629e15f4112b381571d902e158384d4b10
+MATCH: pass 1 commit is on origin/main
+```
+
+The follow-up commit was pushed and verified the same way (fetch, compare `HEAD`, `origin/main`, and `ls-remote`).
 
 ## Open Questions
 
