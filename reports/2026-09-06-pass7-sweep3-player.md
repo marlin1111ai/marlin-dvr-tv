@@ -294,3 +294,18 @@ The Pass 7C build was installed and launched on Home Theater at 11:47 (ping and 
 | Local commit "Pass 7C: live pause during the first minute"; **no push** | deliverable |
 
 No other file changed. Server traffic: GETs, the ping, five play sessions with their DELETEs, the sessions list. No library or schedule write. Nothing installed on the Mac; no plist or build-setting change.
+
+## Pass 7D — sweep 3 acceptance and push (2026-09-06)
+
+**Owner's acceptance:** sweep 3 (the Player, including the Pass 7C live pause) tested on Home Theater 2026-09-06 — live pause from the first second, resume from the pause point, recording resume, camera: all pass. Recorded in `DECISIONS.md` under 2026-09-06.
+
+**Push.** Pass 7D commits `DECISIONS.md` and this section as "Pass 7D: sweep 3 acceptance" and pushes `origin main`, carrying the three approved commits with it:
+
+| Commit | What it is |
+|---|---|
+| `b0b03ec` | Pass 7: sweep 3 — Player (the 6 new Player files, the entry points, 22 screenshots, the report) |
+| `b6b5eab` | Pass 7B: live TV pause — cause established, no fix (the reproduction and the diagnosis) |
+| `7ad29cf` | Pass 7C: live pause during the first minute (owner decision 1a; the 60-second threshold, 8 screenshots) |
+| this one | Pass 7D: sweep 3 acceptance |
+
+No code changed in this pass and no request was sent to the server. The three-SHA verification (local `HEAD`, `origin/main` after `git fetch`, `git ls-remote origin main`) is stated in the pass's closing reply; no follow-up commit writes it here.
