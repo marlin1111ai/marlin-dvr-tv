@@ -148,6 +148,7 @@ The long press on an On Now card (step 1). Holding Return through `System Events
 13. **Camera codec line** shows "HEVC"; no resolution exists (Pass 4 OQ 11). Fine as is?
 14. **Snapshot staleness.** The app re-requests every 45 s and the server caches 45 s (cameras.go:201), so a frame can be up to ~90 s old; `refresh=1` forces a probe but was not asked for.
 15. **Focus on entry** needed a programmatic nudge (`focusSoon`) because SwiftUI put initial focus on the rail; it works in every screen tested, but it is a workaround worth a second look on hardware.
+16. **Guide click-to-play — sweep 3 item** (owner decision, 2026-09-06, DECISIONS.md): clicking a program that is airing now plays it immediately; the airing sheet opens on click only for programs that have not started; press-and-hold on a current cell opens the sheet (record/pass). Sweep 2 opens the sheet on every click; the split is built in sweep 3 with the Player.
 
 ## SCOPE CHECK — every file created or touched
 
@@ -170,3 +171,11 @@ The long press on an On Now card (step 1). Holding Return through `System Events
 | Local commit "Pass 6: sweep 2 — On Now, Guide, On Later, Recordings, Cameras"; **no push** | deliverable |
 
 Untouched: `DECISIONS.md`, `Info.plist`, the project file and build settings, `Assets.xcassets`, every other Pass 5 source (`Theme.swift`, `ServerAPI.swift`, `Models.swift`, `ChannelFilter.swift`, `ClientSession.swift`, `Destination.swift`, `RailView.swift`, `HomeView.swift`). Outside the repo: DerivedData, the app on the booted simulator and on Home Theater. The reference clone and `design/` were only read. No request went beyond port 8090 of the server; no request to marlinpc, the HDHomeRun or the UNAS4Pro share. Nothing installed; no packages; no third-party code.
+
+## Pass 6B — acceptance, guide click decision, push (2026-09-06)
+
+**Owner's acceptance:** sweep 2 tested on Home Theater 2026-09-06, all screens work. The Pass 6 commit `51d0381` was approved for push.
+
+**Decision recorded** (`DECISIONS.md`, `## 2026-09-06 (sweep 2)`): clicking a program that is airing now plays it immediately; the airing sheet opens on click only for programs that have not started; press-and-hold on a current cell opens the sheet (record/pass). Built in sweep 3 with the Player. Added above as Open Question 16 (sweep 3 item). No code changed in this pass: the sweep 2 Guide still opens the sheet on every click until sweep 3 wires the Player.
+
+**Push.** Pass 6B commits `DECISIONS.md` and this report as "Pass 6B: acceptance; guide click-to-play decision" and pushes `origin main`, carrying the approved `51d0381` as well. The three-SHA verification (local `HEAD`, `origin/main` after `git fetch`, `git ls-remote origin main`) is stated in the pass's closing reply; no follow-up commit writes it here.

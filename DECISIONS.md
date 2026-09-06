@@ -29,3 +29,8 @@
 - Future screens (Favorites, Weather, Radio, Settings): tiles and rail entries present as drawn, inert. The Home weather glance is omitted until Weather is built.
 - Home greeting name: the fixed string "Marlin".
 - Client name: each Apple TV is renamed once by the owner on the server's Clients page; the app shows the name the server holds. No device-name entitlement.
+
+## 2026-09-06 (sweep 2)
+
+- Owner acceptance: sweep 2 tested on Home Theater 2026-09-06, all screens work.
+- Guide click behaviour (owner, 2026-09-06): clicking a program that is airing now plays it immediately; the airing sheet opens on click only for programs that have not started. Press-and-hold on a current cell opens the sheet (record/pass). Built in sweep 3 with the Player.
