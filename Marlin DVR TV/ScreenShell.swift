@@ -34,7 +34,7 @@ struct ScreenShell: View {
                 } else if destination.isBuiltNow {
                     screen = destination
                 }
-                // Favorites, Weather, Radio: present as drawn, inert (DECISIONS.md).
+                // Weather and Radio: present as drawn, inert (DECISIONS.md).
             }
             content
                 .id(current)
@@ -49,11 +49,13 @@ struct ScreenShell: View {
         .onExitCommand { screen = nil }
     }
 
-    /// Pass 6 (sweep 2): the five read-only screens; anything else keeps the placeholder.
+    /// The screens that exist: sweep 2's five plus Favorites (Pass 10). Anything else keeps
+    /// the placeholder.
     @ViewBuilder
     private var content: some View {
         let leave = { screen = nil }
         switch current {
+        case .favorites: FavoritesScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .onNow: OnNowScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .guide: GuideScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .onLater: OnLaterScreen(api: api, onLeave: leave)

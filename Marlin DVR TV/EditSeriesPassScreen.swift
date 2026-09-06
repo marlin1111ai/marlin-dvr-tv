@@ -8,11 +8,15 @@
 //  :619-700), then redraws from the `passView` the server answers with — so what is on
 //  screen is always the server's own state, never a guess.
 //
-//  Four settings, and no more (the scope of this pass):
+//  The settings:
 //    Record        recordMode  "new" | "all"                     passes.go:626-632
 //    Start early   padBefore   minutes                           passes.go:641, 176-190
 //    Stop late     padAfter    minutes
 //    Keep          keepMode + keepLast/keepUnwatched             passes.go:652-681, 193-208
+//    Pause         paused      (Pass 10 step 2c)                 passes.go:688-690
+//
+//  Pass 10 opens this same editor from Manage DVR → Your Passes and from a scheduled
+//  airing's "Manage pass", so there is one editor for a pass wherever it is reached from.
 //
 //  Each row cycles to the next value on a click, which suits a remote with no keyboard, and
 //  the row's right-hand side always reads the server's rendered label (`keepLabel`,
@@ -95,6 +99,13 @@ struct EditSeriesPassScreen: View {
                         Task { await cycleKeep() }
                     }
                     .focused($focused, equals: "keep")
+
+                    MenuRow(title: busy == "paused" ? "Working…" : (pass.paused ? "Resume" : "Pause"),
+                            state: pass.paused ? "Paused — nothing is queued" : "Running",
+                            focused: focused == "paused") {
+                        Task { await send(id: "paused", PassEdit(paused: !pass.paused)) }
+                    }
+                    .focused($focused, equals: "paused")
 
                     MenuRow(title: busy == "delete" ? "Deleting…" : (deleteArmed ? "Delete this pass — click again to confirm" : "Delete this pass"),
                             state: deleteArmed ? "This cannot be undone" : "Removes the pass and its queued recordings",

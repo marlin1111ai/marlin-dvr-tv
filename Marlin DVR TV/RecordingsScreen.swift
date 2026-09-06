@@ -7,6 +7,10 @@
 //  supplies it, Pass 4 §3.7), the three shelves of the response, six cards per row, the
 //  unwatched badge. Selecting a show opens show detail; Menu returns to the shelves.
 //
+//  Pass 10 adds one row above the shelves: "Manage DVR", the way in to the scheduled
+//  recordings, the passes, the trash and the storage line. It is the only change this pass
+//  makes to a screen of the approved design.
+//
 
 import SwiftUI
 
@@ -39,6 +43,7 @@ struct RecordingsScreen: View {
     let onPlay: (PlayRequest) -> Void
     @State private var model: RecordingsModel
     @State private var selected: ShowSummary?
+    @State private var managing = false
     @FocusState private var focused: String?
 
     init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
@@ -50,7 +55,12 @@ struct RecordingsScreen: View {
 
     var body: some View {
         Group {
-            if let selected {
+            if managing {
+                ManageDVRScreen(api: api) {
+                    managing = false
+                    focusSoon { focused = "manage" }
+                }
+            } else if let selected {
                 ShowDetailScreen(api: api, show: selected, onPlay: onPlay)
             } else {
                 shelves
@@ -59,13 +69,15 @@ struct RecordingsScreen: View {
         .task {
             await model.load()
             let id = firstCardID
-            focusSoon { focused = id ?? "loading" }
+            focusSoon { focused = id ?? "manage" }
         }
         .onExitCommand {
+            // Manage DVR handles its own Menu and calls back when it is at its top level.
+            if managing { return }
             if selected != nil {
                 selected = nil
                 let id = firstCardID
-                focusSoon { focused = id ?? "loading" }
+                focusSoon { focused = id ?? "manage" }
             } else {
                 onLeave()
             }
@@ -84,6 +96,7 @@ struct RecordingsScreen: View {
                     .font(.nocturne(Nocturne.TextSize.floor))
                     .foregroundStyle(Nocturne.neutral600)
             }
+            manageRow
             if let error = model.error, model.library == nil {
                 ErrorLine(text: error)
             } else if !model.loaded {
@@ -124,7 +137,38 @@ struct RecordingsScreen: View {
                 }
             }
         }
-        .defaultFocus($focused, firstCardID ?? "loading")
+        .defaultFocus($focused, firstCardID ?? "manage")
+    }
+
+    /// Pass 10: the way into the management area, above the shelves.
+    private var manageRow: some View {
+        Button { managing = true } label: {
+            HStack(spacing: 20) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.nocturne(Nocturne.TextSize.cardTitle))
+                    .foregroundStyle(Nocturne.accent200)
+                    .frame(width: 44)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Manage DVR")
+                        .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))
+                        .foregroundStyle(Nocturne.text)
+                    Text("Scheduled recordings, series passes, trash and storage")
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .foregroundStyle(Nocturne.neutral500)
+                }
+                Spacer(minLength: 0)
+                Text("›")
+                    .font(.nocturne(Nocturne.TextSize.cardTitle))
+                    .foregroundStyle(Nocturne.neutral500)
+            }
+            .padding(.vertical, 20)
+            .padding(.horizontal, 26)
+            .frame(maxWidth: 1400, alignment: .leading)
+            .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+            .focusTreatment(focused == "manage", restingRing: Nocturne.hairline)
+        }
+        .buttonStyle(BareButtonStyle())
+        .focused($focused, equals: "manage")
     }
 
     private var firstCardID: String? {

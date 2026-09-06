@@ -77,18 +77,18 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// The screens sweep 2 fills; selecting one opens its placeholder now. The rest are inert.
+    /// The screens that exist. Favorites went live in Pass 10; Weather, Radio and Settings
+    /// are still present as drawn and inert (DECISIONS.md).
     var isBuiltNow: Bool {
         switch self {
-        case .onNow, .guide, .onLater, .recordings, .cameras: return true
-        case .home, .favorites, .weather, .radio, .settings: return false
+        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites: return true
+        case .home, .weather, .radio, .settings: return false
         }
     }
 
     /// Sub-line for tiles that are present as drawn but inert (no fabricated numbers).
     var staticTileSubtitle: String? {
         switch self {
-        case .favorites: return "Favorite channels"
         case .weather: return "Local weather"
         case .radio: return "Stations"
         case .settings: return "Server, tuners, storage"

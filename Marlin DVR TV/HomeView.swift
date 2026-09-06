@@ -36,8 +36,14 @@ final class HomeModel {
         do {
             let list = try await channels
             subtitles[.guide] = "\(list.count) channels live"
+            // Pass 10: the same read serves the Favorites tile — no extra request.
+            let favourites = list.filter(\.favorite).count
+            subtitles[.favorites] = favourites == 0
+                ? "None yet"
+                : "\(favourites) favourite channel\(favourites == 1 ? "" : "s")"
         } catch {
             subtitles[.guide] = "unavailable"
+            subtitles[.favorites] = "unavailable"
             print("[home] channels: \(error)")
         }
         do {

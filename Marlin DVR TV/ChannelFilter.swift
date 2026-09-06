@@ -80,9 +80,15 @@ extension APIClient {
         return try await get("/api/library", query: query)
     }
 
-    /// GET /api/library/shows/{id} (library.go:586-640).
-    func show(id: String) async throws -> ShowResponse {
-        try await get("/api/library/shows/\(id)")
+    /// GET /api/library/shows/{id}?trash=1 (library.go:586-640). `trash` lists the trashed
+    /// episodes of that show instead of the visible ones, with `trashCount` beside them.
+    func show(id: String, trash: Bool = false) async throws -> ShowResponse {
+        try await get("/api/library/shows/\(id)", query: trash ? [URLQueryItem(name: "trash", value: "1")] : [])
+    }
+
+    /// GET /api/system (system.go:257-260) — the Manage DVR storage line (Pass 10 step 2a).
+    func system() async throws -> SystemInfo {
+        try await get("/api/system")
     }
 
     /// GET /api/cameras (cameras.go:280-289).

@@ -56,9 +56,11 @@ Pass 8 (sweep 4, `reports/2026-09-06-pass8-sweep4-writes.md`, tested by the owne
 
 Pass 9 (sweep 4 fixes, `reports/2026-09-06-pass9-sweep4-fixes.md`, committed locally, push gated on the owner's Home Theater test): the seven fixes from that test — click-and-hold rebuilt on UIKit's press pipeline and **proven on the physical Apple TV** by an XCUITest that presses the real remote (a new `Marlin DVR TVUITests` target, four tests including a negative control); the airing sheet's buttons made to fit; "Watch live" only while the programme is on; "Edit series pass" instead of "Record the series" when the show already has one, with no raw 409 ever shown; a new Edit series pass screen (record mode, padding, keep rule, delete with a confirm); the episode menu cut to Keep and Delete; and click-and-hold on a channel cell in the Guide to favourite it.
 
+Pass 10 (`reports/2026-09-06-pass10-favorites-and-manage.md`, committed locally, push gated on the owner's Home Theater test): the Favorites screen — the rail's Favorites entry is live and lists the server's favourite channels with what is on now, clicking one plays it live — and the **Manage DVR** area, reached from a new row at the top of Recordings: the storage line from `GET /api/system`, Scheduled Recordings (the schedule grouped, with a detail view offering Cancel recording and Manage pass), Your Passes (the pass editor, which gains Pause/Resume), and Trash (Restore per row, Empty Trash behind two clicks). Counts on every row come from the server. Neither screen is in the approved design; both are built to the app's look.
+
 ## What is NOT built
 
-The future screens Favorites, Weather, Radio, Settings. Of the writes, these are deliberately still inert or absent: show detail's "Series pass" button and the Player's 6e "Delete this recording" (Pass 8 Open Question 1), any way to cancel a Record Now booking (Pass 8 Open Question 2), and any click behaviour on the Guide's channel cell — the hold favourites it, a click does nothing (Pass 9 Open Question 1).
+The future screens Weather, Radio, Settings. Of the writes, these are deliberately still inert or absent: show detail's "Series pass" button and the Player's 6e "Delete this recording" (Pass 8 Open Question 1), and any click behaviour on the Guide's channel cell — the hold favourites it, a click does nothing (Pass 9 Open Question 1). Cancelling a booking, which Pass 8 lacked, now lives in Manage DVR → Scheduled Recordings. Still missing there: any way to un-skip a cancelled pass airing, and any auto-refresh (Pass 10 Open Questions 2 and 4).
 
 ## Open questions
 
@@ -66,11 +68,15 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-The owner tests Pass 9 on Home Theater. First check: click-and-hold with the Siri Remote in hand — on a programme airing now, on a channel cell in the Guide's left column, and on an episode row. The mechanism is proven on that device by an automated remote press; what is not settled is how it feels (Pass 9 Open Questions 2 and 3). Then the acceptance-and-push pass, which pushes Pass 8 and Pass 9 together, and the Open Questions of both reports.
+The owner tests Passes 9 and 10 on Home Theater. From Pass 9, the first check is click-and-hold with the Siri Remote in hand — on a programme airing now, on a channel cell in the Guide's left column, and on an episode row; the mechanism is proven on that device by an automated remote press, but how it feels is not settled (Pass 9 Open Questions 2 and 3). From Pass 10: Favorites in the rail, and Recordings → Manage DVR. Then the acceptance-and-push pass, which pushes Passes 8, 9 and 10 together, and the Open Questions of the three reports.
 
 To run the on-device hold tests again:
 
 ```
 xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
-  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/RemoteHoldUITests"
 ```
+
+The Manage DVR UI test (`ManageDVRUITests`) drives the Simulator and needs a scheduled
+recording and a series pass to exist; it is a Pass 10 evidence harness, not a standing test.

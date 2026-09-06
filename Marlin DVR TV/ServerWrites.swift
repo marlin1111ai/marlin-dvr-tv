@@ -72,6 +72,24 @@ struct PassEdit: Encodable {
     var keepMode: String?           // "all" | "unwatched" | "last"
     var keepUnwatched: Int?
     var keepLast: Int?
+    var paused: Bool?               // Pass 10: Pause / Resume a pass
+}
+
+/// PUT /api/schedule/jobs/{id} answers this (passes.go:966). `removed` is true when the job
+/// was a one-off Record Now: the server drops it outright rather than flagging it, and the
+/// airing becomes free to record again. A pass's job only gets the flag; the pass continues.
+struct JobCancelResult: Decodable {
+    let ok: Bool
+    let skipped: Bool
+    let removed: Bool
+}
+
+/// POST /api/library/trash/empty answers this (trash.go:214). `freed` is already formatted.
+struct EmptyTrashResult: Decodable {
+    let deleted: Int
+    let freed: String
+    let failed: Int
+    let errors: [String]
 }
 
 /// PUT /api/library/recordings/{id} answers the updated `episodeView`, or `{ok, deleted}`
@@ -224,6 +242,20 @@ extension APIClient {
     func deletePass(id: String) async throws {
         let _: OKResponse = try await delete("/api/passes/\(id)")
         print("[write] pass \(id) deleted")
+    }
+
+    /// Pass 10 step 2b: "Cancel recording" on a scheduled airing (passes.go:927-967).
+    func cancelJob(id: String) async throws -> JobCancelResult {
+        let result: JobCancelResult = try await put("/api/schedule/jobs/\(id)", body: ["skipped": true])
+        print("[write] job \(id) cancelled → skipped=\(result.skipped) removed=\(result.removed)")
+        return result
+    }
+
+    /// Pass 10 step 2d: "Empty Trash" (trash.go:218-222). Deletes the files on disk.
+    func emptyTrash() async throws -> EmptyTrashResult {
+        let result: EmptyTrashResult = try await post("/api/library/trash/empty", body: [String: String]())
+        print("[write] empty trash → deleted=\(result.deleted) freed=\(result.freed) failed=\(result.failed)")
+        return result
     }
 
     /// "Stop the recording and watch" (frame 6g). The server closes the stream and waits for the

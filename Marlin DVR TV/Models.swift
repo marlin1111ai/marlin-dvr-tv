@@ -326,6 +326,19 @@ struct ClientRecord: Decodable, Identifiable {
     let watchingIcon: String
 }
 
+// MARK: System (system.go:16-46, 191-248; GET /api/system) — Pass 10 storage line
+
+/// Only the disk fields the Manage DVR storage line needs. Every one of them is a string the
+/// server has already formatted except the percentage (Pass 2 §2.1).
+struct SystemInfo: Decodable {
+    let diskUsedPercent: Int
+    let diskLabel: String       // "10.68 TB available on the recordings volume"
+    let diskFree: String        // "10.68 TB"
+    let diskTotal: String       // "10.91 TB"
+    let diskUsed: String        // "228.63 GB"
+    let diskVolume: String      // "recordings volume"
+}
+
 // MARK: Playback shapes (stream.go:295, 455-491; contract §2.2) — models only in sweep 1
 
 struct PlaySession: Decodable {
