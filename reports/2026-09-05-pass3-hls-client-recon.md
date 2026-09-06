@@ -270,4 +270,17 @@ Nothing else was written. The Xcode project, sources, assets, Info.plist and bui
 
 ## Push verification
 
-- PASS3_VERIFY_PLACEHOLDER
+Pass 3 commit ("Pass 3: HLS client recon; record decisions"): `2d7d1468fac64d0f1d4440b9b432ad261675808f` — three files: this report, `DECISIONS.md`, `COLD-START.md`.
+
+`git status --short` before the commit: ` M COLD-START.md`, ` M DECISIONS.md`, `?? reports/2026-09-05-pass3-hls-client-recon.md`.
+
+```
+git push origin main
+git fetch origin
+local HEAD      : 2d7d1468fac64d0f1d4440b9b432ad261675808f
+origin/main     : 2d7d1468fac64d0f1d4440b9b432ad261675808f
+ls-remote main  : 2d7d1468fac64d0f1d4440b9b432ad261675808f
+MATCH
+```
+
+A follow-up commit ("Pass 3: record pushed SHA in report") then wrote the SHA and this block into the report only, and was pushed and verified the same way (fetch, then compare `HEAD`, `origin/main` and `git ls-remote origin main`); its SHA is the current `origin/main` and is stated in the closing summary.
