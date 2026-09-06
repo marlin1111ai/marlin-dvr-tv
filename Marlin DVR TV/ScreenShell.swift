@@ -49,8 +49,8 @@ struct ScreenShell: View {
         .onExitCommand { screen = nil }
     }
 
-    /// The screens that exist: sweep 2's five plus Favorites (Pass 10). Anything else keeps
-    /// the placeholder.
+    /// The screens that exist: sweep 2's five, Favorites (Pass 10) and Manage DVR (Pass 10B).
+    /// Anything else keeps the placeholder.
     @ViewBuilder
     private var content: some View {
         let leave = { screen = nil }
@@ -61,6 +61,7 @@ struct ScreenShell: View {
         case .onLater: OnLaterScreen(api: api, onLeave: leave)
         case .recordings: RecordingsScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .cameras: CamerasScreen(api: api, onLeave: leave, onPlay: onPlay)
+        case .manage: ManageDVRScreen(api: api, onLeave: leave)
         default: PlaceholderScreen(destination: current)
         }
     }

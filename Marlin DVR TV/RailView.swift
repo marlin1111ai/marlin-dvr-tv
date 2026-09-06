@@ -2,7 +2,8 @@
 //  RailView.swift
 //  Marlin DVR TV
 //
-//  The sidebar rail of frame 1b: nine destinations in the design's order, expanded to
+//  The sidebar rail of frame 1b: the design's nine destinations in its order plus Manage DVR
+//  at the bottom (Pass 10B, owner 2026-09-06), expanded to
 //  372 pt with labels while focus is in the rail (dc:58-73), collapsed to a 180 pt icon
 //  strip while focus is in the content (the aside of frames 3a–5e, dc:180-185). Not shown
 //  on Home (dc:111). The footer names this Apple TV and the server (dc:69-72).
@@ -133,6 +134,10 @@ struct RailItem: View {
                         .frame(width: 36)
                     Text(destination.label)
                         .font(.nocturne(Nocturne.TextSize.body))
+                        // Every entry is one line: "Manage DVR" (Pass 10B) is the first label
+                        // long enough to wrap in the 372 pt expanded rail.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 .padding(.vertical, 10)
                 .padding(.horizontal, 20)
