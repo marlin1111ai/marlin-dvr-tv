@@ -159,3 +159,65 @@ The final build was installed and launched at 10:42 (`devicectl … install app`
 | Local commit "Pass 7: sweep 3 — Player"; **no push** | deliverable |
 
 Untouched: `DECISIONS.md`, `Info.plist`, the project file and build settings, `Assets.xcassets`, `Theme.swift`, `ServerAPI.swift`, `Models.swift`, `ChannelFilter.swift`, `ClientSession.swift`, `Destination.swift`, `RailView.swift`, `HomeView.swift`, `Formatting.swift`, `ScreenChrome.swift`, `OnLaterScreen.swift`, `ServerImage.swift`, `Marlin_DVR_TVApp.swift`. Outside the repo: DerivedData, the app on the simulator and on Home Theater, fifteen session records on the server (all inactive), and the watched flag on one recording. The reference clone and `design/` were only read. No request went beyond port 8090; none to marlinpc, the HDHomeRun or the UNAS4Pro share. Nothing installed; no packages; no third-party code.
+
+## Pass 7B — live TV does not pause: cause established, no fix applied (2026-09-06)
+
+**Owner test result** (Home Theater, 2026-09-06): recording resume PASS, camera PASS, live FAIL — after a live channel starts, clicking the touch surface scrubs but never pauses. Owner requirement: a click pauses live TV immediately once the picture is up; a second click resumes from the pause point.
+
+**Outcome of this pass, stated first:** the cause is established with evidence and it is not app code intercepting the click. AVPlayerViewController itself declines to pause an HLS item that has no `#EXT-X-ENDLIST` while its seekable window is short (observed: refused at 30 s and 36 s, accepted at 60 s). A live session's window starts at zero and grows two seconds per two seconds, so the first minute after tuning is unpausable by Apple's own handling; a recording escapes the same rule within seconds because ffmpeg finishes segmenting it and the playlist gains ENDLIST. Under the constraint that Apple's play/pause handling must receive the click as it does on a recording, with no custom play/pause gesture added, there is nothing in the app to remove or reroute — so no code fix was made, and this pass stops for the owner's decision (below). Every session started was stopped.
+
+### Step 1 — reproduction on the simulator
+
+Instrumentation (kept in this commit, all `print`): `PlayerContainerController` logs every press it receives with the press types, the focused item, the player's `rate`, `timeControlStatus`, `reasonForWaitingToPlay`, the current time and the item's seekable window (`PlayerHost.swift:78-90`), and every focus change; `PlayerModel` logs every `timeControlStatus` transition (`PlayerModel.swift:199`) and every entry into the live recovery check (`:231`). Select was sent 1, 5 and 30 seconds after the console reported the first playlist (the picture appears within a second of it), plus 60 and 90 s on live.
+
+| Path | Select at | Seekable window at the press | Focused item | rate / status before | Result |
+|---|---|---|---|---|---|
+| recording `smtpykwwka1debc` | +1 s | none yet | `_AVFocusContainerView` (AVKit) | 1.0 / playing | **ignored** |
+| recording | +5 s | 0–36 s (36 s, growing) | same | 1.0 / playing | **ignored** |
+| recording | +30 s | 0–191 s, fully segmented (ENDLIST) | same | 1.0 / playing | **paused** (`timeControl=0`, `[player] paused (0:32)`) |
+| live ch2.1 `smtpym8o2a96b35` | +1 s | 0–0 s | same | 1.0 / playing | **ignored** |
+| live | +5 s | 0–4 s | same | 1.0 / playing | **ignored** |
+| live | +30 s | 0–30 s | same | 1.0 / playing | **ignored** |
+| live | +60 s | 0–60 s | same | 1.0 / playing | **paused** (`timeControl=0`, `[player] paused (0 s behind live)`) |
+| live | +90 s | 0–90 s | same | 0.0 / paused | **resumed from the pause point** (t = 63 s before and after; `recover check: t=63.2 range=0.0-90.1` → no seek) |
+
+Press delivery was identical in every row: `began types=2040` (the touch-surface click), `began types=4` (Select), `ended types=2040`; the Select's `ended` never reaches the container in any row — AVPlayerViewController consumes it — whether or not it pauses. Focus was on AVKit's `_AVFocusContainerView` from the moment the host appeared (`[focus] nil → _AVFocusContainerView`) and stayed there; no overlay ever held focus. No keep-alive, HUD or recovery activity coincided with a press. A first live run (`smtpyfs3ua1a84f`, presses at 1/5/30 s) gave the same three "ignored" results.
+
+The recording therefore has the same defect in its first seconds; the owner's "recording pauses correctly" holds because a 3-minute recording is fully segmented (ENDLIST) within about ten seconds, after which pause works. A long recording in transcode mode is segmented at roughly seven times real time, so its window passes 60 s within about ten seconds too.
+
+### Step 2 — cause, with file:line
+
+- The click reaches Apple's handling on live exactly as on a recording: `PlayerHost.swift:78-84` forwards every non-Menu press with `super.pressesBegan`, `:87-90` likewise for `pressesEnded`; `:52` keeps focus on the player controller; `:38` sets `requiresLinearPlayback` only for cameras. The press log shows the same sequence, the same focused item and the same forwarded state on both paths.
+- Nothing live-only touches the press path: the overlays (`PlayerScreen.swift:69-77`) are non-focusable SwiftUI views and never appear in the focus log; the keep-alive (`PlayerModel.swift:288`) is a background fetch; `tick()` (`:183`) only reads the player; the live recovery (`:231`) ran once, on the +90 s resume, and did not seek because the position was inside the window.
+- The variable that separates "ignored" from "paused" is the item's seekable window and the presence of ENDLIST, not the path, the time since start, or the focus: refused at 30 s (live) and 36 s (recording, no ENDLIST); accepted at 60 s (live) and at 191 s with ENDLIST (recording). That is AVPlayerViewController's own treatment of short-window live streams (it also shows its red LIVE badge in that state, Pass 7 Open Question 3). The server's live playlist starts empty and lists only the segments ffmpeg has produced (`hls.go:79-80`, contract §4: 2-second segments, the window fills at real time), so the window is under a minute for the first minute of every live session.
+
+### Step 3 — fix
+
+None applied. Under the stated constraint the only things "in the way" are AVKit's rule and the server's initially empty window; neither is app code, and the app cannot enlarge a window whose segments do not exist yet. The remedies are the owner's call:
+
+1. **App-side Select handling while the window is short** — the container already receives the Select `began`; it could pause/resume the player itself when, after the press, AVKit has left the player playing. That is exactly the "custom play/pause gesture on top" the constraint forbids, so it was not built.
+2. **Accept the first minute.** After ~60 s of a live session the click pauses and resumes from the pause point (the +60/+90 rows), and the Pass 7 two-minute pauses all ran after that point.
+3. **A server-side change** would have to make the playlist advertise a longer window from the first second, which is not possible for segments that do not yet exist; raised only to say it was considered.
+
+The Pass 7 finding "Select ignored for the first 30–70 s on the simulator" is this same rule, not a focus problem; the explicit focus update added in Pass 7 is harmless but was not the fix it seemed.
+
+### Steps 4–5
+
+Not run: there is no fixed build to prove or install. Home Theater keeps the Pass 7 build, running. The three sessions started in this pass — `smtpyfs3ua1a84f` (live ch2.1), `smtpykwwka1debc` (recording), `smtpym8o2a96b35` (live ch2.1) — each ended with the app's DELETE (`[session] DELETE … → 200 {"ok":true,"wasRunning":true}` in the console for all three); `GET /api/play/sessions` afterwards: `active: 0`, all three listed inactive. No library or schedule write was made.
+
+### Open Questions (Pass 7B)
+
+1. Which remedy: the app-side handler for the short-window period (lifting the constraint), accepting the first minute, or something on the server side that I have not thought of?
+2. On the Apple TV, a click near the left or right edge of the touch surface skips ±10 s in AVKit's player; the owner's "it scrubs" may include that. A centre click after a minute should pause — worth one check when deciding.
+3. The diagnostic `print` lines added here (`[press]`, `[focus]`, the fuller `[player] timeControl=…`) stay in the code for the owner's own reproduction; remove them with the fix.
+
+### SCOPE CHECK (Pass 7B)
+
+| Path | Step |
+|---|---|
+| `Marlin DVR TV/PlayerHost.swift` — press, focus and window logging | 1 |
+| `Marlin DVR TV/PlayerModel.swift` — status-transition and recovery logging | 1 |
+| `reports/2026-09-06-pass7-sweep3-player.md` — this section | deliverable |
+| Local commit "Pass 7B: live TV pause — cause established, no fix (owner decision)"; **no push** | deliverable |
+
+No other file changed. Server traffic: GETs, the ping, three play sessions with their DELETEs, `GET /api/play/sessions`. Nothing installed; no plist or build-setting change.

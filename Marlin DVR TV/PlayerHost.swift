@@ -63,7 +63,20 @@ final class PlayerContainerController: UIViewController {
         }
     }
 
+    private func describePress(_ presses: Set<UIPress>, _ phase: String) {
+        let types = presses.map { "\($0.type.rawValue)" }.joined(separator: ",")
+        let focused = UIFocusSystem.focusSystem(for: self)?.focusedItem.map { String(describing: type(of: $0)) } ?? "nil"
+        let p = playerController.player
+        let status = p.map { "\($0.timeControlStatus.rawValue)" } ?? "-"
+        let reason = p?.reasonForWaitingToPlay?.rawValue ?? "-"
+        let ranges = p?.currentItem?.seekableTimeRanges.map(\.timeRangeValue) ?? []
+        let window = ranges.isEmpty ? "none" : "\(Int(ranges.first!.start.seconds))-\(Int(ranges.last!.end.seconds)) (\(Int(ranges.last!.end.seconds - ranges.first!.start.seconds)) s)"
+        let t = p?.currentItem?.currentTime().seconds ?? -1
+        print("[press] \(phase) types=\(types) focused=\(focused) rate=\(p?.rate ?? -1) status=\(status) waiting=\(reason) t=\(Int(t)) seekable=\(window)")
+    }
+
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        describePress(presses, "began")
         if presses.contains(where: { $0.type == .menu }) {
             onMenu()
             return
@@ -72,7 +85,15 @@ final class PlayerContainerController: UIViewController {
     }
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        describePress(presses, "ended")
         if presses.contains(where: { $0.type == .menu }) { return }
         super.pressesEnded(presses, with: event)
+    }
+
+    override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+        super.didUpdateFocus(in: context, with: coordinator)
+        let from = context.previouslyFocusedItem.map { String(describing: type(of: $0)) } ?? "nil"
+        let to = context.nextFocusedItem.map { String(describing: type(of: $0)) } ?? "nil"
+        print("[focus] \(from) → \(to)")
     }
 }

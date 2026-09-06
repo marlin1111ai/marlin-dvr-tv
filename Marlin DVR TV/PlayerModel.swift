@@ -198,6 +198,9 @@ final class PlayerModel {
 
     private func timeControlChanged() {
         guard phase == .playing else { return }
+        let t = player.currentItem?.currentTime().seconds ?? -1
+        let range = seekableRange.map { "\(Int($0.start))-\(Int($0.end))" } ?? "none"
+        print("[player] timeControl=\(player.timeControlStatus.rawValue) rate=\(player.rate) waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "-") t=\(Int(t)) seekable=\(range) isPaused=\(isPaused)")
         switch player.timeControlStatus {
         case .paused:
             if !isPaused {
@@ -228,6 +231,7 @@ final class PlayerModel {
     private func recoverIfPausePointLeftWindow() {
         guard let item = player.currentItem, let range = seekableRange else { return }
         let t = item.currentTime().seconds
+        print("[player] recover check: t=\(t) range=\(range.start)-\(range.end)")
         if t < range.start + 1 {
             let target = CMTime(seconds: range.start + 2, preferredTimescale: 10)
             player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .positiveInfinity)
