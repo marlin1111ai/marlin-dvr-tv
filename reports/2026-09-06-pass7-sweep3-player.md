@@ -221,3 +221,76 @@ Not run: there is no fixed build to prove or install. Home Theater keeps the Pas
 | Local commit "Pass 7B: live TV pause — cause established, no fix (owner decision)"; **no push** | deliverable |
 
 No other file changed. Server traffic: GETs, the ping, three play sessions with their DELETEs, `GET /api/play/sessions`. Nothing installed; no plist or build-setting change.
+
+## Pass 7C — live pause during the first minute (owner decision 1a, 2026-09-06)
+
+**Decision recorded** (`DECISIONS.md`, under 2026-09-06, verbatim from the task): the app handles Select itself while a live channel's seekable window is too short for AVPlayer to pause, holds the position, and defers to AVPlayer's own handling once the window is long enough.
+
+### What changed (files:lines)
+
+- `Marlin DVR TV/PlayerHost.swift` (rewritten, 136 lines). `PlayerHost` gains `shortWindowSelect`, true for live channels only. `PlayerContainerController`: the threshold `appleHandlesFromWindow = 60` s (`:43`) — Pass 7B measured AVPlayerViewController refusing to pause at a 30 s and a 36 s window and accepting at 60 s, so the hand-over is at 60 s; `appleGrace = 0.35` s (`:46`); `seekableWindow` (`:84`) reads the item's seekable range; `pressesBegan` (`:91`) forwards every press to Apple's handler as before and, for a live item, also calls `handleShortWindowSelect` (`:109-136`): if the window is 60 s or more it only logs "→ Apple's handler" and does nothing; below 60 s it notes whether the player was playing and, 0.35 s later — after Apple's handler has had the press-ended it acts on — pauses the player if it is still playing, or resumes it (`player.play()`, from the paused position, never a seek) if it is still paused; if Apple's handler already changed the state it does nothing. Edge clicks, swipes and every other press are untouched; the Menu catch is unchanged. The Pass 7B diagnostics (`describePress`, `didUpdateFocus`) are gone.
+- `Marlin DVR TV/PlayerScreen.swift:34` — passes `shortWindowSelect: model.isLive`.
+- `Marlin DVR TV/PlayerModel.swift` — the Pass 7B diagnostic lines (the per-transition `timeControl=…` print and the recovery-check print) removed; the Pass 7 `[player] paused / playing` lines stay for the evidence. Nothing else in the model, the recording path or the camera path changed. The keep-alive runs throughout, unchanged.
+
+**Threshold used: 60 seconds of seekable window.** Below it the container acts; from it on, Apple's handler alone. Because the container acts only when Apple's handler has left the player as it was, a lower real threshold on some tvOS build cannot double-toggle.
+
+### Step 4 evidence (simulator; console lines and `GET /api/logs`)
+
+Antenna, ch2.1 WMAR-HD, session `smtpz7v5v29af7b`:
+
+```
+[select] window 0 s < 60 → app paused           ← Select 1 s after the picture (11:38:33)
+[player] paused (0 s behind live)
+[select] window 120 s → Apple's handler         ← Select after 2 min (11:40:34)
+[player] playing (0 s behind live)
+[select] window 126 s → Apple's handler         ← Select: Apple pauses
+[player] paused (119 s behind live)             ← 119 s behind = resumed from the pause point, not the edge
+[select] window 130 s → Apple's handler         ← Select: Apple resumes
+[player] playing (118 s behind live)
+[player] stop: phase=playing session=smtpz7v5v29af7b
+[session] DELETE smtpz7v5v29af7b → 200 {"ok":true,"wasRunning":true}     (server seq=4481 11:40:48.633)
+```
+
+Screens: `90-7c-antenna-paused-1s.jpg` — the 6d overlay one second in: "Paused at 11:38 AM · now 2 s behind live · Held for 0:02 · the buffer holds 0 s"; `91-7c-antenna-paused-2min.jpg` — the same overlay two minutes later with the lag grown; `92-7c-antenna-resumed-lag.jpg` — after the resume: **"LIVE · −1 min 59 s · 1 min 59 s behind live · buffer 2 min 2 s"**; `93-7c-antenna-paused-apple.jpg` — the pause Apple's handler made.
+
+Philo, ch9001 HISTORY, session `smtpzbcsk4ea3b5`: `[select] window 0 s < 60 → app paused` at +1 s (11:41:10); after 2 min `[select] window 130 s → Apple's handler`, `[player] playing (8 s behind live)`; then Apple's pause `[player] paused (129 s behind live)` and resume `playing (128 s behind live)`; DELETE (seq=4636 11:43:24.591). Screens `94-7c-philo-paused-1s.jpg`, `95-7c-philo-resumed-lag.jpg` ("−2 min 7 s · buffer 2 min 10 s").
+
+Left alone, ch9001 HISTORY, session `smtpzecvxb8cd1f`: tuned and untouched for about 100 s, then Select: `[select] window 106 s → Apple's handler`, `[player] paused (4 s behind live)` — no interception; Select again: `[select] window 106 s → Apple's handler`, `[player] playing (3 s behind live)`; DELETE (seq=4783 11:45:19.630). Screen `96-7c-70s-paused-apple.jpg` ("the buffer holds 1 min 46 s").
+
+Recording, session `smtpzha3te0bba7` (start 32.2 s from the resume store): `[player] paused (0:44)` and `[player] playing (0:45)` on two Selects with no `[select]` line — Apple's handler alone, as before; DELETE (seq=4834 11:46:06.894). Camera, session `smtpzi96vffe850`: played (`97-7c-camera.jpg`), Menu, DELETE (seq=4859 11:46:43.534).
+
+Sessions list afterwards (`GET /api/play/sessions`):
+
+```
+active: 0
+  smtpz7v5v29af7b live inactive | ch2.1 WMAR-HD
+  smtpzbcsk4ea3b5 live inactive | ch9001 HISTORY
+  smtpzecvxb8cd1f live inactive | ch9001 HISTORY
+  smtpzha3te0bba7 recording inactive | Earth Odyssey With Dylan Dreyer
+  smtpzi96vffe850 camera inactive | Cow Cam
+```
+
+Five POSTs, five DELETEs in the server log (seq 4360/4481, 4489/4636, 4641/4783, 4800/4834, 4848/4859). Builds: simulator and Home Theater both `BUILD SUCCEEDED`, no warnings.
+
+### Step 5
+
+The Pass 7C build was installed and launched on Home Theater at 11:47 (ping and five GETs from the device in the server log) and is left running.
+
+### Open Questions (Pass 7C)
+
+1. The 0.35-second grace before the container acts is the one visible cost: in the first minute a pause lands about a third of a second after the click. Shorten it, or accept?
+2. `[select] …` and the Pass 7 `[player] paused/playing` console lines remain as evidence; remove with the sweep 4 cleanup.
+
+### SCOPE CHECK (Pass 7C)
+
+| Path | Step |
+|---|---|
+| `DECISIONS.md` — one bullet under 2026-09-06 | 1 |
+| `Marlin DVR TV/PlayerHost.swift` — short-window Select handling; 7B diagnostics removed | 2, 3 |
+| `Marlin DVR TV/PlayerScreen.swift` — one argument | 2 |
+| `Marlin DVR TV/PlayerModel.swift` — 7B diagnostics removed | 3 |
+| `reports/assets/pass7/9*-7c-*.jpg` (8 files) | 4 |
+| `reports/2026-09-06-pass7-sweep3-player.md` — this section | deliverable |
+| Local commit "Pass 7C: live pause during the first minute"; **no push** | deliverable |
+
+No other file changed. Server traffic: GETs, the ping, five play sessions with their DELETEs, the sessions list. No library or schedule write. Nothing installed on the Mac; no plist or build-setting change.

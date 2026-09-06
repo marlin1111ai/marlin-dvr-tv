@@ -6,6 +6,14 @@
 //  Apple's transport UI as-is). The container catches the Menu press that
 //  AVPlayerViewController does not consume and hands it to SwiftUI as `onMenu`.
 //
+//  Pass 7C (owner decision 1a, DECISIONS.md 2026-09-06): AVPlayerViewController will not
+//  pause a live HLS item whose seekable window is short — Pass 7B measured it refusing at a
+//  30 s and 36 s window and accepting at 60 s — and a live channel's window starts at zero.
+//  While the window is under that threshold the container handles a centre Select itself:
+//  it lets the press reach Apple's handler first and, a third of a second later, if the
+//  player is still in the state it was, pauses or resumes it. From the threshold on, the
+//  press is Apple's alone. Edge clicks and swipes are never touched.
+//
 
 import AVKit
 import SwiftUI
@@ -13,13 +21,14 @@ import UIKit
 
 struct PlayerHost: UIViewControllerRepresentable {
     let player: AVPlayer
-    let linearOnly: Bool          // cameras: a 6-entry window, no seeking (standing call)
+    let linearOnly: Bool               // cameras: a 6-entry window, no seeking (standing call)
+    let shortWindowSelect: Bool        // live channels only (Pass 7C)
     let onMenu: () -> Void
 
     func makeUIViewController(context: Context) -> PlayerContainerController {
         let controller = PlayerContainerController()
         controller.onMenu = onMenu
-        controller.attach(player: player, linearOnly: linearOnly)
+        controller.attach(player: player, linearOnly: linearOnly, shortWindowSelect: shortWindowSelect)
         return controller
     }
 
@@ -29,14 +38,24 @@ struct PlayerHost: UIViewControllerRepresentable {
 }
 
 final class PlayerContainerController: UIViewController {
+    /// The seekable window from which AVPlayerViewController pauses a live item on its own
+    /// (Pass 7B: refused at 30 s and 36 s, accepted at 60 s).
+    static let appleHandlesFromWindow: Double = 60
+    /// How long Apple's handler gets before the container acts (a click's press-ended
+    /// arrives within about 100 ms; Apple toggles on it).
+    static let appleGrace: TimeInterval = 0.35
+
     var onMenu: () -> Void = {}
     private let playerController = AVPlayerViewController()
+    private var shortWindowSelect = false
+    private var pendingSelect: DispatchWorkItem?
 
-    func attach(player: AVPlayer, linearOnly: Bool) {
+    func attach(player: AVPlayer, linearOnly: Bool, shortWindowSelect: Bool) {
         playerController.player = player
         playerController.showsPlaybackControls = true
         playerController.requiresLinearPlayback = linearOnly
         playerController.allowsPictureInPicturePlayback = false
+        self.shortWindowSelect = shortWindowSelect
     }
 
     override func viewDidLoad() {
@@ -51,8 +70,6 @@ final class PlayerContainerController: UIViewController {
 
     override var preferredFocusEnvironments: [UIFocusEnvironment] { [playerController] }
 
-    /// Focus does not reach the player on its own when the host appears beside SwiftUI
-    /// overlays (Select presses were lost for the first seconds in Pass 7 testing).
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         setNeedsFocusUpdate()
@@ -63,37 +80,57 @@ final class PlayerContainerController: UIViewController {
         }
     }
 
-    private func describePress(_ presses: Set<UIPress>, _ phase: String) {
-        let types = presses.map { "\($0.type.rawValue)" }.joined(separator: ",")
-        let focused = UIFocusSystem.focusSystem(for: self)?.focusedItem.map { String(describing: type(of: $0)) } ?? "nil"
-        let p = playerController.player
-        let status = p.map { "\($0.timeControlStatus.rawValue)" } ?? "-"
-        let reason = p?.reasonForWaitingToPlay?.rawValue ?? "-"
-        let ranges = p?.currentItem?.seekableTimeRanges.map(\.timeRangeValue) ?? []
-        let window = ranges.isEmpty ? "none" : "\(Int(ranges.first!.start.seconds))-\(Int(ranges.last!.end.seconds)) (\(Int(ranges.last!.end.seconds - ranges.first!.start.seconds)) s)"
-        let t = p?.currentItem?.currentTime().seconds ?? -1
-        print("[press] \(phase) types=\(types) focused=\(focused) rate=\(p?.rate ?? -1) status=\(status) waiting=\(reason) t=\(Int(t)) seekable=\(window)")
+    /// The live item's seekable window in seconds; 0 until AVPlayer reports one.
+    private var seekableWindow: Double {
+        guard let item = playerController.player?.currentItem else { return 0 }
+        let ranges = item.seekableTimeRanges.map(\.timeRangeValue).filter { $0.duration.isNumeric && $0.duration.seconds > 0 }
+        guard let first = ranges.first, let last = ranges.last else { return 0 }
+        return last.end.seconds - first.start.seconds
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        describePress(presses, "began")
         if presses.contains(where: { $0.type == .menu }) {
             onMenu()
             return
+        }
+        if shortWindowSelect, presses.contains(where: { $0.type == .select }) {
+            handleShortWindowSelect()
         }
         super.pressesBegan(presses, with: event)
     }
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        describePress(presses, "ended")
         if presses.contains(where: { $0.type == .menu }) { return }
         super.pressesEnded(presses, with: event)
     }
 
-    override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
-        super.didUpdateFocus(in: context, with: coordinator)
-        let from = context.previouslyFocusedItem.map { String(describing: type(of: $0)) } ?? "nil"
-        let to = context.nextFocusedItem.map { String(describing: type(of: $0)) } ?? "nil"
-        print("[focus] \(from) → \(to)")
+    /// Pass 7C: pause or resume a live item ourselves while the window is short and Apple's
+    /// handler leaves the player as it was; otherwise the press is Apple's.
+    private func handleShortWindowSelect() {
+        guard let player = playerController.player else { return }
+        let window = seekableWindow
+        guard window < Self.appleHandlesFromWindow else {
+            print("[select] window \(Int(window)) s → Apple's handler")
+            return
+        }
+        let wasPlaying = player.timeControlStatus != .paused
+        pendingSelect?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, let player = self.playerController.player else { return }
+            let stillSame = (player.timeControlStatus != .paused) == wasPlaying
+            guard stillSame else {
+                print("[select] window \(Int(window)) s → Apple's handler acted")
+                return
+            }
+            if wasPlaying {
+                player.pause()
+                print("[select] window \(Int(window)) s < \(Int(Self.appleHandlesFromWindow)) → app paused")
+            } else {
+                player.play()
+                print("[select] window \(Int(window)) s < \(Int(Self.appleHandlesFromWindow)) → app resumed from the pause point")
+            }
+        }
+        pendingSelect = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.appleGrace, execute: work)
     }
 }
