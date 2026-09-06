@@ -14,6 +14,8 @@ struct ContentView: View {
     let api: APIClient
     let session: ClientSession
     let home: HomeModel
+    /// Pass 13: one WeatherKit read behind both the Home glance and the Weather screen.
+    let weather: WeatherModel
     @State private var screen: Destination? = nil
     @State private var playRequest: PlayRequest? = nil
     @State private var hold = RemoteHold()
@@ -22,15 +24,15 @@ struct ContentView: View {
         ZStack {
             Nocturne.bg
             if screen != nil {
-                ScreenShell(screen: $screen, clientName: session.displayName, api: api) { request in
+                ScreenShell(screen: $screen, clientName: session.displayName, api: api, weather: weather) { request in
                     playRequest = request
                 }
             } else {
-                HomeView(model: home) { destination in
+                HomeView(model: home, weather: weather) { destination in
                     if destination.isBuiltNow {
                         screen = destination
                     }
-                    // Favorites, Weather, Radio, Settings: present as drawn, inert (DECISIONS.md).
+                    // Radio and Settings: present as drawn, inert (DECISIONS.md).
                 }
             }
         }
@@ -55,5 +57,5 @@ struct ContentView: View {
 
 #Preview {
     let api = APIClient()
-    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api))
+    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api), weather: WeatherModel())
 }

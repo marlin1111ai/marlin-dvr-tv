@@ -4,6 +4,8 @@
 //
 //  Created on 2026-09-05.
 //  Pass 5: one API client, the client session (register/ping on every launch), Home's model.
+//  Pass 13: one WeatherModel too — Home's glance and the Weather screen share it, so
+//  WeatherKit is read once and the location prompt is shown once.
 //
 
 import SwiftUI
@@ -13,6 +15,7 @@ struct Marlin_DVR_TVApp: App {
     private let api: APIClient
     @State private var session: ClientSession
     @State private var home: HomeModel
+    @State private var weather = WeatherModel()
 
     init() {
         let api = APIClient()
@@ -23,7 +26,7 @@ struct Marlin_DVR_TVApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(api: api, session: session, home: home)
+            ContentView(api: api, session: session, home: home, weather: weather)
                 .task { await session.start() }
         }
     }

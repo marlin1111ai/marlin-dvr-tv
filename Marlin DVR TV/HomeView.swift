@@ -4,8 +4,8 @@
 //
 //  Home, frame 2a: a launcher with no rail (dc:111) — greeting, the fixed name "Marlin"
 //  (owner decision), date and time, and nine tiles with a live sub-line each
-//  (dc:120-160; data dc:1353-1368). The weather glance card (dc:133-143) is omitted until
-//  Weather is built; its 520 pt slot is kept so the clock sits where the design puts it.
+//  (dc:120-160; data dc:1353-1368). Pass 13 filled the weather glance card (dc:133-143) into
+//  the 520 pt slot Pass 5 held open for it — see HomeWeatherGlance.
 //
 
 import SwiftUI
@@ -82,6 +82,7 @@ final class HomeModel {
 
 struct HomeView: View {
     let model: HomeModel
+    let weather: WeatherModel
     let onSelect: (Destination) -> Void
     @FocusState private var focusedTile: Destination?
 
@@ -136,8 +137,8 @@ struct HomeView: View {
                     .padding(.top, 14)
             }
             Spacer(minLength: 0)
-            // The weather glance's slot (520 pt), empty until Weather is built.
-            Color.clear.frame(width: 520, height: 1)
+            // The weather glance (dc:133-143), live since Pass 13.
+            HomeWeatherGlance(model: weather)
         }
     }
 

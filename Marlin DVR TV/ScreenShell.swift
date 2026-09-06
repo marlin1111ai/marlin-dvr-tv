@@ -16,6 +16,8 @@ struct ScreenShell: View {
     @Binding var screen: Destination?
     let clientName: String
     let api: APIClient
+    /// Pass 13: the one WeatherKit read, shared with Home so the location prompt happens once.
+    let weather: WeatherModel
     let onPlay: (PlayRequest) -> Void
     @FocusState private var focus: ShellFocus?
 
@@ -34,7 +36,7 @@ struct ScreenShell: View {
                 } else if destination.isBuiltNow {
                     screen = destination
                 }
-                // Weather and Radio: present as drawn, inert (DECISIONS.md).
+                // Radio: present as drawn, inert (DECISIONS.md).
             }
             content
                 .id(current)
@@ -49,8 +51,8 @@ struct ScreenShell: View {
         .onExitCommand { screen = nil }
     }
 
-    /// The screens that exist: sweep 2's five, Favorites (Pass 10) and Manage DVR (Pass 10B).
-    /// Anything else keeps the placeholder.
+    /// The screens that exist: sweep 2's five, Favorites (Pass 10), Manage DVR (Pass 10B)
+    /// and Weather (Pass 13). Anything else keeps the placeholder.
     @ViewBuilder
     private var content: some View {
         let leave = { screen = nil }
@@ -62,6 +64,7 @@ struct ScreenShell: View {
         case .recordings: RecordingsScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .cameras: CamerasScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .manage: ManageDVRScreen(api: api, onLeave: leave)
+        case .weather: WeatherScreen(model: weather, onLeave: leave)
         default: PlaceholderScreen(destination: current)
         }
     }

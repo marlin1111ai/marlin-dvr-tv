@@ -1,0 +1,325 @@
+//
+//  RadarScreen.swift
+//  Marlin DVR TV
+//
+//  Pass 13 step 6: the radar, reachable from the Weather screen. It is not in the approved
+//  design — the owner added it in Pass 13 — so it is built to the app's look, the same route
+//  Manage DVR and Favorites took (COLD-START.md, Pass 10).
+//
+//  Why UIKit. SwiftUI's `Map` has no raster-tile content type at all: the tvOS
+//  `_MapKit_SwiftUI` interface is 1,128 lines and the string "tile" does not appear in it
+//  once (Pass 12 §3b). Raster tiles need `MKTileOverlay` + `MKTileOverlayRenderer` on a UIKit
+//  `MKMapView`, hosted here through `UIViewRepresentable` (tvOS 13.0).
+//
+//  Flat and north-up, because tvOS gives no choice: `rotateEnabled`, `pitchEnabled` and
+//  `showsCompass` are all `API_UNAVAILABLE(tvos)` (MKMapView.h:145, :146, :152). They are not
+//  referenced below — referencing them would not compile.
+//
+//  The loop is app code. MapKit on tvOS has no frame-sequence, time-dimension or
+//  tile-animation API of any kind (Pass 12 §3c), so every frame is its own overlay and
+//  renderer, all added at once so their tiles are already fetched, and the visible one is
+//  chosen by setting `MKOverlayRenderer.alpha` — the one primitive that carries no platform
+//  restriction (MKOverlayRenderer.h:48).
+//
+//  With no source configured (RadarSource, step 1) there are no frames, and this screen says
+//  so over a plain map rather than presenting an empty map as though it were working.
+//
+
+import MapKit
+import SwiftUI
+
+@Observable
+final class RadarModel {
+    enum Phase: Equatable {
+        case loading
+        case ready
+        /// No frames — either no source is configured or the source returned none.
+        case noFrames(String)
+        case failed(String)
+    }
+
+    private(set) var phase: Phase = .loading
+    private(set) var frames: [RadarFrame] = []
+    private(set) var index = 0
+
+    private var loopTask: Task<Void, Never>?
+    /// Radar loops read best at about two frames a second, with a pause on the newest frame
+    /// so the eye can land on it.
+    private static let step: Duration = .milliseconds(550)
+    private static let holdOnNewest: Duration = .milliseconds(1400)
+
+    var currentFrame: RadarFrame? {
+        frames.indices.contains(index) ? frames[index] : nil
+    }
+
+    func load() async {
+        phase = .loading
+        do {
+            let found = try await RadarSource.frames()
+            frames = found
+            index = max(found.count - 1, 0)
+            if found.isEmpty {
+                phase = .noFrames(RadarSource.unconfiguredReason ?? "The radar source returned no frames.")
+            } else {
+                phase = .ready
+                startLoop()
+            }
+        } catch {
+            frames = []
+            phase = .failed("The radar source could not be reached: \(error.localizedDescription)")
+        }
+    }
+
+    private func startLoop() {
+        loopTask?.cancel()
+        loopTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.frames.count > 1 else { return }
+                let isNewest = self.index == self.frames.count - 1
+                try? await Task.sleep(for: isNewest ? Self.holdOnNewest : Self.step)
+                if Task.isCancelled { return }
+                self.index = (self.index + 1) % self.frames.count
+            }
+        }
+    }
+
+    func stop() {
+        loopTask?.cancel()
+        loopTask = nil
+    }
+}
+
+struct RadarScreen: View {
+    /// The one-shot fix the Weather screen already has; the map centres on it. Nil means the
+    /// owner declined or the fix failed, and this screen says that instead of guessing a place.
+    let fix: LocationFix?
+    let place: String?
+    let onLeave: () -> Void
+
+    @State private var model = RadarModel()
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ZStack {
+            Nocturne.bg
+            if let fix {
+                RadarMapView(
+                    center: fix.coordinate,
+                    frames: model.frames,
+                    visibleIndex: model.index
+                )
+                .ignoresSafeArea()
+            }
+            LinearGradient(
+                colors: [Color.black.opacity(0.72), .clear, Color.black.opacity(0.72)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            overlayChrome
+        }
+        .task {
+            guard fix != nil else { return }
+            await model.load()
+        }
+        .onDisappear { model.stop() }
+        .onExitCommand { onLeave() }
+        // tvOS gives the screen nothing else to focus while the map is the only content;
+        // without a focusable item the Menu handler never receives the press.
+        .focusable()
+        .focused($focused)
+        .onAppear { focusSoon { focused = true } }
+    }
+
+    private var overlayChrome: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 28) {
+                Text("Radar")
+                    .font(.nocturne(Nocturne.TextSize.screenTitle, .medium))
+                    .tracking(-0.01 * Nocturne.TextSize.screenTitle)
+                    .foregroundStyle(Nocturne.text)
+                if let place {
+                    Text(place)
+                        .font(.nocturne(Nocturne.TextSize.secondary))
+                        .foregroundStyle(Nocturne.neutral500)
+                }
+                Spacer(minLength: 20)
+                Text("Menu to go back")
+                    .font(.nocturne(Nocturne.TextSize.floor))
+                    .foregroundStyle(Nocturne.neutral600)
+            }
+            Spacer(minLength: 0)
+            status
+        }
+        .padding(.vertical, Nocturne.Layout.marginVertical)
+        .padding(.horizontal, Nocturne.Layout.marginHorizontal)
+    }
+
+    /// The frame time when the loop is running (step 6: "with the frame time shown"), and the
+    /// plain reason when it is not.
+    @ViewBuilder
+    private var status: some View {
+        switch (fix, model.phase) {
+        case (nil, _):
+            note(
+                "No location, so no radar.",
+                detail: "The radar centres on this Apple TV's own location, and it does not have one. Open Weather and allow it, or try again there."
+            )
+        case (_, .loading):
+            note("Loading the radar frames…", detail: nil)
+        case (_, .noFrames(let reason)):
+            note("No radar frames to show.", detail: reason)
+        case (_, .failed(let reason)):
+            note("The radar source did not answer.", detail: reason)
+        case (_, .ready):
+            frameTime
+        }
+    }
+
+    private var frameTime: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 20) {
+                Text(model.currentFrame.map { TimeFormat.clock($0.time) } ?? "—")
+                    .font(.nocturne(Nocturne.TextSize.tileLabel, .medium))
+                    .foregroundStyle(Nocturne.text)
+                    .monospacedDigit()
+                Text("frame \(model.index + 1) of \(model.frames.count)")
+                    .font(.nocturne(Nocturne.TextSize.secondary))
+                    .foregroundStyle(Nocturne.neutral400)
+                if let credit = RadarSource.attribution {
+                    Text("· \(credit)")
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .foregroundStyle(Nocturne.neutral600)
+                }
+            }
+            // A tick per frame, the current one lit — the loop's position at a glance.
+            HStack(spacing: 6) {
+                ForEach(Array(model.frames.enumerated()), id: \.element.id) { position, _ in
+                    Capsule()
+                        .fill(position == model.index ? Nocturne.accent : Nocturne.neutral800)
+                        .frame(width: position == model.index ? 46 : 26, height: 6)
+                }
+            }
+        }
+        .padding(.vertical, 20)
+        .padding(.horizontal, 28)
+        .background(Nocturne.surface.opacity(0.86), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+    }
+
+    private func note(_ title: String, detail: String?) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))
+                .foregroundStyle(Nocturne.text)
+            if let detail {
+                Text(detail)
+                    .font(.nocturne(Nocturne.TextSize.secondary))
+                    .foregroundStyle(Nocturne.neutral400)
+                    .frame(maxWidth: 1240, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 24)
+        .padding(.horizontal, 30)
+        .background(Nocturne.surface.opacity(0.92), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+    }
+}
+
+// MARK: - The map
+
+/// `MKMapView` in SwiftUI, with one `MKTileOverlay` per radar frame.
+struct RadarMapView: UIViewRepresentable {
+    let center: CLLocationCoordinate2D
+    let frames: [RadarFrame]
+    let visibleIndex: Int
+
+    /// About 320 km across — a metro area and the weather heading for it.
+    private static let span = MKCoordinateSpan(latitudeDelta: 3.0, longitudeDelta: 3.0)
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> MKMapView {
+        let map = MKMapView()
+        map.delegate = context.coordinator
+        // Muted so the radar reads over it, and no points of interest to compete with.
+        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
+        configuration.pointOfInterestFilter = .excludingAll
+        configuration.showsTraffic = false
+        map.preferredConfiguration = configuration
+        map.isZoomEnabled = true
+        map.isScrollEnabled = true
+        map.showsUserLocation = false
+        map.setRegion(MKCoordinateRegion(center: center, span: Self.span), animated: false)
+        return map
+    }
+
+    func updateUIView(_ map: MKMapView, context: Context) {
+        context.coordinator.sync(frames: frames, on: map)
+        context.coordinator.show(index: visibleIndex)
+    }
+
+    static func dismantleUIView(_ map: MKMapView, coordinator: Coordinator) {
+        map.removeOverlays(map.overlays)
+    }
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        /// The overlay per frame, in frame order, and the renderer MapKit made for each.
+        private var overlays: [MKTileOverlay] = []
+        private var renderers: [ObjectIdentifier: MKTileOverlayRenderer] = [:]
+        private var frameIDs: [String] = []
+        private var shown = -1
+
+        /// Adds every frame's overlay once, so all of them are fetching tiles and a step in the
+        /// loop is a change of alpha rather than a fresh download.
+        func sync(frames: [RadarFrame], on map: MKMapView) {
+            let ids = frames.map(\.id)
+            guard ids != frameIDs else { return }
+            frameIDs = ids
+            map.removeOverlays(overlays)
+            renderers.removeAll()
+            shown = -1
+
+            overlays = frames.map { frame in
+                let overlay = MKTileOverlay(urlTemplate: frame.urlTemplate)
+                overlay.tileSize = RadarSource.tileSize
+                overlay.minimumZ = RadarSource.minimumZ
+                overlay.maximumZ = RadarSource.maximumZ
+                // Radar sits on top of the base map, which stays visible underneath.
+                overlay.canReplaceMapContent = false
+                return overlay
+            }
+            if !overlays.isEmpty {
+                map.addOverlays(overlays, level: .aboveLabels)
+            }
+        }
+
+        /// The whole animation: one frame opaque, the rest transparent.
+        ///
+        /// Only the two renderers that change are invalidated. Calling `setNeedsDisplay()` on
+        /// every renderer each step made MapKit re-request the tiles of all of them — measured
+        /// on the Apple TV at roughly 470 tile loads a second — which starved the main actor
+        /// and stopped the loop task advancing at all (Pass 13 §"what went wrong").
+        func show(index: Int) {
+            guard index != shown, overlays.indices.contains(index) else { return }
+            let previous = shown
+            shown = index
+            for position in [previous, index] where overlays.indices.contains(position) {
+                guard let renderer = renderers[ObjectIdentifier(overlays[position])] else { continue }
+                let wanted: CGFloat = position == index ? 1 : 0
+                guard renderer.alpha != wanted else { continue }
+                renderer.alpha = wanted
+                renderer.setNeedsDisplay()
+            }
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: any MKOverlay) -> MKOverlayRenderer {
+            guard let tiles = overlay as? MKTileOverlay else { return MKOverlayRenderer(overlay: overlay) }
+            let renderer = MKTileOverlayRenderer(tileOverlay: tiles)
+            // Radar is a wash over the map, not a replacement for it.
+            let position = overlays.firstIndex(of: tiles) ?? 0
+            renderer.alpha = position == shown ? 1 : 0
+            renderers[ObjectIdentifier(tiles)] = renderer
+            return renderer
+        }
+    }
+}

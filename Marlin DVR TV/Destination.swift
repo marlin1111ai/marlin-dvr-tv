@@ -4,9 +4,9 @@
 //
 //  The nine rail destinations of frame 1b (design data `nav`, dc:1133-1137) and the nine
 //  Home tiles of frame 2a (`tiles`, dc:1353-1368), with the design's Phosphor icons mapped
-//  to SF Symbols (owner decision: nothing bundled). Weather, Radio and Settings are present
-//  as drawn and inert until the owner says otherwise (DECISIONS.md); Favorites went live in
-//  Pass 10.
+//  to SF Symbols (owner decision: nothing bundled). Radio and Settings are present as drawn
+//  and inert until the owner says otherwise (DECISIONS.md); Favorites went live in Pass 10 and
+//  Weather in Pass 13.
 //
 //  Pass 10B adds a tenth rail entry, `manage`, below the design's nine (owner, 2026-09-06):
 //  the design's rail has no settings-area entry of its own — Settings is a Home tile only
@@ -88,13 +88,13 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// The screens that exist. Favorites went live in Pass 10 and Manage DVR moved into the
-    /// rail in Pass 10B; Weather, Radio and Settings are still present as drawn and inert
-    /// (DECISIONS.md).
+    /// The screens that exist. Favorites went live in Pass 10, Manage DVR moved into the
+    /// rail in Pass 10B and Weather was built in Pass 13; Radio and Settings are still present
+    /// as drawn and inert (DECISIONS.md).
     var isBuiltNow: Bool {
         switch self {
-        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage: return true
-        case .home, .weather, .radio, .settings: return false
+        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather: return true
+        case .home, .radio, .settings: return false
         }
     }
 

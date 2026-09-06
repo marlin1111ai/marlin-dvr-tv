@@ -62,9 +62,18 @@ Pass 10B (`reports/2026-09-06-pass10b-manage-in-rail.md`, accepted by the owner 
 
 Pass 11 (`reports/2026-09-06-pass11-acceptance-and-push.md`): the acceptance recorded in DECISIONS.md and here, and Passes 8, 9, 10 and 10B pushed to `origin main` together.
 
+Pass 12 (`reports/2026-09-06-pass12-weather-recon.md`): Weather screen recon, read-only, report only. It read frame 5f field by field (the design draws **no** radar and no map anywhere), gathered everything the notebook says about Weather, and checked the installed tvOS SDK for what is possible: `MKMapView`, `MKTileOverlay` and `MKTileOverlayRenderer` are all available on tvOS 9.2+, SwiftUI's `Map` has no raster-tile content type at all, MapKit has no frame-animation API, WeatherKit is present at tvOS 16.0 and exposes a counterpart for every field the design draws — but no radar, no tiles, no imagery.
+
+Pass 13 (`reports/2026-09-06-pass13-weather-radar.md`): the **Weather screen** (frame 5f) and the **Home weather glance** (frame 2a, live at last), both fed only by WeatherKit; the **one-shot location** with the system prompt, cached after the first grant, with a spoken state for every way it can fail; and the **radar view** — `MKMapView` in `UIViewRepresentable`, `MKTileOverlay` + `MKTileOverlayRenderer`, an app-written frame loop with the frame time shown, flat and north-up — reachable from the Weather screen. Two things stop short of working and are named plainly, not papered over: **WeatherKit is not enabled for this app's bundle id**, so every forecast call fails and both screens print that instead of data; and **step 1 found no radar tile source** in the owner's iPhone weather app, so the radar has a map and a loop but no tiles and says so on screen. Both are the owner's to unblock.
+
 ## What is NOT built
 
-The future screens **Weather, Radio and Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes).
+The future screens **Radio and Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13.
+
+**Built but blocked on the owner** (Pass 13):
+
+- **Every WeatherKit value** — the Weather screen's current conditions, alert card, 8 hourly columns and 5 daily rows, and the Home glance card. The code is written and the screens are reachable, but `com.apple.developer.weatherkit` is not in this app's signing, so on the Apple TV every call fails with `xpcConnectionFailed … com.apple.weatherkit.authservice … Sandbox restriction`. The capability has to be enabled on the App ID `com.marlin1111.MarlinDVRTV` in the developer portal and added to the target in Xcode; Pass 13 was forbidden to do either. **Until then the populated layout has never been seen.**
+- **Radar tiles.** The map renders, the tile overlay composites and the frame loop runs — all proven on the Apple TV — but there is no tile source: Pass 13 step 1 read the owner's iPhone weather app and found none. `RadarSource.frames()` is the one place a source plugs in.
 
 Deliberately still inert or absent: show detail's "Series pass" button and the Player's 6e "Delete this recording" (Pass 8 Open Question 1); any click behaviour on the Guide's channel cell — the hold favourites it, a click does nothing (Pass 9 Open Question 1); any way to un-skip a cancelled pass airing; and any auto-refresh of the Manage DVR lists (Pass 10 Open Questions 2 and 4). Cancelling a booking, which Pass 8 lacked, now lives in Manage DVR → Scheduled Recordings.
 
@@ -82,7 +91,7 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 None assigned — the owner directs what comes next. Passes 8, 9, 10 and 10B are accepted and on `origin main`; there is no sweep in flight.
 
-Standing candidates, should the owner want them: the three untested-live paths above; the parked screens (Weather, Radio, Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
+Standing candidates, should the owner want them: the three untested-live paths above; the parked screens (Radio, Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
 To run the on-device hold tests again:
 
