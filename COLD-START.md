@@ -48,11 +48,13 @@ Pass 4 (`reports/2026-09-05-pass4-design-and-build-recon.md`) put the approved d
 
 Pass 5 (sweep 1, `reports/2026-09-05-pass5-sweep1-foundation.md`, pushed after the owner's Home Theater test): the foundation — ATS exception, API client, models, DRM filter, image loader, client register/ping — plus the rail and Home.
 
-Pass 6 (sweep 2, `reports/2026-09-05-pass6-sweep2-screens.md`, committed locally, push gated on the owner's Home Theater test): the read-only screens — On Now, Guide with the airing sheet, On Later, Recordings with show detail, Cameras. Buttons owned by later sweeps are drawn and inert.
+Pass 6 (sweep 2, `reports/2026-09-05-pass6-sweep2-screens.md`, pushed after the owner's Home Theater test): the read-only screens — On Now, Guide with the airing sheet, On Later, Recordings with show detail, Cameras.
+
+Pass 7 (sweep 3, `reports/2026-09-06-pass7-sweep3-player.md`, committed locally, push gated on the owner's Home Theater test): the Player — HLS sessions per `HLS-CLIENT-API.md` (server 1.2.1), AVPlayerViewController with the overlays of frames 6a–6h, recordings with seek-by-new-session, the per-Apple-TV resume store and watched-on-end, live channels with the server's time-shift buffer, cameras, and the entry points from On Now, the Guide, the airing sheet, show detail and Cameras. Record / Series pass / long-press menu / "Stop the recording" stay inert (sweep 4).
 
 ## What is NOT built
 
-The Player and playback sessions (sweep 3), every server write — recording, passes, library flags (sweep 4) — the resume store, and the future screens Favorites, Weather, Radio, Settings.
+Every server write beyond watched-on-end — Record Now, passes, the library flags and Delete, "Hide this channel", "Stop the recording" (sweep 4) — and the future screens Favorites, Weather, Radio, Settings.
 
 ## Open questions
 
@@ -60,4 +62,4 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-Sweep 3, the Player, per reports/2026-09-05-pass4-design-and-build-recon.md §4 and HLS-CLIENT-API.md.
+Sweep 4, the writes — Record this airing, Record the series, the episode long-press menu, Delete, Hide this channel, Stop the recording and watch — per reports/2026-09-05-pass4-design-and-build-recon.md §4.

@@ -16,6 +16,7 @@ struct ScreenShell: View {
     @Binding var screen: Destination?
     let clientName: String
     let api: APIClient
+    let onPlay: (PlayRequest) -> Void
     @FocusState private var focus: ShellFocus?
 
     private var current: Destination { screen ?? .home }
@@ -53,11 +54,11 @@ struct ScreenShell: View {
     private var content: some View {
         let leave = { screen = nil }
         switch current {
-        case .onNow: OnNowScreen(api: api, onLeave: leave)
-        case .guide: GuideScreen(api: api, onLeave: leave)
+        case .onNow: OnNowScreen(api: api, onLeave: leave, onPlay: onPlay)
+        case .guide: GuideScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .onLater: OnLaterScreen(api: api, onLeave: leave)
-        case .recordings: RecordingsScreen(api: api, onLeave: leave)
-        case .cameras: CamerasScreen(api: api, onLeave: leave)
+        case .recordings: RecordingsScreen(api: api, onLeave: leave, onPlay: onPlay)
+        case .cameras: CamerasScreen(api: api, onLeave: leave, onPlay: onPlay)
         default: PlaceholderScreen(destination: current)
         }
     }

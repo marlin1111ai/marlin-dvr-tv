@@ -51,11 +51,13 @@ final class CamerasModel {
 
 struct CamerasScreen: View {
     let onLeave: () -> Void
+    let onPlay: (PlayRequest) -> Void
     @State private var model: CamerasModel
     @FocusState private var focused: String?
 
-    init(api: APIClient, onLeave: @escaping () -> Void) {
+    init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
         self.onLeave = onLeave
+        self.onPlay = onPlay
         _model = State(initialValue: CamerasModel(api: api))
     }
 
@@ -79,7 +81,7 @@ struct CamerasScreen: View {
                 LazyVGrid(columns: Self.columns, spacing: 34) {
                     ForEach(model.cameras) { camera in
                         Button {
-                            // Live view is the Player's (sweep 3).
+                            onPlay(.camera(camera))   // sweep 3 entry point
                         } label: {
                             CameraCard(camera: camera, snapshotPath: model.snapshotPath(for: camera), focused: focused == camera.id)
                         }

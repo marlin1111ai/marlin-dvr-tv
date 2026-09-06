@@ -157,13 +157,30 @@ final class GuideModel {
 
 struct GuideScreen: View {
     let onLeave: () -> Void
+    let onPlay: (PlayRequest) -> Void
     @State private var model: GuideModel
     @FocusState private var focused: String?
     @State private var lastCell: String?
 
-    init(api: APIClient, onLeave: @escaping () -> Void) {
+    init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
         self.onLeave = onLeave
+        self.onPlay = onPlay
         _model = State(initialValue: GuideModel(api: api))
+    }
+
+    /// DECISIONS.md 2026-09-06: a click on a program airing now plays it; a click on a
+    /// future airing opens the sheet; press-and-hold on a current cell opens the sheet.
+    private func select(_ cell: GuideCellItem) {
+        let now = Int(Date().timeIntervalSince1970)
+        if cell.program.start <= now && now < cell.program.end {
+            onPlay(.live(channel: cell.channel, program: cell.program))
+        } else {
+            model.sheet = AiringSelection(channel: cell.channel, program: cell.program, job: cell.job)
+        }
+    }
+
+    private func hold(_ cell: GuideCellItem) {
+        model.sheet = AiringSelection(channel: cell.channel, program: cell.program, job: cell.job)
     }
 
     private static let channelColumnWidth: CGFloat = 300
@@ -191,10 +208,10 @@ struct GuideScreen: View {
                                 focused: $focused,
                                 channelColumnWidth: Self.channelColumnWidth,
                                 columnGap: Self.columnGap,
-                                rowHeight: Self.rowHeight
-                            ) { cell in
-                                model.sheet = AiringSelection(channel: cell.channel, program: cell.program, job: cell.job)
-                            }
+                                rowHeight: Self.rowHeight,
+                                onSelect: { cell in select(cell) },
+                                onHold: { cell in hold(cell) }
+                            )
                         }
                     }
                     .padding(.vertical, 6)
@@ -204,7 +221,10 @@ struct GuideScreen: View {
                     .padding(.top, 16)
             }
             if let selection = model.sheet {
-                AiringSheet(selection: selection)
+                AiringSheet(selection: selection) {
+                    model.sheet = nil
+                    onPlay(.live(channel: selection.channel, program: selection.program))
+                }
             }
         }
         .defaultFocus($focused, "loading")
@@ -336,6 +356,7 @@ struct GuideRowView: View {
     let columnGap: CGFloat
     let rowHeight: CGFloat
     let onSelect: (GuideCellItem) -> Void
+    let onHold: (GuideCellItem) -> Void
 
     var body: some View {
         HStack(spacing: columnGap) {
@@ -364,6 +385,7 @@ struct GuideRowView: View {
                         }
                         .buttonStyle(BareButtonStyle())
                         .focused(focused, equals: cell.id)
+                        .onLongPressGesture(minimumDuration: 0.5) { onHold(cell) }
                         .offset(x: frame.x)
                     }
                 }

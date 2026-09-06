@@ -117,11 +117,13 @@ final class OnNowModel {
 
 struct OnNowScreen: View {
     let onLeave: () -> Void
+    let onPlay: (PlayRequest) -> Void
     @State private var model: OnNowModel
     @FocusState private var focused: String?
 
-    init(api: APIClient, onLeave: @escaping () -> Void) {
+    init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
         self.onLeave = onLeave
+        self.onPlay = onPlay
         _model = State(initialValue: OnNowModel(api: api))
     }
 
@@ -141,7 +143,7 @@ struct OnNowScreen: View {
                     LazyVGrid(columns: Self.columns, spacing: 30) {
                         ForEach(model.items) { item in
                             Button {
-                                // Playing is the Player's (sweep 3). Long press shows the next six hours.
+                                onPlay(.live(channel: item.channel, program: item.program))   // sweep 3 entry point
                             } label: {
                                 OnNowCard(item: item, focused: focused == item.id)
                             }

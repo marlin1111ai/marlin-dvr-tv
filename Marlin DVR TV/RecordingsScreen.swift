@@ -36,20 +36,22 @@ final class RecordingsModel {
 struct RecordingsScreen: View {
     let api: APIClient
     let onLeave: () -> Void
+    let onPlay: (PlayRequest) -> Void
     @State private var model: RecordingsModel
     @State private var selected: ShowSummary?
     @FocusState private var focused: String?
 
-    init(api: APIClient, onLeave: @escaping () -> Void) {
+    init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
         self.api = api
         self.onLeave = onLeave
+        self.onPlay = onPlay
         _model = State(initialValue: RecordingsModel(api: api))
     }
 
     var body: some View {
         Group {
             if let selected {
-                ShowDetailScreen(api: api, show: selected)
+                ShowDetailScreen(api: api, show: selected, onPlay: onPlay)
             } else {
                 shelves
             }

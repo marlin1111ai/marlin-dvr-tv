@@ -53,11 +53,20 @@ final class ShowDetailModel {
 }
 
 struct ShowDetailScreen: View {
+    let onPlay: (PlayRequest) -> Void
     @State private var model: ShowDetailModel
     @FocusState private var focused: String?
+    @State private var resumeTick = 0   // re-read the resume store after the Player closes
 
-    init(api: APIClient, show: ShowSummary) {
+    init(api: APIClient, show: ShowSummary, onPlay: @escaping (PlayRequest) -> Void) {
+        self.onPlay = onPlay
         _model = State(initialValue: ShowDetailModel(api: api, show: show))
+    }
+
+    /// The most recently saved position among this show's episodes (frame 5d "Resume S9 E11 · 22 min in").
+    private var resume: (episode: Episode, entry: ResumeStore.Entry)? {
+        _ = resumeTick
+        return ResumeStore.latest(among: model.detail?.episodes ?? [])
     }
 
     var body: some View {
@@ -65,11 +74,16 @@ struct ShowDetailScreen: View {
             leftColumn
             episodes
         }
-        .defaultFocus($focused, "newest")
+        .defaultFocus($focused, resume != nil ? "resume" : "newest")
         .task {
-            focusSoon { focused = "newest" }
             await model.load()
+            focusSoon { focused = resume != nil ? "resume" : "newest" }
         }
+        .onAppear { resumeTick += 1 }
+    }
+
+    private func play(_ episode: Episode, from start: Double) {
+        onPlay(.recording(episode: episode, show: model.detail, start: start))
     }
 
     private var leftColumn: some View {
@@ -94,8 +108,27 @@ struct ShowDetailScreen: View {
                     .foregroundStyle(Nocturne.neutral400)
                     .lineLimit(2)
             }
+            if let resume {
+                let label = "Resume S\(resume.episode.season) E\(resume.episode.episode) · \(ResumeStore.label(for: resume.entry))"
+                Button {
+                    play(resume.episode, from: resume.entry.position)
+                } label: {
+                    InertActionButton(title: label, primary: true, focused: focused == "resume", size: Nocturne.TextSize.body)
+                }
+                .buttonStyle(BareButtonStyle())
+                .focused($focused, equals: "resume")
+                .padding(.top, 6)
+            }
             HStack(spacing: 16) {
-                inert("Play newest", id: "newest")
+                Button {
+                    if let newest = model.detail?.episodes.first {
+                        play(newest, from: ResumeStore.entry(for: newest.id)?.position ?? 0)
+                    }
+                } label: {
+                    InertActionButton(title: "Play newest", primary: false, focused: focused == "newest", size: Nocturne.TextSize.secondary)
+                }
+                .buttonStyle(BareButtonStyle())
+                .focused($focused, equals: "newest")
                 inert("Series pass", id: "pass")
             }
             .padding(.top, 6)
@@ -134,9 +167,9 @@ struct ShowDetailScreen: View {
                 VStack(spacing: 16) {
                     ForEach(model.detail?.episodes ?? []) { episode in
                         Button {
-                            // Playing and the long-press menu are later sweeps'.
+                            play(episode, from: ResumeStore.entry(for: episode.id)?.position ?? 0)   // sweep 3 entry point
                         } label: {
-                            EpisodeRow(episode: episode, focused: focused == episode.id)
+                            EpisodeRow(episode: episode, focused: focused == episode.id, resume: ResumeStore.entry(for: episode.id))
                         }
                         .buttonStyle(BareButtonStyle())
                         .focused($focused, equals: episode.id)
@@ -156,6 +189,13 @@ struct ShowDetailScreen: View {
 struct EpisodeRow: View {
     let episode: Episode
     let focused: Bool
+    var resume: ResumeStore.Entry? = nil
+
+    /// The resume bar on the thumb (dc:617-619): position over the length when both are known.
+    private var resumeFraction: Double? {
+        guard let resume, resume.duration > 0 else { return nil }
+        return min(1, resume.position / resume.duration)
+    }
 
     private var seasonEpisode: String? {
         guard episode.season > 0 || episode.episode > 0 else { return nil }
@@ -182,6 +222,11 @@ struct EpisodeRow: View {
                 ArtPlaceholder(cornerRadius: Nocturne.Radius.sm)
             }
             .frame(width: 236, height: 133)
+            .overlay(alignment: .bottom) {
+                if let fraction = resumeFraction {
+                    ProgressBar(fraction: fraction)
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous))
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 16) {

@@ -29,6 +29,7 @@ struct AiringSelection: Identifiable {
 
 struct AiringSheet: View {
     let selection: AiringSelection
+    let onWatchLive: () -> Void
     @FocusState private var focused: String?
 
     private var program: Program { selection.program }
@@ -108,7 +109,13 @@ struct AiringSheet: View {
                     HStack(spacing: 20) {
                         inert("Record this airing", id: "record", primary: true)
                         inert("Record the series", id: "series", primary: false)
-                        inert("Watch live", id: "watch", primary: false)
+                        Button {
+                            onWatchLive()   // sweep 3 entry point: the channel, whatever is on now (stream.go:214-218)
+                        } label: {
+                            InertActionButton(title: "Watch live", primary: false, focused: focused == "watch")
+                        }
+                        .buttonStyle(BareButtonStyle())
+                        .focused($focused, equals: "watch")
                     }
                     Spacer(minLength: 0)
                     if let job = selection.job, job.status == "Conflict" {
