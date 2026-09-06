@@ -349,3 +349,19 @@ Nothing else was written. The Xcode project, Swift sources, assets, `Info.plist`
 ## Push verification
 
 Recorded in the follow-up commit section at the end of this file (a report cannot contain the hash of the commit that includes it).
+
+Pass 4 commit ("Pass 4: design into repo, decisions, build recon"): `34177e035037d38c60040a203fadf87c34cfaa71` — 17 files: the 14 files under `design/`, `DECISIONS.md`, `COLD-START.md`, and this report (5,454 insertions, 2 deletions).
+
+`git status --short` before the commit: ` M COLD-START.md`, ` M DECISIONS.md`, `?? design/`, `?? reports/2026-09-05-pass4-design-and-build-recon.md`.
+
+```
+git push origin main
+   c5905c9..34177e0  main -> main
+git fetch origin
+local HEAD      : 34177e035037d38c60040a203fadf87c34cfaa71
+origin/main     : 34177e035037d38c60040a203fadf87c34cfaa71
+ls-remote main  : 34177e035037d38c60040a203fadf87c34cfaa71
+MATCH
+```
+
+What was pushed: those 17 files in that one commit. A follow-up commit ("Pass 4: record pushed SHA in report") then wrote the SHA and this block into the report only, and was pushed and verified the same way (fetch, then compare `HEAD`, `origin/main` and `git ls-remote origin main`); its SHA is the current `origin/main` and is stated in the closing summary.
