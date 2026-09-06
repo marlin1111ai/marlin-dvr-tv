@@ -6,7 +6,8 @@
 //  60/80 pt margins and 56 pt clearance from the rail (frame 1b, dc:74). The rail is
 //  expanded while focus is on a rail item and collapsed while focus is in the content.
 //  Menu (the exit command) returns to Home, as the guide footer of frame 3c states
-//  ("Back again leaves the Guide").
+//  ("Back again leaves the Guide"); the sweep-2 screens handle Menu themselves and call
+//  `onLeave` when they have nothing of their own to close.
 //
 
 import SwiftUI
@@ -14,6 +15,7 @@ import SwiftUI
 struct ScreenShell: View {
     @Binding var screen: Destination?
     let clientName: String
+    let api: APIClient
     @FocusState private var focus: ShellFocus?
 
     private var current: Destination { screen ?? .home }
@@ -33,19 +35,31 @@ struct ScreenShell: View {
                 }
                 // Favorites, Weather, Radio: present as drawn, inert (DECISIONS.md).
             }
-            PlaceholderScreen(destination: current)
+            content
+                .id(current)
                 .padding(.top, Nocturne.Layout.marginVertical)
                 .padding(.bottom, Nocturne.Layout.marginVertical)
                 .padding(.leading, Nocturne.Layout.contentLeadingBesideRail)
                 .padding(.trailing, Nocturne.Layout.marginHorizontal)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .focusable()
-                .focused($focus, equals: .content)
                 .focusSection()
         }
         .background(Nocturne.bg)
-        .defaultFocus($focus, .content)
         .onExitCommand { screen = nil }
+    }
+
+    /// Pass 6 (sweep 2): the five read-only screens; anything else keeps the placeholder.
+    @ViewBuilder
+    private var content: some View {
+        let leave = { screen = nil }
+        switch current {
+        case .onNow: OnNowScreen(api: api, onLeave: leave)
+        case .guide: GuideScreen(api: api, onLeave: leave)
+        case .onLater: OnLaterScreen(api: api, onLeave: leave)
+        case .recordings: RecordingsScreen(api: api, onLeave: leave)
+        case .cameras: CamerasScreen(api: api, onLeave: leave)
+        default: PlaceholderScreen(destination: current)
+        }
     }
 }
 

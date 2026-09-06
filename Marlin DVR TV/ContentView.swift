@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    let api: APIClient
     let session: ClientSession
     let home: HomeModel
     @State private var screen: Destination? = nil
@@ -17,7 +18,7 @@ struct ContentView: View {
         ZStack {
             Nocturne.bg
             if screen != nil {
-                ScreenShell(screen: $screen, clientName: session.displayName)
+                ScreenShell(screen: $screen, clientName: session.displayName, api: api)
             } else {
                 HomeView(model: home) { destination in
                     if destination.isBuiltNow {
@@ -34,5 +35,5 @@ struct ContentView: View {
 
 #Preview {
     let api = APIClient()
-    ContentView(session: ClientSession(api: api), home: HomeModel(api: api))
+    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api))
 }

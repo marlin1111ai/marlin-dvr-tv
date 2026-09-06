@@ -44,11 +44,15 @@ The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVAp
 
 Pass 2 (server recon, `reports/2026-09-05-pass2-server-recon.md`) and Pass 3 (HLS client recon against `HLS-CLIENT-API.md`, `reports/2026-09-05-pass3-hls-client-recon.md`) are done; both were read-only and wrote reports only.
 
-Pass 4 (`reports/2026-09-05-pass4-design-and-build-recon.md`) put the approved design into `design/`, recorded the design decisions, and mapped every in-scope screen to the server API and into build sweeps. Still no app code.
+Pass 4 (`reports/2026-09-05-pass4-design-and-build-recon.md`) put the approved design into `design/`, recorded the design decisions, and mapped every in-scope screen to the server API and into build sweeps.
+
+Pass 5 (sweep 1, `reports/2026-09-05-pass5-sweep1-foundation.md`, pushed after the owner's Home Theater test): the foundation — ATS exception, API client, models, DRM filter, image loader, client register/ping — plus the rail and Home.
+
+Pass 6 (sweep 2, `reports/2026-09-05-pass6-sweep2-screens.md`, committed locally, push gated on the owner's Home Theater test): the read-only screens — On Now, Guide with the airing sheet, On Later, Recordings with show detail, Cameras. Buttons owned by later sweeps are drawn and inert.
 
 ## What is NOT built
 
-The app.
+The Player and playback sessions (sweep 3), every server write — recording, passes, library flags (sweep 4) — the resume store, and the future screens Favorites, Weather, Radio, Settings.
 
 ## Open questions
 
@@ -56,4 +60,4 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-Build sweeps per reports/2026-09-05-pass4-design-and-build-recon.md
+Sweep 3, the Player, per reports/2026-09-05-pass4-design-and-build-recon.md §4 and HLS-CLIENT-API.md.

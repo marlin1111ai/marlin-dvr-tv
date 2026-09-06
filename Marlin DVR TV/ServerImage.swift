@@ -19,7 +19,11 @@ struct ServerImage<Fallback: View>: View {
         if let url = ServerConfig.resolve(path) {
             AsyncImage(url: url) { phase in
                 if let image = phase.image {
-                    image.resizable().aspectRatio(contentMode: contentMode)
+                    // Sized by the caller's frame, never by the image (a wide snapshot in fill mode
+                    // would otherwise widen its card — seen in Pass 6).
+                    Color.clear
+                        .overlay { image.resizable().aspectRatio(contentMode: contentMode) }
+                        .clipped()
                 } else {
                     fallback()
                 }

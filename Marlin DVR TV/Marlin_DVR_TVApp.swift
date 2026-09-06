@@ -10,18 +10,20 @@ import SwiftUI
 
 @main
 struct Marlin_DVR_TVApp: App {
+    private let api: APIClient
     @State private var session: ClientSession
     @State private var home: HomeModel
 
     init() {
         let api = APIClient()
+        self.api = api
         _session = State(initialValue: ClientSession(api: api))
         _home = State(initialValue: HomeModel(api: api))
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(session: session, home: home)
+            ContentView(api: api, session: session, home: home)
                 .task { await session.start() }
         }
     }
