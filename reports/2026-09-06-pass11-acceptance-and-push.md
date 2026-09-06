@@ -54,16 +54,32 @@ Five commits, oldest first:
 | `65a9fa1` | Pass 9: sweep 4 fixes from the owner's Home Theater test |
 | `e973e96` | Pass 10: Favorites screen and the Manage DVR area |
 | `ee3576d` | Pass 10B: Manage DVR moves from Recordings to the rail |
-| *(this pass)* | Pass 11: acceptance recorded for sweep 4 and its fixes |
+| `0cd2ac8` | Pass 11: acceptance recorded for sweep 4 and its fixes |
 
-`origin/main` was `331e8c0` (Pass 7D) before the push. The push line and the SHA it landed on
-are written by the follow-up commit below, because a report cannot carry the hash of the commit
-that contains it.
+`origin/main` was `331e8c0` (Pass 7D) before the push and `0cd2ac8` after:
+
+```
+git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   331e8c0..0cd2ac8  main -> main
+```
+
+A normal push; nothing was forced, and no earlier commit was rewritten — `331e8c0` is still an
+ancestor of `origin/main`.
 
 ## 4. The three-way check
 
-`git fetch origin`, then `local HEAD`, `origin/main` and `git ls-remote origin main` compared.
-The three values are written by the follow-up commit below.
+`git fetch origin`, then the three values read back:
+
+```
+local HEAD      : 0cd2ac8686ff38c0c9e10764c6593d888f5f62e2
+origin/main     : 0cd2ac8686ff38c0c9e10764c6593d888f5f62e2
+ls-remote main  : 0cd2ac8686ff38c0c9e10764c6593d888f5f62e2
+MATCH
+```
+
+`git status -sb` after the fetch: `## main...origin/main` — level with the remote, working
+tree clean.
 
 ---
 
@@ -84,7 +100,8 @@ installed; no packages.
 
 ## Push verification
 
-The SHA above is this file's own commit, so it is written by the follow-up commit that the
-project's convention uses for exactly this (Pass 4 set the precedent: a report cannot contain
-the hash of the commit that includes it). That follow-up touches this file only, and is pushed
-and verified the same way; its SHA is stated in the closing reply.
+`0cd2ac8` is the commit that contains this report, so its SHA and the verification block above
+were written by a follow-up commit — the convention Pass 4 set, because a report cannot carry
+the hash of the commit that includes it. That follow-up touches this file only. It was pushed
+and checked the same three ways, and its SHA is the current `origin/main`, stated in the
+closing reply.
