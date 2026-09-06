@@ -52,10 +52,11 @@ final class RadarModel {
         frames.indices.contains(index) ? frames[index] : nil
     }
 
-    func load() async {
+    func load(near coordinate: CLLocationCoordinate2D) async {
         phase = .loading
+        NOAARadarTileOverlay.resetCounters()
         do {
-            let found = try await RadarSource.frames()
+            let found = try await RadarSource.frames(near: coordinate)
             frames = found
             index = max(found.count - 1, 0)
             if found.isEmpty {
@@ -63,6 +64,7 @@ final class RadarModel {
             } else {
                 phase = .ready
                 startLoop()
+                watchTiles()
             }
         } catch {
             frames = []
@@ -86,6 +88,35 @@ final class RadarModel {
     func stop() {
         loopTask?.cancel()
         loopTask = nil
+        tileWatchTask?.cancel()
+        tileWatchTask = nil
+    }
+
+    // MARK: Tiles that never arrive (step 4)
+
+    /// A frame list can come back fine and every tile behind it still fail — a bare base map
+    /// then looks exactly like clear weather, which is the one thing the radar must never do.
+    /// This watches the overlay's counters and speaks up when nothing has drawn.
+    private(set) var tileTrouble: String?
+    private var tileWatchTask: Task<Void, Never>?
+
+    private func watchTiles() {
+        tileWatchTask?.cancel()
+        tileWatchTask = Task { [weak self] in
+            // MapKit asks for tiles as the map lays out; give it a few seconds before judging.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled, let self else { return }
+                let loaded = NOAARadarTileOverlay.tilesLoaded
+                let failed = NOAARadarTileOverlay.tilesFailed
+                if loaded == 0 && failed > 0 {
+                    let reason = NOAARadarTileOverlay.lastFailure ?? "the reason was not reported"
+                    self.tileTrouble = "NOAA sent the frame list but not one radar tile has loaded — \(failed) attempts, and the last said: \(reason)"
+                } else {
+                    self.tileTrouble = nil
+                }
+            }
+        }
     }
 }
 
@@ -119,8 +150,8 @@ struct RadarScreen: View {
             overlayChrome
         }
         .task {
-            guard fix != nil else { return }
-            await model.load()
+            guard let fix else { return }
+            await model.load(near: fix.coordinate)
         }
         .onDisappear { model.stop() }
         .onExitCommand { onLeave() }
@@ -172,7 +203,12 @@ struct RadarScreen: View {
         case (_, .failed(let reason)):
             note("The radar source did not answer.", detail: reason)
         case (_, .ready):
-            frameTime
+            VStack(alignment: .leading, spacing: 14) {
+                if let trouble = model.tileTrouble {
+                    note("The radar frames are listed but not drawing.", detail: trouble)
+                }
+                frameTime
+            }
         }
     }
 
@@ -279,15 +315,7 @@ struct RadarMapView: UIViewRepresentable {
             renderers.removeAll()
             shown = -1
 
-            overlays = frames.map { frame in
-                let overlay = MKTileOverlay(urlTemplate: frame.urlTemplate)
-                overlay.tileSize = RadarSource.tileSize
-                overlay.minimumZ = RadarSource.minimumZ
-                overlay.maximumZ = RadarSource.maximumZ
-                // Radar sits on top of the base map, which stays visible underneath.
-                overlay.canReplaceMapContent = false
-                return overlay
-            }
+            overlays = frames.map(RadarSource.overlay(for:))
             if !overlays.isEmpty {
                 map.addOverlays(overlays, level: .aboveLabels)
             }

@@ -101,16 +101,11 @@ final class WeatherRadarUITests: XCTestCase {
         remote.press(.select)
 
         XCTAssertTrue(app.staticTexts["Radar"].waitForExistence(timeout: 25), "the radar view did not open")
-        sleep(8)
-        shot("05-radar-view")
-        // The loop, if there are frames, moves the frame time on.
-        sleep(3)
-        shot("06-radar-view-later")
-        sleep(3)
-        shot("06b-radar-view-later-still")
         sleep(10)
-        shot("06c-radar-view-ten-seconds-on")
-
+        shot("05-radar-view")
+        // Real tiles arrive over the network, so give them a moment and look again.
+        sleep(10)
+        shot("06-radar-view-later")
         remote.press(.menu)
         sleep(3)
         XCTAssertTrue(app.staticTexts["From this Apple TV's location, not the server"].waitForExistence(timeout: 20),
