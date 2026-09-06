@@ -41,14 +41,16 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
 
 The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVApp.swift`) and one `ContentView` showing the app name.
 
+Pass 2 (server recon, `reports/2026-09-05-pass2-server-recon.md`) and Pass 3 (HLS client recon against `HLS-CLIENT-API.md`, `reports/2026-09-05-pass3-hls-client-recon.md`) are done; both were read-only and wrote reports only.
+
 ## What is NOT built
 
 The app.
 
 ## Open questions
 
-None yet. (Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.)
+See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
 
-Recon of what the app needs from the server.
+Owner supplies what the app should do; then the first build pass against HLS-CLIENT-API.md.
