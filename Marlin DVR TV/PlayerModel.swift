@@ -24,7 +24,14 @@ final class PlayerModel {
         let status: Int             // HTTP status, or 0 for a transport / player failure
         let message: String         // the server's text
         var log: String?            // the session log's last lines (502)
-        var busyRecordings: [String] = []   // frame 6g: the recordings holding the tuner
+        var busyRecordings: [BusyRecording] = []   // frame 6g: the recordings holding the tuner
+    }
+
+    /// One recording in progress on the same source as the channel that failed: the job id
+    /// POST /api/schedule/jobs/{id}/stop needs, and the line frame 6g shows.
+    struct BusyRecording: Identifiable {
+        let id: String              // Job.id
+        let label: String           // "WJZ News at 4 on 13.1 until 4:30 PM"
     }
 
     let request: PlayRequest
@@ -52,6 +59,10 @@ final class PlayerModel {
     private(set) var markedWatched = false
     private(set) var startingLine = ""
     private(set) var stopped = false
+    /// Sweep 4: what the last write from a failure state did, and whether it succeeded.
+    private(set) var writeNotice: String?
+    private(set) var writeDone = false
+    private(set) var writing = false
 
     private var keepAliveTask: Task<Void, Never>?
     private var hudTask: Task<Void, Never>?
@@ -363,15 +374,64 @@ final class PlayerModel {
                 if let schedule = try? await api.schedule() {
                     failure.busyRecordings = schedule.jobs
                         .filter { $0.status == "Recording" && $0.sourceId == channel.sourceId }
-                        .map { "\($0.program.title) on \($0.number) until \(TimeFormat.clock(unix: $0.end))" }
+                        .map { BusyRecording(id: $0.id, label: "\($0.program.title) on \($0.number) until \(TimeFormat.clock(unix: $0.end))") }
                 }
             }
         }
         detachPlayer()
         keepAliveTask?.cancel()
         if let sessionID { await sessions.stop(id: sessionID) }
+        // The session is stopped and its folder is gone; forget it so a later restart
+        // (frame 6g's "Stop the recording and watch") does not DELETE it a second time.
+        session = nil
         self.failure = failure
         phase = .failed
+    }
+
+    // MARK: Sweep 4 — the writes the failure states offer
+
+    /// Frame 6f: "Hide this channel" → PUT /api/sources/{id}/lineup/{guid} {hidden: true}.
+    /// The override hides the channel for every client, not only this Apple TV
+    /// (sources.go:960-1004; Pass 4 Open Question 8), and the app's lists drop it on their
+    /// next load because /api/channels and /api/guide skip hidden channels (sources.go:359).
+    func hideChannel() async {
+        guard let channel = request.channel, !writing else { return }
+        writing = true
+        writeNotice = nil
+        do {
+            let override = try await api.setChannelHidden(sourceId: channel.sourceId, guid: channel.guid, hidden: true)
+            writeDone = override.hidden
+            writeNotice = override.hidden
+                ? "\(channel.number) \(channel.name) is hidden. It leaves the guide, On Now and the channel lists the next time they load."
+                : "The server did not set the hidden flag."
+        } catch {
+            writeDone = false
+            writeNotice = WriteError.text(error)
+            print("[player] hide channel failed: \(error)")
+        }
+        writing = false
+    }
+
+    /// Frame 6g: "Stop the recording and watch" → POST /api/schedule/jobs/{id}/stop for the
+    /// recording named in the copy, then start the live session that the busy tuner refused.
+    /// The stop call returns only once the recorder has closed the file (recorder.go:672-676),
+    /// so the tuner is free before the new session is created.
+    func stopBlockingRecordingAndWatch() async {
+        guard let busy = failure?.busyRecordings.first, !writing else { return }
+        writing = true
+        writeNotice = nil
+        do {
+            let outcome = try await api.stopJob(id: busy.id)
+            writeDone = true
+            writeNotice = "Stopped \(outcome.title.isEmpty ? busy.label : outcome.title) (\(outcome.status)). Starting the channel…"
+            writing = false
+            await restart()
+        } catch {
+            writeDone = false
+            writeNotice = WriteError.text(error)
+            writing = false
+            print("[player] stop recording failed: \(error)")
+        }
     }
 
     // MARK: Restart / stop
@@ -379,6 +439,7 @@ final class PlayerModel {
     /// Frame 6h and seek-beyond: stop this session and start again, for a recording at `at` seconds.
     func restart(at requested: Double? = nil) async {
         let target = requested ?? (isRecording ? position : 0)
+        writeDone = false
         detachPlayer()
         keepAliveTask?.cancel()
         if let id = session?.id { await sessions.stop(id: id) }

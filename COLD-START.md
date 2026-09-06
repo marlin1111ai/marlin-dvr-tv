@@ -50,11 +50,13 @@ Pass 5 (sweep 1, `reports/2026-09-05-pass5-sweep1-foundation.md`, pushed after t
 
 Pass 6 (sweep 2, `reports/2026-09-05-pass6-sweep2-screens.md`, pushed after the owner's Home Theater test): the read-only screens — On Now, Guide with the airing sheet, On Later, Recordings with show detail, Cameras.
 
-Pass 7 (sweep 3, `reports/2026-09-06-pass7-sweep3-player.md`, committed locally, push gated on the owner's Home Theater test): the Player — HLS sessions per `HLS-CLIENT-API.md` (server 1.2.1), AVPlayerViewController with the overlays of frames 6a–6h, recordings with seek-by-new-session, the per-Apple-TV resume store and watched-on-end, live channels with the server's time-shift buffer, cameras, and the entry points from On Now, the Guide, the airing sheet, show detail and Cameras. Record / Series pass / long-press menu / "Stop the recording" stay inert (sweep 4).
+Pass 7 (sweep 3, `reports/2026-09-06-pass7-sweep3-player.md`, accepted by the owner on Home Theater and pushed): the Player — HLS sessions per `HLS-CLIENT-API.md` (server 1.2.1), AVPlayerViewController with the overlays of frames 6a–6h, recordings with seek-by-new-session, the per-Apple-TV resume store and watched-on-end, live channels with the server's time-shift buffer, cameras, and the entry points from On Now, the Guide, the airing sheet, show detail and Cameras.
+
+Pass 8 (sweep 4, `reports/2026-09-06-pass8-sweep4-writes.md`, committed locally, push gated on the owner's Home Theater test): the writes — "Record this airing" (`POST /api/record`) and "Record the series" (`POST /api/passes`) on the airing sheet with the ● SCHEDULED / ◆ SERIES PASS marks on the Guide; the show-detail click-and-hold menu (Keep, Favorite, Mark unwatched, Delete → `PUT /api/library/recordings/{id}`, a trashed episode leaving the list); "Hide this channel" (`PUT /api/sources/{id}/lineup/{guid}`); and "Stop the recording and watch" on a tuner-busy 502 (`POST /api/schedule/jobs/{id}/stop`, then the live session). Two defects shipped in sweeps 2–3 were found and fixed there: `.onLongPressGesture` never fires on a tvOS Button (click-and-hold now goes through `HoldButton`), and the episode list could not be reached with the remote (focus sections).
 
 ## What is NOT built
 
-Every server write beyond watched-on-end — Record Now, passes, the library flags and Delete, "Hide this channel", "Stop the recording" (sweep 4) — and the future screens Favorites, Weather, Radio, Settings.
+The future screens Favorites, Weather, Radio, Settings. Of the writes, these are deliberately still inert or absent (Pass 8 Open Questions 1 and 2): show detail's "Series pass" button, the Player's 6e "Delete this recording", and any way to cancel a booking or delete a pass from the Apple TV.
 
 ## Open questions
 
@@ -62,4 +64,4 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-Sweep 4, the writes — Record this airing, Record the series, the episode long-press menu, Delete, Hide this channel, Stop the recording and watch — per reports/2026-09-05-pass4-design-and-build-recon.md §4.
+The owner tests sweep 4 on Home Theater (first check: click-and-hold on the Siri Remote, on a guide cell and on an episode row — the fix for it could only be verified on the simulator). Then the acceptance-and-push pass, and the Open Questions of `reports/2026-09-06-pass8-sweep4-writes.md`.

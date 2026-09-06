@@ -3,10 +3,15 @@
 //  Marlin DVR TV
 //
 //  Show detail, frame 5d (dc:588-646): poster, title, "N episodes · M unwatched · size ·
-//  channel" (size = the sum of episode sizes), the buttons (inert; no resume line until the
-//  resume store exists), and the episodes newest first with S/E, title, ✓ Watched,
-//  description, aired, the duration only when the server already cached the probe (it then
-//  sits in `airedLabel`; nothing calls ffprobe), size and tags. Data: GET /api/library/shows/{id}.
+//  channel" (size = the sum of episode sizes), the resume line and the play buttons, and the
+//  episodes newest first with S/E, title, ✓ Watched, description, aired, the duration only
+//  when the server already cached the probe (it then sits in `airedLabel`; nothing calls
+//  ffprobe), size and tags. Data: GET /api/library/shows/{id}.
+//
+//  Sweep 4, step 3: click and hold an episode opens EpisodeActionsMenu — Keep, Favorite,
+//  Mark unwatched, Delete. The row redraws from the `episodeView` the server returns, and a
+//  trashed episode leaves the list (the counts and the size line follow it). "Series pass"
+//  stays inert: this pass wires the airing sheet's series pass only (Pass 8 scope lock).
 //
 
 import SwiftUI
@@ -16,6 +21,8 @@ final class ShowDetailModel {
     private let api: APIClient
     let show: ShowSummary
     private(set) var detail: ShowResponse?
+    /// The visible episodes: the server's list, kept current by the long-press writes.
+    private(set) var episodes: [Episode] = []
     private(set) var loaded = false
     private(set) var error: String?
 
@@ -26,7 +33,9 @@ final class ShowDetailModel {
 
     func load() async {
         do {
-            detail = try await api.show(id: show.id)
+            let response = try await api.show(id: show.id)
+            detail = response
+            episodes = response.episodes
             error = nil
         } catch {
             self.error = "\(error)"
@@ -35,13 +44,25 @@ final class ShowDetailModel {
         loaded = true
     }
 
-    /// "41 episodes · 3 unwatched · 128 GB · HGTV"
+    /// After PUT /api/library/recordings/{id}: the server's updated episode, or nil when the
+    /// recording is in the trash and leaves the visible list (library.go:643-694).
+    func apply(_ updated: Episode?, to id: String) {
+        guard let index = episodes.firstIndex(where: { $0.id == id }) else { return }
+        if let updated {
+            episodes[index] = updated
+        } else {
+            episodes.remove(at: index)
+        }
+    }
+
+    /// "41 episodes · 3 unwatched · 128 GB · HGTV" — counted from the visible episodes.
     var summaryLine: String? {
-        guard let d = detail else { return nil }
-        let unwatched = d.episodes.filter { !$0.watched }.count
-        let bytes = d.episodes.reduce(0) { $0 + $1.size }
-        var parts = ["\(d.count) episode\(d.count == 1 ? "" : "s")", "\(unwatched) unwatched", SizeFormat.bytes(bytes)]
-        if let channel = commonChannel(d.episodes) { parts.append(channel) }
+        guard detail != nil else { return nil }
+        let count = episodes.count
+        let unwatched = episodes.filter { !$0.watched }.count
+        let bytes = episodes.reduce(0) { $0 + $1.size }
+        var parts = ["\(count) episode\(count == 1 ? "" : "s")", "\(unwatched) unwatched", SizeFormat.bytes(bytes)]
+        if let channel = commonChannel(episodes) { parts.append(channel) }
         return parts.joined(separator: " · ")
     }
 
@@ -53,12 +74,15 @@ final class ShowDetailModel {
 }
 
 struct ShowDetailScreen: View {
+    let api: APIClient
     let onPlay: (PlayRequest) -> Void
     @State private var model: ShowDetailModel
     @FocusState private var focused: String?
     @State private var resumeTick = 0   // re-read the resume store after the Player closes
+    @State private var menuEpisode: Episode?
 
     init(api: APIClient, show: ShowSummary, onPlay: @escaping (PlayRequest) -> Void) {
+        self.api = api
         self.onPlay = onPlay
         _model = State(initialValue: ShowDetailModel(api: api, show: show))
     }
@@ -66,13 +90,27 @@ struct ShowDetailScreen: View {
     /// The most recently saved position among this show's episodes (frame 5d "Resume S9 E11 · 22 min in").
     private var resume: (episode: Episode, entry: ResumeStore.Entry)? {
         _ = resumeTick
-        return ResumeStore.latest(among: model.detail?.episodes ?? [])
+        return ResumeStore.latest(among: model.episodes)
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 64) {
-            leftColumn
-            episodes
+        ZStack {
+            HStack(alignment: .top, spacing: 64) {
+                leftColumn
+                episodes
+            }
+            .disabled(menuEpisode != nil)
+            if let menuEpisode {
+                EpisodeActionsMenu(
+                    episode: menuEpisode,
+                    api: api,
+                    onApplied: { updated in
+                        model.apply(updated, to: menuEpisode.id)
+                        closeMenu()
+                    },
+                    onClose: closeMenu
+                )
+            }
         }
         .defaultFocus($focused, resume != nil ? "resume" : "newest")
         .task {
@@ -80,6 +118,12 @@ struct ShowDetailScreen: View {
             focusSoon { focused = resume != nil ? "resume" : "newest" }
         }
         .onAppear { resumeTick += 1 }
+    }
+
+    private func closeMenu() {
+        let id = menuEpisode?.id
+        menuEpisode = nil
+        focusSoon { focused = model.episodes.contains { $0.id == id } ? id : (model.episodes.first?.id ?? "newest") }
     }
 
     private func play(_ episode: Episode, from start: Double) {
@@ -121,7 +165,7 @@ struct ShowDetailScreen: View {
             }
             HStack(spacing: 16) {
                 Button {
-                    if let newest = model.detail?.episodes.first {
+                    if let newest = model.episodes.first {
                         play(newest, from: ResumeStore.entry(for: newest.id)?.position ?? 0)
                     }
                 } label: {
@@ -137,11 +181,14 @@ struct ShowDetailScreen: View {
             }
         }
         .frame(width: 520, alignment: .topLeading)
+        // Without a focus section the engine will not cross from these buttons (low on the
+        // screen) to the episode rows (high on the right); the episodes were unreachable.
+        .focusSection()
     }
 
     private func inert(_ title: String, id: String) -> some View {
         Button {
-            // Play newest is the Player's (sweep 3); Series pass is a write (sweep 4).
+            // "Series pass" here is not in Pass 8's steps (the airing sheet's is); it stays inert.
         } label: {
             InertActionButton(title: title, primary: false, focused: focused == id, size: Nocturne.TextSize.secondary)
         }
@@ -165,13 +212,14 @@ struct ShowDetailScreen: View {
             }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
-                    ForEach(model.detail?.episodes ?? []) { episode in
-                        Button {
+                    ForEach(model.episodes) { episode in
+                        HoldButton {
                             play(episode, from: ResumeStore.entry(for: episode.id)?.position ?? 0)   // sweep 3 entry point
+                        } onHold: {
+                            menuEpisode = episode        // frame 5d, dc:643
                         } label: {
                             EpisodeRow(episode: episode, focused: focused == episode.id, resume: ResumeStore.entry(for: episode.id))
                         }
-                        .buttonStyle(BareButtonStyle())
                         .focused($focused, equals: episode.id)
                     }
                 }
@@ -182,10 +230,11 @@ struct ShowDetailScreen: View {
                 .foregroundStyle(Nocturne.neutral600)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .focusSection()
     }
 }
 
-/// One episode row (dc:615-641), without the resume bar (sweep 3).
+/// One episode row (dc:615-641), with the resume bar and the ✓ Watched / Keep / Favorite flags.
 struct EpisodeRow: View {
     let episode: Episode
     let focused: Bool
@@ -195,6 +244,15 @@ struct EpisodeRow: View {
     private var resumeFraction: Double? {
         guard let resume, resume.duration > 0 else { return nil }
         return min(1, resume.position / resume.duration)
+    }
+
+    /// "✓ Watched", "★ Favorite", "◆ Keep" — the server's shared flags (library.go:68-79).
+    private var flagLabels: [String] {
+        var out: [String] = []
+        if episode.watched { out.append("✓ Watched") }
+        if episode.favorite { out.append("★ Favorite") }
+        if episode.keep { out.append("◆ Keep") }
+        return out
     }
 
     private var seasonEpisode: String? {
@@ -239,8 +297,8 @@ struct EpisodeRow: View {
                         .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))
                         .foregroundStyle(Nocturne.text)
                         .lineLimit(1)
-                    if episode.watched {
-                        Text("✓ Watched")
+                    ForEach(flagLabels, id: \.self) { label in
+                        Text(label)
                             .font(.nocturne(Nocturne.TextSize.floor))
                             .foregroundStyle(Nocturne.neutral500)
                     }

@@ -75,8 +75,17 @@ final class APIClient {
     }
 
     func post<T: Decodable, Body: Encodable>(_ path: String, body: Body) async throws -> T {
+        try await write("POST", path, body: body)
+    }
+
+    /// PUT with a JSON body — the sweep-4 writes (library flags, lineup overrides).
+    func put<T: Decodable, Body: Encodable>(_ path: String, body: Body) async throws -> T {
+        try await write("PUT", path, body: body)
+    }
+
+    private func write<T: Decodable, Body: Encodable>(_ method: String, _ path: String, body: Body) async throws -> T {
         var request = URLRequest(url: try url(path))
-        request.httpMethod = "POST"
+        request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(body)
         return try await send(request, path: path)

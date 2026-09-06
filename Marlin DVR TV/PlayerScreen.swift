@@ -7,7 +7,9 @@
 //  (prepared-to and the resume note); 6d paused live (pause point and lag — the design's
 //  "no buffer" copy is gone, contract §4); 6e ended with the next episode and a countdown;
 //  6f/6g/6h errors and the expired session. Menu dismisses (and stops the session);
-//  going to the background stops it too.
+//  going to the background stops it too. Sweep 4 wires the two write buttons of the failure
+//  card: "Hide this channel" (6f) and "Stop the recording and watch" (6g). "Delete this
+//  recording" on 6e stays inert — Pass 8's step 3 wires the show-detail long-press menu only.
 //
 
 import SwiftUI
@@ -344,7 +346,8 @@ struct EndedState: View {
                 StateButton(title: nextLabel, id: "next", primary: true, focused: focused) { onPlayNext() }
             }
             StateButton(title: "Back to the show", id: "back", primary: model.nextEpisode == nil, focused: focused) { onBack() }
-            StateButton(title: "Delete this recording", id: "delete", primary: false, focused: focused) { /* sweep 4 */ }
+            // Not in Pass 8's steps (step 3 is the show-detail long-press menu); still inert.
+            StateButton(title: "Delete this recording", id: "delete", primary: false, focused: focused) { }
         }
     }
 }
@@ -387,19 +390,28 @@ struct FailureState: View {
             lines.append("DRM channels are hidden from every list; this appears only if a stale link reached one.")
         }
         if !failure.busyRecordings.isEmpty {
-            lines.append("Likely holding the tuner: " + failure.busyRecordings.joined(separator: "; ") + ". Stop that recording to watch this, or pick a channel on another source.")
+            lines.append("Likely holding the tuner: " + failure.busyRecordings.map(\.label).joined(separator: "; ") + ". Stop that recording to watch this, or pick a channel on another source.")
         }
+        if let notice = model.writeNotice { lines.append(notice) }
         return lines.joined(separator: "\n")
     }
 
     var body: some View {
         StateCard(code: code, title: title, sub: "\(model.request.title) · \(model.request.subtitle)", text: bodyText, extra: showLog ? failure.log : nil) {
-            if failure.status == 502, model.isLive, !failure.busyRecordings.isEmpty {
-                StateButton(title: "Stop the recording and watch", id: "stop", primary: false, focused: focused) { /* sweep 4 */ }
+            // 6g: stop the recording that holds the tuner, then start this channel.
+            if failure.status == 502, model.isLive, !failure.busyRecordings.isEmpty, !model.writeDone {
+                StateButton(title: model.writing ? "Stopping…" : "Stop the recording and watch", id: "stop", primary: false, focused: focused) {
+                    Task { await model.stopBlockingRecordingAndWatch() }
+                }
             }
             if failure.status == 403 {
                 StateButton(title: "Back to the guide", id: "back", primary: true, focused: focused) { onBack() }
-                StateButton(title: "Hide this channel", id: "hide", primary: false, focused: focused) { /* sweep 4 */ }
+                // 6f: hide the channel for every client (PUT the lineup override).
+                if !model.writeDone {
+                    StateButton(title: model.writing ? "Hiding…" : "Hide this channel", id: "hide", primary: false, focused: focused) {
+                        Task { await model.hideChannel() }
+                    }
+                }
             } else {
                 StateButton(title: model.isLive ? "Pick another channel" : "Back", id: "back", primary: true, focused: focused) { onBack() }
                 StateButton(title: "Try again", id: "retry", primary: false, focused: focused) { onRetry() }

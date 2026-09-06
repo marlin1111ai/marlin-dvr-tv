@@ -7,15 +7,19 @@
 //  server's 30-minute `span` blocks (Pass 4 §3.4). Forward-only from the current half hour;
 //  "+12h" pages ahead, fetching 24 hours (48 slots) per request while the server has
 //  listings; when the window crosses midnight the header and the column label name the day.
-//  "↩ Now" and Menu snap back to now; Menu at now leaves the Guide. Marks ● (recording now)
-//  and ◆ (covered by a series pass) come from joining GET /api/schedule jobs to the grid on
-//  channelId + program.start (passes.go:53-77). Selecting a cell opens the airing sheet.
+//  "↩ Now" and Menu snap back to now; Menu at now leaves the Guide. Marks ● (recording or
+//  set to record) and ◆ (covered by a series pass) come from joining GET /api/schedule jobs
+//  to the grid on channelId + program.start (passes.go:53-77). Selecting a cell opens the
+//  airing sheet, whose two writes (sweep 4) refetch the schedule so the marks redraw.
 //
 
 import SwiftUI
 
 enum GuideMark {
-    case recording, pass
+    /// ● while the recorder is running, ● for a Record Now booking that has not started,
+    /// ◆ for an airing a series pass covers. The design draws two colours (dc:1183-1189):
+    /// green for the recording mark, gold for the pass mark.
+    case recording, scheduled, pass
 
     static let green = Color(hex: 0x57B083)
     static let gold = Color(hex: 0xD6A94E)
@@ -23,13 +27,14 @@ enum GuideMark {
     var tag: String {
         switch self {
         case .recording: return "● RECORDING"
+        case .scheduled: return "● SCHEDULED"
         case .pass: return "◆ SERIES PASS"
         }
     }
 
     var color: Color {
         switch self {
-        case .recording: return Self.green
+        case .recording, .scheduled: return Self.green
         case .pass: return Self.gold
         }
     }
@@ -138,11 +143,24 @@ final class GuideModel {
         jobs.first { $0.channelId == channelId && $0.program.start == programStart }
     }
 
+    /// Sweep 4: after "Record this airing" or "Record the series", the marks and the sheet
+    /// redraw from the schedule the server now computes (passes.go:331-493).
+    func refreshSchedule() async {
+        do {
+            jobs = try await api.schedule().jobs
+        } catch {
+            print("[guide] schedule refresh: \(error)")
+        }
+    }
+
+    /// ● RECORDING while the recorder runs, ● SCHEDULED for a Record Now booking that has
+    /// not started (the manual job the sheet's write creates, passes.go:60), ◆ SERIES PASS
+    /// for an airing a pass covers.
     private func mark(for job: Job?) -> GuideMark? {
         guard let job else { return nil }
         if job.status == "Recording" { return .recording }
-        if job.passId != "manual" && (job.status == "Queued" || job.status == "Conflict") { return .pass }
-        return nil
+        guard job.status == "Queued" || job.status == "Conflict" else { return nil }
+        return job.passId == "manual" ? .scheduled : .pass
     }
 
     /// "Sat Sep 5 · 11:30 PM – 1:30 AM", or with the next day named when the window crosses midnight.
@@ -156,6 +174,7 @@ final class GuideModel {
 }
 
 struct GuideScreen: View {
+    let api: APIClient
     let onLeave: () -> Void
     let onPlay: (PlayRequest) -> Void
     @State private var model: GuideModel
@@ -163,6 +182,7 @@ struct GuideScreen: View {
     @State private var lastCell: String?
 
     init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
+        self.api = api
         self.onLeave = onLeave
         self.onPlay = onPlay
         _model = State(initialValue: GuideModel(api: api))
@@ -221,10 +241,18 @@ struct GuideScreen: View {
                     .padding(.top, 16)
             }
             if let selection = model.sheet {
-                AiringSheet(selection: selection) {
-                    model.sheet = nil
-                    onPlay(.live(channel: selection.channel, program: selection.program))
-                }
+                AiringSheet(
+                    selection: selection,
+                    api: api,
+                    onWatchLive: {
+                        model.sheet = nil
+                        onPlay(.live(channel: selection.channel, program: selection.program))
+                    },
+                    onScheduleChanged: {
+                        await model.refreshSchedule()
+                        return model.job(channelId: selection.channel.id, programStart: selection.program.start)
+                    }
+                )
             }
         }
         .defaultFocus($focused, "loading")
@@ -332,7 +360,7 @@ struct GuideScreen: View {
         HStack(spacing: 34) {
             HStack(spacing: 10) {
                 Text("●").foregroundStyle(GuideMark.green)
-                Text("Recording now")
+                Text("Recording or set to record")
             }
             HStack(spacing: 10) {
                 Text("◆").foregroundStyle(GuideMark.gold)
@@ -377,15 +405,15 @@ struct GuideRowView: View {
                 ZStack(alignment: .topLeading) {
                     ForEach(cells) { cell in
                         let frame = Self.frame(for: cell, width: geo.size.width)
-                        Button {
+                        HoldButton {
                             onSelect(cell)
+                        } onHold: {
+                            onHold(cell)
                         } label: {
                             GuideCellLabel(cell: cell, focused: focused.wrappedValue == cell.id)
                                 .frame(width: frame.width, height: rowHeight)
                         }
-                        .buttonStyle(BareButtonStyle())
                         .focused(focused, equals: cell.id)
-                        .onLongPressGesture(minimumDuration: 0.5) { onHold(cell) }
                         .offset(x: frame.x)
                     }
                 }

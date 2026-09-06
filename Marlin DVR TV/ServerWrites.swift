@@ -1,0 +1,182 @@
+//
+//  ServerWrites.swift
+//  Marlin DVR TV
+//
+//  Sweep 4 (Pass 4 report §4): the five server writes this app makes, and the shapes the
+//  server answers them with. Each call is one request, no retries; the server's plain-text
+//  error body arrives as `APIError.message` with its status (409 "that airing is already
+//  set to record", 409 "a pass for this series already exists: …", 409 "that airing is not
+//  recording"), which the screens show verbatim.
+//
+//    Record this airing   POST /api/record                        recorder.go:776-848
+//    Record the series    POST /api/passes                        passes.go:705-737
+//    Episode flags        PUT  /api/library/recordings/{id}       library.go:643-694
+//    Hide this channel    PUT  /api/sources/{id}/lineup/{guid}    sources.go:960-1004
+//    Stop the recording   POST /api/schedule/jobs/{id}/stop       recorder.go:686-693
+//
+
+import Foundation
+
+// MARK: Response shapes
+
+/// POST /api/record answers the computed `Job`, or `{id, status: "Queued"}` when the job is
+/// not in this tick's list yet (recorder.go:845-847) — only these three fields are common.
+struct RecordOutcome: Decodable {
+    let id: String
+    let status: String      // Queued | Skipped | Conflict | Recording | COMPLETED | FAILED | STOPPED
+    let reason: String?
+}
+
+/// POST /api/passes answers `passView` (passes.go:535-547); the fields the sheet shows.
+struct PassView: Decodable {
+    let id: String
+    let title: String
+    let seriesId: String
+    let channel: String
+    let jobCount: Int
+    let countLabel: String  // "3 recordings scheduled"
+}
+
+/// PUT /api/library/recordings/{id} answers the updated `episodeView`, or `{ok, deleted}`
+/// when "Remove Items From Trash After" is "Immediately" and the trash flag removed the file
+/// at once (library.go:683-691). Both are decoded; the caller handles each.
+enum RecordingUpdate: Decodable {
+    case episode(Episode)
+    case deleted
+
+    init(from decoder: Decoder) throws {
+        if let episode = try? Episode(from: decoder) {
+            self = .episode(episode)
+            return
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if try container.decodeIfPresent(Bool.self, forKey: .deleted) == true {
+            self = .deleted
+            return
+        }
+        throw APIError(kind: .decoding, message: "neither an episode nor {deleted: true}", path: "/api/library/recordings")
+    }
+
+    private enum CodingKeys: String, CodingKey { case deleted }
+}
+
+/// PUT /api/sources/{id}/lineup/{guid} answers the stored `Override` (sources.go:1028).
+struct LineupOverride: Decodable {
+    let number: String?
+    let name: String?
+    let hidden: Bool
+    let favorite: Bool
+}
+
+/// POST /api/schedule/jobs/{id}/stop answers the persisted `RecordingState` (recorder.go:45-66);
+/// the fields the Player shows. 409 "that airing is not recording" when the job is not running.
+struct StopOutcome: Decodable {
+    let jobId: String
+    let status: String      // STOPPED after this call
+    let reason: String?
+    let title: String
+    let channel: String
+    let file: String?
+    let bytes: Int
+}
+
+/// One flag of PUT /api/library/recordings/{id}; the server takes any subset (library.go:650-655).
+enum RecordingFlag {
+    case keep(Bool)
+    case favorite(Bool)
+    case watched(Bool)
+    case trash(Bool)
+
+    var body: [String: Bool] {
+        switch self {
+        case .keep(let v): return ["keep": v]
+        case .favorite(let v): return ["favorite": v]
+        case .watched(let v): return ["watched": v]
+        case .trash(let v): return ["trash": v]
+        }
+    }
+
+    /// One console line per write, for the pass evidence.
+    var label: String {
+        switch self {
+        case .keep(let v): return "keep=\(v)"
+        case .favorite(let v): return "favorite=\(v)"
+        case .watched(let v): return "watched=\(v)"
+        case .trash(let v): return "trash=\(v)"
+        }
+    }
+}
+
+// MARK: The calls
+
+extension APIClient {
+    private struct RecordNowBody: Encodable {
+        let channelId: String
+        let start: Int
+    }
+
+    private struct PassBody: Encodable {
+        let title: String
+        let seriesId: String?
+    }
+
+    private struct EmptyBody: Encodable {}
+
+    /// "Record this airing" (frame 5c). `start` is the airing's own `program.start`; the server
+    /// matches it against the listing and answers 404 (no listing), 400 (already ended) or
+    /// 409 (already set to record) — recorder.go:790-834.
+    func recordNow(channelId: String, start: Int) async throws -> RecordOutcome {
+        let outcome: RecordOutcome = try await post("/api/record", body: RecordNowBody(channelId: channelId, start: start))
+        print("[write] record \(channelId)@\(start) → \(outcome.id) \(outcome.status) \(outcome.reason ?? "")")
+        return outcome
+    }
+
+    /// "Record the series" (frame 5c). The server fills recordMode "new", keepMode "all" and the
+    /// padding defaults, and derives `seriesId` as "title:<lower>" when the listing has none
+    /// (passes.go:715-722). 409 when a pass for the same series and channel already exists.
+    func createPass(title: String, seriesId: String?) async throws -> PassView {
+        let series = (seriesId?.isEmpty == false) ? seriesId : nil
+        let pass: PassView = try await post("/api/passes", body: PassBody(title: title, seriesId: series))
+        print("[write] pass \"\(title)\" series=\(series ?? "-") → \(pass.id) \(pass.countLabel)")
+        return pass
+    }
+
+    /// Keep / Favorite / Mark unwatched / Delete on one episode (frame 5d long press).
+    func updateRecording(id: String, flag: RecordingFlag) async throws -> RecordingUpdate {
+        let update: RecordingUpdate = try await put("/api/library/recordings/\(id)", body: flag.body)
+        switch update {
+        case .episode(let e):
+            print("[write] recording \(id) \(flag.label) → watched=\(e.watched) favorite=\(e.favorite) keep=\(e.keep) trash=\(e.trash)")
+        case .deleted:
+            print("[write] recording \(id) \(flag.label) → deleted (trash period is Immediately)")
+        }
+        return update
+    }
+
+    /// "Hide this channel" (frame 6f). The lineup override hides it for the web UI and every
+    /// client, not only this Apple TV (sources.go:1013-1029; Pass 4 Open Question 8).
+    func setChannelHidden(sourceId: String, guid: String, hidden: Bool) async throws -> LineupOverride {
+        let override: LineupOverride = try await put("/api/sources/\(sourceId)/lineup/\(guid)", body: ["hidden": hidden])
+        print("[write] lineup \(sourceId)/\(guid) hidden=\(hidden) → hidden=\(override.hidden) favorite=\(override.favorite)")
+        return override
+    }
+
+    /// "Stop the recording and watch" (frame 6g). The server closes the stream and waits for the
+    /// recorder to finish before answering, so the tuner is free when this returns (recorder.go:660-684).
+    func stopJob(id: String) async throws -> StopOutcome {
+        let outcome: StopOutcome = try await post("/api/schedule/jobs/\(id)/stop", body: EmptyBody())
+        print("[write] stop job \(id) → \(outcome.status) \(outcome.title) \(outcome.reason ?? "")")
+        return outcome
+    }
+}
+
+/// One line for a failed write, in the server's own words: "409 · that airing is already set to record".
+enum WriteError {
+    static func text(_ error: Error) -> String {
+        guard let api = error as? APIError else { return "\(error)" }
+        if let status = api.httpStatus {
+            return api.message.isEmpty ? "\(status) · the server refused the change" : "\(status) · \(api.message)"
+        }
+        return api.message
+    }
+}
