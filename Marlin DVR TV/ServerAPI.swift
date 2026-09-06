@@ -83,6 +83,13 @@ final class APIClient {
         try await write("PUT", path, body: body)
     }
 
+    /// DELETE with no body — "Delete this pass" (Pass 9 step 5).
+    func delete<T: Decodable>(_ path: String) async throws -> T {
+        var request = URLRequest(url: try url(path))
+        request.httpMethod = "DELETE"
+        return try await send(request, path: path)
+    }
+
     private func write<T: Decodable, Body: Encodable>(_ method: String, _ path: String, body: Body) async throws -> T {
         var request = URLRequest(url: try url(path))
         request.httpMethod = method

@@ -11,6 +11,9 @@
 //  set to record) and ◆ (covered by a series pass) come from joining GET /api/schedule jobs
 //  to the grid on channelId + program.start (passes.go:53-77). Selecting a cell opens the
 //  airing sheet, whose two writes (sweep 4) refetch the schedule so the marks redraw.
+//  Pass 9: a click-and-hold is delivered by `RemoteHold` (window press recognizer) and acted
+//  on here against whatever this screen has focused — a programme cell opens the sheet, a
+//  channel cell in the left column opens the channel's Favorite menu.
 //
 
 import SwiftUI
@@ -143,6 +146,17 @@ final class GuideModel {
         jobs.first { $0.channelId == channelId && $0.program.start == programStart }
     }
 
+    /// Pass 9: a channel whose favourite flag this screen changed, until the next fetch.
+    private var favouriteOverrides: [String: Bool] = [:]
+
+    func favourite(_ channel: MergedChannel) -> Bool {
+        favouriteOverrides[channel.id] ?? channel.favorite
+    }
+
+    func setFavourite(_ value: Bool, for channel: MergedChannel) {
+        favouriteOverrides[channel.id] = value
+    }
+
     /// Sweep 4: after "Record this airing" or "Record the series", the marks and the sheet
     /// redraw from the schedule the server now computes (passes.go:331-493).
     func refreshSchedule() async {
@@ -177,9 +191,14 @@ struct GuideScreen: View {
     let api: APIClient
     let onLeave: () -> Void
     let onPlay: (PlayRequest) -> Void
+    @Environment(RemoteHold.self) private var hold
     @State private var model: GuideModel
     @FocusState private var focused: String?
     @State private var lastCell: String?
+    @State private var channelMenu: MergedChannel?
+
+    /// The focus id of a channel cell in the left column.
+    static func channelFocusID(_ channel: MergedChannel) -> String { "ch:\(channel.id)" }
 
     init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
         self.api = api
@@ -199,8 +218,23 @@ struct GuideScreen: View {
         }
     }
 
-    private func hold(_ cell: GuideCellItem) {
-        model.sheet = AiringSelection(channel: cell.channel, program: cell.program, job: cell.job)
+    /// A hold: open the sheet for the focused programme cell, or the Favorite menu for the
+    /// focused channel cell. Anything else focused is left alone.
+    private func handleHold() {
+        guard model.sheet == nil, channelMenu == nil, let focus = focused else { return }
+        if focus.hasPrefix("ch:") {
+            guard let row = model.rows.first(where: { Self.channelFocusID($0.channel) == focus }) else { return }
+            hold.armSwallow()
+            channelMenu = row.channel
+            return
+        }
+        for row in model.rows {
+            if let cell = model.cells(for: row).first(where: { $0.id == focus }) {
+                hold.armSwallow()
+                model.sheet = AiringSelection(channel: cell.channel, program: cell.program, job: cell.job)
+                return
+            }
+        }
     }
 
     private static let channelColumnWidth: CGFloat = 300
@@ -225,20 +259,33 @@ struct GuideScreen: View {
                             GuideRowView(
                                 row: row,
                                 cells: model.cells(for: row),
+                                favourite: model.favourite(row.channel),
+                                hold: hold,
                                 focused: $focused,
                                 channelColumnWidth: Self.channelColumnWidth,
                                 columnGap: Self.columnGap,
                                 rowHeight: Self.rowHeight,
-                                onSelect: { cell in select(cell) },
-                                onHold: { cell in hold(cell) }
+                                onSelect: { cell in select(cell) }
                             )
                         }
                     }
                     .padding(.vertical, 6)
                 }
-                .disabled(model.sheet != nil)
+                .disabled(model.sheet != nil || channelMenu != nil)
                 legend
                     .padding(.top, 16)
+            }
+            if let channel = channelMenu {
+                ChannelActionsMenu(
+                    channel: channel,
+                    isFavourite: model.favourite(channel),
+                    api: api,
+                    onApplied: { value in
+                        model.setFavourite(value, for: channel)
+                        closeChannelMenu()
+                    },
+                    onClose: closeChannelMenu
+                )
             }
             if let selection = model.sheet {
                 AiringSheet(
@@ -263,9 +310,12 @@ struct GuideScreen: View {
         .onChange(of: focused) { _, new in
             if let new, new.contains("@") { lastCell = new }
         }
+        .onChange(of: hold.holds) { _, _ in handleHold() }
         .onExitCommand {
-            print("[guide] menu: sheet=\(model.sheet != nil) atNow=\(model.isAtNow)")
-            if model.sheet != nil {
+            print("[guide] menu: sheet=\(model.sheet != nil) channelMenu=\(channelMenu != nil) atNow=\(model.isAtNow)")
+            if channelMenu != nil {
+                closeChannelMenu()
+            } else if model.sheet != nil {
                 model.sheet = nil
                 Task {
                     try? await Task.sleep(for: .milliseconds(60))
@@ -280,6 +330,12 @@ struct GuideScreen: View {
                 onLeave()
             }
         }
+    }
+
+    private func closeChannelMenu() {
+        let id = channelMenu.map(Self.channelFocusID)
+        channelMenu = nil
+        focusSoon { focused = id }
     }
 
     private var firstCellID: String? {
@@ -379,36 +435,32 @@ struct GuideScreen: View {
 struct GuideRowView: View {
     let row: GuideRow
     let cells: [GuideCellItem]
+    let favourite: Bool
+    let hold: RemoteHold
     var focused: FocusState<String?>.Binding
     let channelColumnWidth: CGFloat
     let columnGap: CGFloat
     let rowHeight: CGFloat
     let onSelect: (GuideCellItem) -> Void
-    let onHold: (GuideCellItem) -> Void
+
+    private var channelFocusID: String { GuideScreen.channelFocusID(row.channel) }
 
     var body: some View {
         HStack(spacing: columnGap) {
-            HStack(spacing: 18) {
-                InitialsTile(initials: row.channel.initials, logoBg: row.channel.logoBg, size: 62, fontSize: Nocturne.TextSize.floor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.channel.name)
-                        .font(.nocturne(Nocturne.TextSize.secondary))
-                        .foregroundStyle(Nocturne.text)
-                        .lineLimit(1)
-                    Text(row.channel.number)
-                        .font(.nocturne(Nocturne.TextSize.floor))
-                        .foregroundStyle(Nocturne.neutral500)
-                }
+            // Pass 9 step 7: the channel cell takes focus so a click-and-hold can favourite
+            // the channel. A plain click is not in Pass 9's steps and does nothing.
+            HoldButton(hold: hold) {
+            } label: {
+                ChannelCell(channel: row.channel, favourite: favourite, focused: focused.wrappedValue == channelFocusID)
+                    .frame(width: channelColumnWidth, height: rowHeight, alignment: .leading)
             }
-            .frame(width: channelColumnWidth, alignment: .leading)
+            .focused(focused, equals: channelFocusID)
             GeometryReader { geo in
                 ZStack(alignment: .topLeading) {
                     ForEach(cells) { cell in
                         let frame = Self.frame(for: cell, width: geo.size.width)
-                        HoldButton {
+                        HoldButton(hold: hold) {
                             onSelect(cell)
-                        } onHold: {
-                            onHold(cell)
                         } label: {
                             GuideCellLabel(cell: cell, focused: focused.wrappedValue == cell.id)
                                 .frame(width: frame.width, height: rowHeight)
@@ -428,6 +480,43 @@ struct GuideRowView: View {
         let x = start * width + (start > 0 ? 6 : 0)
         let right = end * width - (end < 1 ? 6 : 0)
         return (x, max(right - x, 24))
+    }
+}
+
+/// The left column's channel cell (dc:205-211), focusable since Pass 9 so a click-and-hold
+/// can favourite the channel; a ★ shows when it is one.
+struct ChannelCell: View {
+    let channel: MergedChannel
+    let favourite: Bool
+    let focused: Bool
+
+    var body: some View {
+        HStack(spacing: 18) {
+            InitialsTile(initials: channel.initials, logoBg: channel.logoBg, size: 62, fontSize: Nocturne.TextSize.floor)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(channel.name)
+                        .font(.nocturne(Nocturne.TextSize.secondary))
+                        .foregroundStyle(Nocturne.text)
+                        .lineLimit(1)
+                    if favourite {
+                        Text("★").foregroundStyle(GuideMark.gold)
+                            .font(.nocturne(Nocturne.TextSize.floor))
+                    }
+                }
+                Text(channel.number)
+                    .font(.nocturne(Nocturne.TextSize.floor))
+                    .foregroundStyle(Nocturne.neutral500)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(focused ? Nocturne.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
+                .strokeBorder(focused ? Nocturne.accent : .clear, lineWidth: focused ? Nocturne.Focus.ringWidth : 0)
+        }
     }
 }
 

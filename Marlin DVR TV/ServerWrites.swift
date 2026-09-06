@@ -14,6 +14,10 @@
 //    Hide this channel    PUT  /api/sources/{id}/lineup/{guid}    sources.go:960-1004
 //    Stop the recording   POST /api/schedule/jobs/{id}/stop       recorder.go:686-693
 //
+//  Pass 9 adds three more: the same lineup endpoint with `favorite` (step 7), and
+//  PUT / DELETE /api/passes/{id} behind the Edit series pass screen (step 5), plus the read
+//  GET /api/passes the airing sheet needs to know a pass already exists (step 4).
+//
 
 import Foundation
 
@@ -27,14 +31,47 @@ struct RecordOutcome: Decodable {
     let reason: String?
 }
 
-/// POST /api/passes answers `passView` (passes.go:535-547); the fields the sheet shows.
-struct PassView: Decodable {
+/// `passView` (passes.go:535-547): the `Pass` itself plus the server's rendered labels.
+/// GET /api/passes, POST /api/passes and PUT /api/passes/{id} all answer with it.
+struct PassView: Decodable, Identifiable {
     let id: String
     let title: String
     let seriesId: String
-    let channel: String
+    let channel: String             // "" = any channel
+    let recordMode: String          // new | all
+    let padBefore: Int              // minutes
+    let padAfter: Int
+    let keepMode: String            // all | unwatched | last
+    let keepUnwatched: Int
+    let keepLast: Int
+    let paused: Bool
     let jobCount: Int
-    let countLabel: String  // "3 recordings scheduled"
+    let countLabel: String          // "3 recordings scheduled"
+    let padBeforeLabel: String      // "5 mins before" | "none"
+    let padAfterLabel: String
+    let keepLabel: String           // "All" | "Unwatched Only" | "Last 3 Only" | "Unwatched + 2 Watched"
+    let showId: String
+}
+
+struct PassesResponse: Decodable {
+    let passes: [PassView]
+    let count: Int
+    let jobs: Int
+}
+
+struct OKResponse: Decodable {
+    let ok: Bool
+}
+
+/// The subset of `passReq` (passes.go:598-618) the Edit series pass screen sends. Optional
+/// fields the encoder omits when nil, and the server leaves whatever it is not given.
+struct PassEdit: Encodable {
+    var recordMode: String?         // "new" | "all"
+    var padBefore: Int?
+    var padAfter: Int?
+    var keepMode: String?           // "all" | "unwatched" | "last"
+    var keepUnwatched: Int?
+    var keepLast: Int?
 }
 
 /// PUT /api/library/recordings/{id} answers the updated `episodeView`, or `{ok, deleted}`
@@ -159,6 +196,34 @@ extension APIClient {
         let override: LineupOverride = try await put("/api/sources/\(sourceId)/lineup/\(guid)", body: ["hidden": hidden])
         print("[write] lineup \(sourceId)/\(guid) hidden=\(hidden) → hidden=\(override.hidden) favorite=\(override.favorite)")
         return override
+    }
+
+    /// Pass 9 step 7: favourite or unfavourite a channel from the Guide's left column. Same
+    /// endpoint and the same server-wide reach as the hidden flag.
+    func setChannelFavourite(sourceId: String, guid: String, favourite: Bool) async throws -> LineupOverride {
+        let override: LineupOverride = try await put("/api/sources/\(sourceId)/lineup/\(guid)", body: ["favorite": favourite])
+        print("[write] lineup \(sourceId)/\(guid) favorite=\(favourite) → hidden=\(override.hidden) favorite=\(override.favorite)")
+        return override
+    }
+
+    /// Pass 9 step 4: the passes the server holds, so the sheet knows whether this show
+    /// already has one before it offers to create another (passes.go:575-596).
+    func passes() async throws -> [PassView] {
+        let response: PassesResponse = try await get("/api/passes")
+        return response.passes
+    }
+
+    /// Pass 9 step 5: change one pass. `applyPassReq` takes any subset (passes.go:619-700).
+    func updatePass(id: String, body: PassEdit) async throws -> PassView {
+        let pass: PassView = try await put("/api/passes/\(id)", body: body)
+        print("[write] pass \(id) → recordMode=\(pass.recordMode) pad=\(pass.padBefore)/\(pass.padAfter) keep=\(pass.keepLabel) · \(pass.countLabel)")
+        return pass
+    }
+
+    /// Pass 9 step 5: "Delete this pass" (passes.go:799-824).
+    func deletePass(id: String) async throws {
+        let _: OKResponse = try await delete("/api/passes/\(id)")
+        print("[write] pass \(id) deleted")
     }
 
     /// "Stop the recording and watch" (frame 6g). The server closes the stream and waits for the

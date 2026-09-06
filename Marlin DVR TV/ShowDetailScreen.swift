@@ -76,6 +76,7 @@ final class ShowDetailModel {
 struct ShowDetailScreen: View {
     let api: APIClient
     let onPlay: (PlayRequest) -> Void
+    @Environment(RemoteHold.self) private var hold
     @State private var model: ShowDetailModel
     @FocusState private var focused: String?
     @State private var resumeTick = 0   // re-read the resume store after the Player closes
@@ -118,6 +119,15 @@ struct ShowDetailScreen: View {
             focusSoon { focused = resume != nil ? "resume" : "newest" }
         }
         .onAppear { resumeTick += 1 }
+        .onChange(of: hold.holds) { _, _ in handleHold() }
+    }
+
+    /// A hold opens the actions menu for the focused episode; anything else is left alone.
+    private func handleHold() {
+        guard menuEpisode == nil, let focus = focused,
+              let episode = model.episodes.first(where: { $0.id == focus }) else { return }
+        hold.armSwallow()
+        menuEpisode = episode
     }
 
     private func closeMenu() {
@@ -213,10 +223,8 @@ struct ShowDetailScreen: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
                     ForEach(model.episodes) { episode in
-                        HoldButton {
+                        HoldButton(hold: hold) {
                             play(episode, from: ResumeStore.entry(for: episode.id)?.position ?? 0)   // sweep 3 entry point
-                        } onHold: {
-                            menuEpisode = episode        // frame 5d, dc:643
                         } label: {
                             EpisodeRow(episode: episode, focused: focused == episode.id, resume: ResumeStore.entry(for: episode.id))
                         }
@@ -225,7 +233,7 @@ struct ShowDetailScreen: View {
                 }
                 .padding(.vertical, 8)
             }
-            Text("Click and hold an episode for Keep, Favorite, Mark unwatched, Delete")
+            Text("Click and hold an episode for Keep and Delete")
                 .font(.nocturne(Nocturne.TextSize.floor))
                 .foregroundStyle(Nocturne.neutral600)
         }
@@ -246,11 +254,10 @@ struct EpisodeRow: View {
         return min(1, resume.position / resume.duration)
     }
 
-    /// "✓ Watched", "★ Favorite", "◆ Keep" — the server's shared flags (library.go:68-79).
+    /// "✓ Watched" and "◆ Keep" — the server's shared flags the app now sets (library.go:68-79).
     private var flagLabels: [String] {
         var out: [String] = []
         if episode.watched { out.append("✓ Watched") }
-        if episode.favorite { out.append("★ Favorite") }
         if episode.keep { out.append("◆ Keep") }
         return out
     }

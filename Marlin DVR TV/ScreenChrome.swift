@@ -162,25 +162,39 @@ struct ProgressBar: View {
     }
 }
 
-/// An inert, focusable button drawn like the design's outlined action (frame 5c/5d buttons).
+/// A focusable button drawn like the design's outlined action (frame 5c/5d buttons).
+/// `flexible` (Pass 9 step 2) makes it share the row's width and shrink its label instead of
+/// running past the edge of the screen — the airing sheet's row of three.
 struct InertActionButton: View {
     let title: String
     let primary: Bool
     let focused: Bool
     var size: CGFloat = Nocturne.TextSize.body
+    var flexible = false
 
     var body: some View {
         Text(title)
             .font(.nocturne(size))
             .foregroundStyle(primary || focused ? Nocturne.text : Nocturne.neutral200)
+            .lineLimit(1)
+            .minimumScaleFactor(flexible ? 0.6 : 1)
             .padding(.vertical, 18)
-            .padding(.horizontal, 36)
+            .padding(.horizontal, flexible ? 22 : 36)
+            .frame(maxWidth: flexible ? .infinity : nil)
             .background(focused ? Nocturne.accent.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
                     .strokeBorder(focused ? Nocturne.accent : Nocturne.neutral700, lineWidth: focused ? Nocturne.Focus.ringWidth : 1)
             }
             .shadow(color: focused ? Nocturne.accent.opacity(0.24) : .clear, radius: 0, x: 0, y: 0)
-            .fixedSize()
+            .modifier(FixedUnlessFlexible(flexible: flexible))
+    }
+}
+
+/// `.fixedSize()` only when the button is not sharing a row.
+private struct FixedUnlessFlexible: ViewModifier {
+    let flexible: Bool
+    func body(content: Content) -> some View {
+        if flexible { content } else { content.fixedSize() }
     }
 }

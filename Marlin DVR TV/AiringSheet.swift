@@ -5,11 +5,18 @@
 //  The airing detail sheet of frame 5c (dc:546-580) over the guide: poster from
 //  /api/art/show?title= with the channel's initials tile when the server has no art (404),
 //  the flags, "number · name · HD", title, episode line, day and time range, rating,
-//  description, and the three buttons. Sweep 4 wires the two writes: "Record this airing"
-//  → POST /api/record and "Record the series" → POST /api/passes. After either, the guide's
-//  schedule is refetched, the sheet redraws from the job the server now reports, and the
-//  server's own words are shown — the returned `Job.status`/`reason`, or the plain-text
-//  error of a 400/404/409. No conflict is predicted before booking (Pass 4 Open Question 6).
+//  description, and the action buttons.
+//
+//  Pass 9, from the owner's Home Theater test:
+//   · step 2 — the buttons share the sheet's content width and shrink their label rather
+//     than running off the screen ("Watch live" had been clipped to "W"), and the status
+//     line sits directly under them, so it is always on screen.
+//   · step 3 — "Watch live" appears only while the programme is actually on; a live session
+//     plays what is on now (stream.go:214-218), so it is meaningless on a future airing.
+//   · step 4 — the sheet reads GET /api/passes when it opens and, when this show already
+//     has a pass, offers "Edit series pass" instead of "Record the series". The raw 409 is
+//     never shown: if the server still refuses (a pass created elsewhere between the read
+//     and the write), the sheet reloads, flips to Edit and says so in plain words.
 //
 
 import SwiftUI
@@ -39,10 +46,12 @@ struct AiringSheet: View {
 
     @FocusState private var focused: String?
     @State private var job: Job?
-    @State private var passTitle: String?
+    @State private var pass: PassView?
+    @State private var editingPass: PassView?
     @State private var busy: String?
     @State private var message: String?
     @State private var failed = false
+    @State private var now = Date()
 
     private var program: Program { selection.program }
     private var channel: MergedChannel { selection.channel }
@@ -53,11 +62,10 @@ struct AiringSheet: View {
         return job
     }
 
-    /// A series pass covering this airing, either found on the schedule or just created here.
-    private var passLine: String? {
-        if let passTitle { return passTitle }
-        guard let job, job.passId != "manual", job.status != "Skipped" else { return nil }
-        return job.passTitle
+    /// Step 3: a live session plays what is on now, so the button only makes sense then.
+    private var isAiringNow: Bool {
+        let t = Int(now.timeIntervalSince1970)
+        return program.start <= t && t < program.end
     }
 
     private var flags: [String] {
@@ -91,90 +99,132 @@ struct AiringSheet: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [Nocturne.bg.opacity(0.72), Nocturne.bg.opacity(0.94)], startPoint: .top, endPoint: .bottom)
-            HStack(alignment: .top, spacing: 56) {
-                ServerImage(path: AiringSelection.artPath(for: program.title)) {
-                    PosterFallback(initials: channel.initials, logoBg: channel.logoBg)
-                }
-                .frame(width: 340, height: 474)
-                .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 16) {
-                        ForEach(flags, id: \.self) { TagChip(text: $0) }
-                        Text(channelLine)
-                            .font(.nocturne(Nocturne.TextSize.floor))
-                            .foregroundStyle(Nocturne.neutral400)
+            sheetCard
+            if let editingPass {
+                EditSeriesPassScreen(
+                    pass: editingPass,
+                    api: api,
+                    onChanged: { updated in
+                        pass = updated
+                        self.editingPass = updated
+                    },
+                    onDeleted: {
+                        pass = nil
+                        self.editingPass = nil
+                        message = "Series pass deleted."
+                        failed = false
+                        Task { job = await onScheduleChanged() ?? job }
+                        focusSoon { focused = "series" }
+                    },
+                    onClose: {
+                        self.editingPass = nil
+                        focusSoon { focused = "series" }
                     }
-                    .padding(.bottom, 16)
-                    Text(program.title)
-                        .font(.nocturne(60, .medium))
-                        .tracking(-0.015 * 60)
-                        .foregroundStyle(Nocturne.text)
-                        .lineLimit(2)
-                        .padding(.bottom, 10)
-                    if let episodeLine {
-                        Text(episodeLine)
-                            .font(.nocturne(Nocturne.TextSize.cardTitle))
-                            .foregroundStyle(Nocturne.neutral300)
-                            .lineLimit(1)
-                            .padding(.bottom, 8)
-                    }
-                    Text(whenLine)
-                        .font(.nocturne(Nocturne.TextSize.secondary))
-                        .foregroundStyle(Nocturne.neutral500)
-                        .padding(.bottom, 26)
-                    if let desc = program.desc, !desc.isEmpty {
-                        Text(desc)
-                            .font(.nocturne(Nocturne.TextSize.body))
-                            .foregroundStyle(Nocturne.neutral300)
-                            .lineSpacing(6)
-                            .lineLimit(4)
-                            .frame(maxWidth: 820, alignment: .leading)
-                            .padding(.bottom, 30)
-                    }
-                    buttons
-                    Spacer(minLength: 0)
-                    footer
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+                )
             }
-            .padding(56)
-            .frame(width: 1400, height: 586, alignment: .topLeading)
-            .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.lg, style: .continuous))
-            .shadow(color: .black.opacity(0.65), radius: 40, y: 16)
         }
         .focusSection()
-        .onAppear {
+        .task {
             job = selection.job
-            Task {
-                try? await Task.sleep(for: .milliseconds(60))
-                focused = manualJob != nil ? "series" : "record"
+            await loadPass()
+            try? await Task.sleep(for: .milliseconds(60))
+            focused = firstFocusID
+        }
+        .task {
+            // Keeps "Watch live" honest if the sheet is left open across the start time.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(20))
+                now = Date()
             }
         }
     }
 
-    // MARK: The three buttons (dc:569-571)
+    private var firstFocusID: String {
+        manualJob == nil ? "record" : "series"
+    }
+
+    private var sheetCard: some View {
+        HStack(alignment: .top, spacing: 56) {
+            ServerImage(path: AiringSelection.artPath(for: program.title)) {
+                PosterFallback(initials: channel.initials, logoBg: channel.logoBg)
+            }
+            .frame(width: 340, height: 474)
+            .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 16) {
+                    ForEach(flags, id: \.self) { TagChip(text: $0) }
+                    Text(channelLine)
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .foregroundStyle(Nocturne.neutral400)
+                }
+                .padding(.bottom, 14)
+                Text(program.title)
+                    .font(.nocturne(56, .medium))
+                    .tracking(-0.015 * 56)
+                    .foregroundStyle(Nocturne.text)
+                    .lineLimit(2)
+                    .padding(.bottom, 8)
+                if let episodeLine {
+                    Text(episodeLine)
+                        .font(.nocturne(Nocturne.TextSize.cardTitle))
+                        .foregroundStyle(Nocturne.neutral300)
+                        .lineLimit(1)
+                        .padding(.bottom, 6)
+                }
+                Text(whenLine)
+                    .font(.nocturne(Nocturne.TextSize.secondary))
+                    .foregroundStyle(Nocturne.neutral500)
+                    .padding(.bottom, 20)
+                if let desc = program.desc, !desc.isEmpty {
+                    Text(desc)
+                        .font(.nocturne(Nocturne.TextSize.body))
+                        .foregroundStyle(Nocturne.neutral300)
+                        .lineSpacing(6)
+                        .lineLimit(3)
+                        .padding(.bottom, 26)
+                }
+                buttons
+                footer
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .padding(56)
+        .frame(width: 1400, height: 586, alignment: .topLeading)
+        .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.lg, style: .continuous))
+        .shadow(color: .black.opacity(0.65), radius: 40, y: 16)
+    }
+
+    // MARK: The buttons (dc:569-571), sized to the sheet
 
     @ViewBuilder
     private var buttons: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 16) {
             if let manualJob {
-                StateChip(text: "● Scheduled · \(manualJob.status)", color: GuideMark.green)
+                StateChip(text: "● Scheduled", detail: manualJob.status, color: GuideMark.green)
             } else {
                 action("Record this airing", id: "record", primary: true) { await record() }
             }
-            if let passLine {
-                StateChip(text: "◆ Series pass · \(passLine)", color: GuideMark.gold)
-            } else {
-                action("Record the series", id: "series", primary: false) { await recordSeries() }
+            // One control, not two branches: swapping the view would drop focus to the rail
+            // the moment the pass is created (seen on the simulator before this fix).
+            action(pass == nil ? "Record the series" : "Edit series pass", id: "series", primary: false) {
+                if let pass {
+                    editingPass = pass
+                } else {
+                    await recordSeries()
+                }
             }
-            Button {
-                onWatchLive()   // the channel, whatever is on now (stream.go:214-218)
-            } label: {
-                InertActionButton(title: "Watch live", primary: false, focused: focused == "watch")
+            if isAiringNow {
+                Button {
+                    onWatchLive()   // the channel, whatever is on now (stream.go:214-218)
+                } label: {
+                    InertActionButton(title: "Watch live", primary: false, focused: focused == "watch", flexible: true)
+                }
+                .buttonStyle(BareButtonStyle())
+                .focused($focused, equals: "watch")
             }
-            .buttonStyle(BareButtonStyle())
-            .focused($focused, equals: "watch")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func action(_ title: String, id: String, primary: Bool, run: @escaping () async -> Void) -> some View {
@@ -182,21 +232,27 @@ struct AiringSheet: View {
             guard busy == nil else { return }
             Task { await run() }
         } label: {
-            InertActionButton(title: busy == id ? "Working…" : title, primary: primary, focused: focused == id)
+            InertActionButton(title: busy == id ? "Working…" : title, primary: primary, focused: focused == id, flexible: true)
         }
         .buttonStyle(BareButtonStyle())
         .focused($focused, equals: id)
     }
 
-    /// The server's answer to the last write, or the Conflict the schedule already reports.
+    /// The server's answer to the last write, the pass this show already has, and the
+    /// Conflict the schedule reports. Directly under the buttons so it is never off screen.
     @ViewBuilder
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             if let message {
                 Text(message)
                     .font(.nocturne(Nocturne.TextSize.floor))
                     .foregroundStyle(failed ? Nocturne.neutral200 : Nocturne.accent200)
                     .lineLimit(2)
+            } else if let pass {
+                Text("◆ Series pass · \(pass.countLabel) · \(pass.recordMode == "all" ? "all episodes" : "new episodes")")
+                    .font(.nocturne(Nocturne.TextSize.floor))
+                    .foregroundStyle(GuideMark.gold)
+                    .lineLimit(1)
             }
             if let job, job.status == "Conflict" {
                 Text("✕ Conflict: \(job.reason ?? "the server reports a tuner conflict")")
@@ -205,10 +261,38 @@ struct AiringSheet: View {
                     .lineLimit(2)
             }
         }
-        .padding(.top, 26)
+        .padding(.top, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: The two writes
+    // MARK: The writes
+
+    /// Step 4: does the server already hold a pass for this show? Matched on the airing's
+    /// `seriesId`, then on the "title:<lower>" id the server derives when a listing has none,
+    /// then on the pass title — the same three the server itself compares (passes.go:719-726).
+    private func loadPass() async {
+        do {
+            let all = try await api.passes()
+            pass = Self.matchingPass(in: all, program: program)
+            if let pass {
+                print("[sheet] pass for \"\(program.title)\": \(pass.id) \(pass.countLabel)")
+            }
+        } catch {
+            print("[sheet] passes: \(error)")
+        }
+    }
+
+    static func matchingPass(in passes: [PassView], program: Program) -> PassView? {
+        let title = program.title.lowercased()
+        let series = (program.seriesId ?? "").lowercased()
+        let derived = "title:" + title
+        return passes.first { p in
+            let ps = p.seriesId.lowercased()
+            if !series.isEmpty && ps == series { return true }
+            if ps == derived { return true }
+            return p.title.lowercased() == title
+        }
+    }
 
     private func record() async {
         busy = "record"
@@ -220,11 +304,10 @@ struct AiringSheet: View {
             if let reason = outcome.reason, !reason.isEmpty { line += " · \(reason)" }
             message = line
             job = await onScheduleChanged() ?? job
-            // The button is replaced by the state chip, so hand focus on rather than lose it.
-            focused = passLine == nil ? "series" : "watch"
+            focused = "series"
         } catch {
             failed = true
-            message = WriteError.text(error)
+            message = Self.friendly(error, fallback: "The server could not set this recording.")
             print("[sheet] record failed: \(error)")
         }
         busy = nil
@@ -235,38 +318,69 @@ struct AiringSheet: View {
         failed = false
         message = nil
         do {
-            let pass = try await api.createPass(title: program.title, seriesId: program.seriesId)
-            passTitle = pass.title
-            message = "Series pass created · \(pass.countLabel)"
+            let created = try await api.createPass(title: program.title, seriesId: program.seriesId)
+            pass = created
+            message = "Series pass created · \(created.countLabel)"
             job = await onScheduleChanged() ?? job
-            focused = "watch"
+            focused = "series"
+        } catch let error as APIError where error.httpStatus == 409 {
+            // Step 4: never the raw 409. Someone else made the pass; show what is true now.
+            await loadPass()
+            failed = false
+            message = pass == nil
+                ? "This show already has a series pass."
+                : "This show already has a series pass — use Edit series pass."
+            print("[sheet] pass 409, reloaded: \(pass?.id ?? "not found")")
         } catch {
             failed = true
-            message = WriteError.text(error)
+            message = Self.friendly(error, fallback: "The server could not create the series pass.")
             print("[sheet] pass failed: \(error)")
         }
         busy = nil
     }
+
+    /// The server's plain-text body reads well for the cases the owner can act on; anything
+    /// else becomes the fallback sentence. Never a bare status code.
+    static func friendly(_ error: Error, fallback: String) -> String {
+        guard let api = error as? APIError, let status = api.httpStatus else { return fallback }
+        let text = api.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch status {
+        case 400 where text.contains("already ended"): return "That airing has already ended."
+        case 404: return "The server has no listing for that airing any more."
+        case 409 where text.contains("already set to record"): return "That airing is already set to record."
+        default: return text.isEmpty ? fallback : text.prefix(1).uppercased() + text.dropFirst() + "."
+        }
+    }
 }
 
-/// A finished state where a button was: "● Scheduled · Queued", "◆ Series pass · Forged in Fire".
+/// A finished state where a button was: "● Scheduled" with the server's status beside it.
 struct StateChip: View {
     let text: String
+    var detail: String = ""
     let color: Color
 
     var body: some View {
-        Text(text)
-            .font(.nocturne(Nocturne.TextSize.body))
-            .foregroundStyle(Nocturne.neutral100)
-            .padding(.vertical, 18)
-            .padding(.horizontal, 36)
-            .background(color.mix(with: Nocturne.surface, by: 0.82), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
-                    .strokeBorder(color, lineWidth: 1)
+        VStack(spacing: 2) {
+            Text(text)
+                .font(.nocturne(Nocturne.TextSize.body))
+                .foregroundStyle(Nocturne.neutral100)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            if !detail.isEmpty {
+                Text(detail)
+                    .font(.nocturne(Nocturne.TextSize.floor))
+                    .foregroundStyle(Nocturne.neutral300)
+                    .lineLimit(1)
             }
-            .lineLimit(1)
-            .fixedSize()
+        }
+        .padding(.vertical, detail.isEmpty ? 18 : 10)
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity)
+        .background(color.mix(with: Nocturne.surface, by: 0.82), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
+                .strokeBorder(color, lineWidth: 1)
+        }
     }
 }
 

@@ -52,11 +52,13 @@ Pass 6 (sweep 2, `reports/2026-09-05-pass6-sweep2-screens.md`, pushed after the 
 
 Pass 7 (sweep 3, `reports/2026-09-06-pass7-sweep3-player.md`, accepted by the owner on Home Theater and pushed): the Player — HLS sessions per `HLS-CLIENT-API.md` (server 1.2.1), AVPlayerViewController with the overlays of frames 6a–6h, recordings with seek-by-new-session, the per-Apple-TV resume store and watched-on-end, live channels with the server's time-shift buffer, cameras, and the entry points from On Now, the Guide, the airing sheet, show detail and Cameras.
 
-Pass 8 (sweep 4, `reports/2026-09-06-pass8-sweep4-writes.md`, committed locally, push gated on the owner's Home Theater test): the writes — "Record this airing" (`POST /api/record`) and "Record the series" (`POST /api/passes`) on the airing sheet with the ● SCHEDULED / ◆ SERIES PASS marks on the Guide; the show-detail click-and-hold menu (Keep, Favorite, Mark unwatched, Delete → `PUT /api/library/recordings/{id}`, a trashed episode leaving the list); "Hide this channel" (`PUT /api/sources/{id}/lineup/{guid}`); and "Stop the recording and watch" on a tuner-busy 502 (`POST /api/schedule/jobs/{id}/stop`, then the live session). Two defects shipped in sweeps 2–3 were found and fixed there: `.onLongPressGesture` never fires on a tvOS Button (click-and-hold now goes through `HoldButton`), and the episode list could not be reached with the remote (focus sections).
+Pass 8 (sweep 4, `reports/2026-09-06-pass8-sweep4-writes.md`, tested by the owner on Home Theater; its fixes are Pass 9): the writes — "Record this airing" (`POST /api/record`) and "Record the series" (`POST /api/passes`) on the airing sheet with the ● SCHEDULED / ◆ SERIES PASS marks on the Guide; the show-detail click-and-hold menu (Keep, Favorite, Mark unwatched, Delete → `PUT /api/library/recordings/{id}`, a trashed episode leaving the list); "Hide this channel" (`PUT /api/sources/{id}/lineup/{guid}`); and "Stop the recording and watch" on a tuner-busy 502 (`POST /api/schedule/jobs/{id}/stop`, then the live session). Two defects shipped in sweeps 2–3 were found and fixed there: `.onLongPressGesture` never fires on a tvOS Button (click-and-hold now goes through `HoldButton`), and the episode list could not be reached with the remote (focus sections).
+
+Pass 9 (sweep 4 fixes, `reports/2026-09-06-pass9-sweep4-fixes.md`, committed locally, push gated on the owner's Home Theater test): the seven fixes from that test — click-and-hold rebuilt on UIKit's press pipeline and **proven on the physical Apple TV** by an XCUITest that presses the real remote (a new `Marlin DVR TVUITests` target, four tests including a negative control); the airing sheet's buttons made to fit; "Watch live" only while the programme is on; "Edit series pass" instead of "Record the series" when the show already has one, with no raw 409 ever shown; a new Edit series pass screen (record mode, padding, keep rule, delete with a confirm); the episode menu cut to Keep and Delete; and click-and-hold on a channel cell in the Guide to favourite it.
 
 ## What is NOT built
 
-The future screens Favorites, Weather, Radio, Settings. Of the writes, these are deliberately still inert or absent (Pass 8 Open Questions 1 and 2): show detail's "Series pass" button, the Player's 6e "Delete this recording", and any way to cancel a booking or delete a pass from the Apple TV.
+The future screens Favorites, Weather, Radio, Settings. Of the writes, these are deliberately still inert or absent: show detail's "Series pass" button and the Player's 6e "Delete this recording" (Pass 8 Open Question 1), any way to cancel a Record Now booking (Pass 8 Open Question 2), and any click behaviour on the Guide's channel cell — the hold favourites it, a click does nothing (Pass 9 Open Question 1).
 
 ## Open questions
 
@@ -64,4 +66,11 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-The owner tests sweep 4 on Home Theater (first check: click-and-hold on the Siri Remote, on a guide cell and on an episode row — the fix for it could only be verified on the simulator). Then the acceptance-and-push pass, and the Open Questions of `reports/2026-09-06-pass8-sweep4-writes.md`.
+The owner tests Pass 9 on Home Theater. First check: click-and-hold with the Siri Remote in hand — on a programme airing now, on a channel cell in the Guide's left column, and on an episode row. The mechanism is proven on that device by an automated remote press; what is not settled is how it feels (Pass 9 Open Questions 2 and 3). Then the acceptance-and-push pass, which pushes Pass 8 and Pass 9 together, and the Open Questions of both reports.
+
+To run the on-device hold tests again:
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test
+```

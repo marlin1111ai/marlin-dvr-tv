@@ -2,16 +2,17 @@
 //  EpisodeActionsMenu.swift
 //  Marlin DVR TV
 //
-//  Sweep 4, step 3: the long-press menu of frame 5d ("Click and hold an episode for Keep,
-//  Favorite, Mark unwatched, Delete", dc:643). Each row is one PUT /api/library/recordings/{id}
-//  with the matching flag — {keep}, {favorite}, {watched: false}, {trash: true} — and the
-//  screen redraws from the `episodeView` the server returns (library.go:643-694). Delete sets
-//  the trash flag: the file stays on disk until the server's "Remove Items From Trash After"
-//  period expires or the owner empties the trash; this app never empties it. Only when that
-//  setting is "Immediately" does the server delete at once and answer {ok, deleted} instead.
+//  The click-and-hold menu on an episode of frame 5d (dc:643). Pass 8 built the four the
+//  design's footer names; after the Home Theater test the owner dropped two of them, so
+//  Pass 9 step 6 leaves **Keep** and **Delete**:
 //
-//  These four flags are global on the server, not per client — the note on frame 5b says so
-//  ("Watched and keep flags are shared with the other Apple TV", dc:514; library.go:68-79).
+//    Keep    PUT /api/library/recordings/{id} {"keep": …}    library.go:643-694
+//    Delete  PUT /api/library/recordings/{id} {"trash": true}
+//
+//  Delete sets the trash flag; the file stays on disk until the server's "Remove Items From
+//  Trash After" period expires. Only when that setting is "Immediately" does the server
+//  delete at once and answer `{ok, deleted}` instead of the episode (library.go:683-691).
+//  Both flags are global on the server, not per client (dc:514; library.go:68-79).
 //
 
 import SwiftUI
@@ -49,20 +50,21 @@ struct EpisodeActionsMenu: View {
                         .lineLimit(2)
                 }
                 VStack(spacing: 12) {
-                    row("Keep", id: "keep", state: episode.keep ? "On" : "Off") {
-                        await write(.keep(!episode.keep))
+                    MenuRow(title: busy == "keep" ? "Working…" : "Keep",
+                            state: episode.keep ? "On" : "Off",
+                            focused: focused == "keep") {
+                        Task { await write(.keep(!episode.keep)) }
                     }
-                    row("Favorite", id: "favorite", state: episode.favorite ? "On" : "Off") {
-                        await write(.favorite(!episode.favorite))
+                    .focused($focused, equals: "keep")
+
+                    MenuRow(title: busy == "delete" ? "Working…" : "Delete",
+                            state: episode.trash ? "In the trash" : "Moves to the trash",
+                            focused: focused == "delete") {
+                        Task { await write(.trash(true)) }
                     }
-                    row("Mark unwatched", id: "unwatched", state: episode.watched ? "✓ Watched" : "Already unwatched", enabled: episode.watched) {
-                        await write(.watched(false))
-                    }
-                    row("Delete", id: "delete", state: episode.trash ? "In the trash" : "Moves to the trash", destructive: true) {
-                        await write(.trash(true))
-                    }
+                    .focused($focused, equals: "delete")
                 }
-                Text("Delete sets the trash flag; the server removes the file when its trash period expires. Keep, Favorite and Watched are shared with the other Apple TV.")
+                Text("Delete sets the trash flag; the server removes the file when its trash period expires. Keep is shared with the other Apple TV.")
                     .font(.nocturne(Nocturne.TextSize.floor))
                     .foregroundStyle(Nocturne.neutral600)
                     .lineLimit(2)
@@ -88,41 +90,15 @@ struct EpisodeActionsMenu: View {
         }
     }
 
-    private func row(_ title: String, id: String, state: String, enabled: Bool = true, destructive: Bool = false, run: @escaping () async -> Void) -> some View {
-        Button {
-            guard enabled, busy == nil else { return }
-            Task { await run() }
-        } label: {
-            HStack(spacing: 20) {
-                Text(busy == id ? "Working…" : title)
-                    .font(.nocturne(Nocturne.TextSize.body))
-                    .foregroundStyle(enabled ? (destructive ? Nocturne.neutral100 : Nocturne.text) : Nocturne.neutral600)
-                Spacer(minLength: 0)
-                Text(state)
-                    .font(.nocturne(Nocturne.TextSize.floor))
-                    .foregroundStyle(Nocturne.neutral500)
-            }
-            .padding(.vertical, 16)
-            .padding(.horizontal, 26)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(focused == id ? Nocturne.accent.opacity(0.18) : Nocturne.bg.opacity(0.5), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
-                    .strokeBorder(focused == id ? Nocturne.accent : Nocturne.neutral800, lineWidth: focused == id ? Nocturne.Focus.ringWidth : 1)
-            }
-        }
-        .buttonStyle(BareButtonStyle())
-        .focused($focused, equals: id)
-    }
-
     private func write(_ flag: RecordingFlag) async {
+        guard busy == nil else { return }
         busy = flag.menuID
         error = nil
         do {
             let update = try await api.updateRecording(id: episode.id, flag: flag)
             switch update {
             case .episode(let updated):
-                // A trashed episode leaves the visible list; every other flag redraws its row.
+                // A trashed episode leaves the visible list; Keep redraws its row.
                 onApplied(updated.trash ? nil : updated)
             case .deleted:
                 onApplied(nil)
@@ -140,9 +116,8 @@ private extension RecordingFlag {
     var menuID: String {
         switch self {
         case .keep: return "keep"
-        case .favorite: return "favorite"
-        case .watched: return "unwatched"
         case .trash: return "delete"
+        case .favorite, .watched: return "other"
         }
     }
 }
