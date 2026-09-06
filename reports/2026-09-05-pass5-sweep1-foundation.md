@@ -188,3 +188,21 @@ The Home tile reads **45 channels live** (`sim-home.png`), i.e. 50 minus the 5 D
 | Local commit "Pass 5: sweep 1 — foundation, rail, Home"; **no push** | deliverable |
 
 Outside the repo: DerivedData under `~/Library/Developer/Xcode` (build products), the app installed on the booted simulator and on Home Theater, and one client row each on the server (register is an allowed POST). `COLD-START.md`, `Assets.xcassets`, the scheme and every other build setting are untouched. No other folder under `~/Xcode` was written; the reference clone and `design/` were only read. No request went to the Unraid host beyond port 8090, marlinpc, the HDHomeRun or the UNAS4Pro share. Nothing installed; no packages; no third-party code.
+
+## Pass 5B — client-name decision, footer check, push (2026-09-05)
+
+**Owner's acceptance:** Home Theater test passed, 2026-09-05. The Pass 5 commit `398cd29` was approved for push.
+
+**Decision recorded** (`DECISIONS.md`, appended under `## 2026-09-05 (sweep 1)`): each Apple TV is renamed once by the owner on the server's Clients page; the app shows the name the server holds. No device-name entitlement. This settles Pass 5 Open Question 1.
+
+**Footer check (read-only; no code changed).** The rail footer shows the server-held name, not the device's local name, once the launch's ping or register has answered:
+
+- `Marlin DVR TV/RailView.swift:92` — `Text(clientName)` draws the footer's first line.
+- `Marlin DVR TV/ScreenShell.swift:28` — passes `clientName` through to `RailView`.
+- `Marlin DVR TV/ContentView.swift:20` — supplies it as `session.displayName`.
+- `Marlin DVR TV/ClientSession.swift:33` — `var displayName: String { client?.name ?? Self.deviceName }`.
+- `Marlin DVR TV/ClientSession.swift:69` (ping) and `:89` (register) — `client = record`, the server's `clientView` decoded from the response, so `client?.name` is `clientView.name`.
+
+Because every launch pings (`ClientSession.start()`, called from `Marlin_DVR_TVApp.swift`), a rename on the Clients page reaches the footer at the next launch. The device's local name (`ClientSession.swift:35`, `UIDevice.current.name`, which reads "Apple TV" on the hardware) appears only as the placeholder before the response arrives, or when the ping or register fails; it is also what the register body sends as the initial name (`ClientSession.swift:85`). Fact noted for sweep 2, not a defect against the decision: whether that placeholder should be blank rather than "Apple TV" is a small open point.
+
+**Push.** Steps 1–4 of Pass 5B commit `DECISIONS.md` and this report as "Pass 5B: record client-name decision; footer check" and push `origin main`, which carries the owner-approved `398cd29` as well. The three-SHA verification (local `HEAD`, `origin/main` after `git fetch`, `git ls-remote origin main`) is stated in the pass's closing reply; no follow-up commit writes it here.
