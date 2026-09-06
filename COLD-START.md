@@ -10,6 +10,7 @@ Marlin DVR TV is a tvOS app (SwiftUI) that will be a client of the Marlin DVR se
 - Repo: `git@github.com:marlin1111ai/marlin-dvr-tv.git` (branch `main`).
 - Server reference clone: `~/Xcode/marlin-dvr-reference` — a read-only clone of marlin-dvr. Never edited, never pushed, never run from.
 - Server URL: http://192.168.1.250:8090/ (Marlin DVR on Unraid). Not touched by this project's tooling.
+- Approved design: `design/` — the Claude Design export (`Marlin DVR TV.dc.html`, Nocturne design system, `ATV-DVR.zip`). Read-only; never edited. The screens are built to it (DECISIONS.md, 2026-09-05 (design)).
 
 ## The rules
 
@@ -31,7 +32,7 @@ Marlin DVR TV is a tvOS app (SwiftUI) that will be a client of the Marlin DVR se
 xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" -destination 'generic/platform=tvOS Simulator' build
 ```
 
-  On this Mac (as of 2026-09-05) that line fails with "tvOS 26.5 is not installed" because the tvOS platform component (simulator runtime and device support) has not been downloaded in Xcode > Settings > Components. Until it is, this form builds the same target against the simulator SDK and reports BUILD SUCCEEDED:
+  The tvOS 26.5 platform component (simulator runtime and device support) is installed on this Mac (confirmed in Pass 3, 2026-09-05); the scheme/destination line above works, and so does this target/SDK form:
 
 ```
 xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk appletvsimulator -configuration Debug build
@@ -43,6 +44,8 @@ The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVAp
 
 Pass 2 (server recon, `reports/2026-09-05-pass2-server-recon.md`) and Pass 3 (HLS client recon against `HLS-CLIENT-API.md`, `reports/2026-09-05-pass3-hls-client-recon.md`) are done; both were read-only and wrote reports only.
 
+Pass 4 (`reports/2026-09-05-pass4-design-and-build-recon.md`) put the approved design into `design/`, recorded the design decisions, and mapped every in-scope screen to the server API and into build sweeps. Still no app code.
+
 ## What is NOT built
 
 The app.
@@ -53,4 +56,4 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-Owner supplies what the app should do; then the first build pass against HLS-CLIENT-API.md.
+Build sweeps per reports/2026-09-05-pass4-design-and-build-recon.md
