@@ -299,3 +299,41 @@
   moving backwards; not Apple — every press was the app's). Suspect is the seek-past-the-prepared-range
   restart at `PlayerModel.swift:382`. It is Pass 28 Open Question 3 and wants its own pass. The full
   list is under **KNOWN AND UNFIXED** in COLD-START.md.
+
+## 2026-09-07 (Pass 31 — the Recordings list after a delete)
+
+- **The Recordings shelves re-read the library the moment a write in show detail changes it**
+  (owner defect, 2026-09-07). Deleting an episode and pressing Menu used to come back to the
+  library as it was read when the screen first opened: `RecordingsModel.load()` had exactly one
+  caller, the `.task` at `RecordingsScreen.swift:68`, and that task hangs off the `Group` holding
+  both the shelves and show detail, so opening detail never ended it. Leaving Recordings worked
+  only because `ScreenShell.swift:51` gives the content `.id(current)` and rebuilds it.
+- **The refresh is a re-read of `GET /api/library`, not a local edit of the list.** Episode counts,
+  the unwatched badge, which shelf a show sits on and the header's own totals are all the server's,
+  and `limit: 6` means one delete can pull a seventh show into view — none of it is derivable from
+  the single `episodeView` the delete answers with.
+- **It fires while show detail is still on top**, not on the way back, so the shelves are correct on
+  their first frame instead of correcting themselves a moment later. The read is ~3 ms on this
+  network. It fires for **Keep** as well as Delete: both are writes the server accepts against the
+  library those shelves are drawn from.
+- **A reload still cannot pull focus out of the rail.** Focus is repaired only when the focused card
+  is gone, and the guard takes `focused` as non-nil first — nil means the remote is in the rail.
+  This keeps the property Pass 25 measured for the On Now and Cameras timed reloads.
+- **Delete is a soft delete on this server, measured rather than assumed** (Pass 31 §3.3).
+  `roots[0].files` stayed at 5 across the delete and the recording is in the trash with
+  `exists: true`, so the server answered with the episode and not `{ok, deleted}`. **No
+  `GET /api/settings` read was made** — the owner did not authorise one this pass, and the Unraid
+  host stays on the do-not-touch list.
+- **Pass 8 Open Question 11 is overturned.** A show whose last episode is trashed does **not** stay
+  in the library index with 0 visible episodes: `shows` went 1 → 0 and all three sections emptied,
+  at `limit=6` and `limit=500` alike. The card disappears outright, which is what the owner wanted
+  to see.
+- **Consequence, found and deliberately not fixed (scope lock):** because the app assembles the
+  trash from `GET /api/library`'s show list, a recording trashed as the **last** episode of its show
+  is invisible in Manage DVR → Trash and cannot be restored from the Apple TV. The server's web UI
+  still holds it. Recorded under KNOWN AND UNFIXED in COLD-START.md.
+- **The recording deleted for the test was not restored** (owner, 2026-09-07): "whether it sits in
+  trash or is gone entirely is fine either way". `6007a13f0b46`, Hazardous History With Henry
+  Winkler S2 E20, 1.86 GB, `trash=true`, still on disk. `POST /api/library/trash/empty` was never
+  sent.
+- **Committed locally and not pushed** — the owner tests first.

@@ -224,6 +224,32 @@ perfectly. The frame rate comes from the video track, believed only when it land
 real rate (23.976 … 60) — a raw 28.00 reading on 29.97 material would have skipped a frame every
 fifteenth click.
 
+Pass 31 (`reports/2026-09-07-pass31-delete-refresh.md`): **a deleted recording leaves the
+Recordings shelves without leaving the screen.** The owner's defect: delete an episode from show
+detail, press Menu, and the shelves still showed the recording. Cause, and it is the whole of it —
+`RecordingsModel.load()` was called from one place, the `.task` at `RecordingsScreen.swift:68`, and
+that task is attached to the `Group` that holds *both* branches, so opening show detail never ended
+it and backing out just re-rendered the snapshot taken when the screen first opened. Leaving
+Recordings worked because `ScreenShell.swift:51` puts `.id(current)` on the content and rebuilds it.
+The fix is `ShowDetailScreen.onLibraryChanged` (`:85`, fired at `:118`) → `RecordingsScreen.reloadShelves`
+(`:158-168`), which re-reads `GET /api/library` **while show detail is still on top**, so the shelves
+are right on their first frame rather than correcting themselves after. It is a re-read, not a local
+edit: episode counts, the unwatched badge, shelf membership and the header totals are all the
+server's, and `limit: 6` means one delete can pull a seventh show into view. Focus is repaired only
+when the focused card is gone, and never when `focused` is nil, so a reload cannot pull the remote
+out of the rail (Pass 25's property, kept).
+
+**Proven on Home Theater with the real remote** (`DeleteRefreshUITests`, 49.9 s, 0 failures): the
+shelves after backing out are **byte-identical** to the shelves on a fresh entry — same screenshot
+MD5 — and no longer equal to the library as it stood before the delete. The delete is a **soft
+delete**, measured rather than assumed: `roots[0].files` stayed at 5 across it and the recording is
+in the trash with `exists: true`. No `GET /api/settings` read was made (not authorised).
+
+**Pass 8 Open Question 11 is overturned.** It recorded that a show whose last episode is trashed
+"stays in the library index with 0 visible episodes until the trash expires". It does not: `shows`
+went 1 → 0 and all three sections went empty, at `limit=6` and `limit=500` alike. The card
+disappears outright.
+
 ### KNOWN AND UNFIXED after Pass 29 — do not mistake these for proven, and do not re-derive them
 
 - **Stepping is erratic near the end of the prepared range.** Measured at **1:05:27 of a 1:11:10
@@ -241,6 +267,17 @@ fifteenth click.
   when the item is not a recording.
 - **Nobody has diffed two stills.** The evidence is a timeline moving by exactly one frame duration;
   no one has proved the *picture* advances one frame of motion rather than the clock alone.
+
+### KNOWN AND UNFIXED after Pass 31
+
+- **A recording trashed as the last episode of its show cannot be restored from the Apple TV.**
+  `ManageModel.refreshTrash` (`ManageDVRScreen.swift:75-89`) collects show ids from
+  `GET /api/library`'s section items, because the library has no trash endpoint of its own
+  (`TrashManageView.swift:5-7`). Once the show leaves that list the loop has nothing to ask, so
+  Manage DVR → Trash reads "The trash is empty" while the server still holds the recording. It is
+  visible and restorable in the server's own web UI. Pass 31 found this and was scoped out of
+  fixing it. **`6007a13f0b46` (Hazardous History With Henry Winkler S2 E20, 1.86 GB) is in that
+  state now**, deleted for Pass 31's test and deliberately not restored (owner, 2026-09-07).
 
 ## What is NOT built
 
@@ -262,12 +299,13 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Passes 28 and 29 were accepted by the owner on Home Theater 2026-09-07 and are pushed to
-`origin main`** (`58ebb12`, `26f7e2b`), together with Passes 26 and 27, which were read-only reports.
-Nothing is committed locally and unpushed, and there is no sweep in flight.
+**Pass 31 is committed locally and NOT pushed** — the owner tests the delete refresh on Home
+Theater first. Everything before it is pushed: Passes 28 and 29 were accepted on 2026-09-07 and
+went up as `58ebb12` and `26f7e2b`, together with Passes 26 and 27, which were read-only reports.
 
-The one thing waiting to be picked up is the first entry under **KNOWN AND UNFIXED** above — frame
-stepping near the end of the prepared range.
+Waiting to be picked up: Pass 31's push gate; the first entry under **KNOWN AND UNFIXED after
+Pass 29** — frame stepping near the end of the prepared range; and the entry under **KNOWN AND
+UNFIXED after Pass 31** — a last-episode recording being unreachable in the app's Trash.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
