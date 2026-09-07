@@ -170,6 +170,78 @@ content, sampled every 5 s, with each screen's own subtitle proving the refresh 
 and **one Player round trip** returns focus to the very card it left (same element, same frame) and
 still lands on Cameras. `RailFocusRestoreUITests` is the harness and is committed.
 
+Pass 26 (`reports/2026-09-07-pass26-guide-recon.md`): guide-data recon for the **server** project,
+read-only, report only — does a server change to guide times affect this app? **No.** Nothing gates
+live playback on guide data: a session is created from the channel id alone, the server treats a
+missing programme as an empty subtitle rather than an error, and **Favorites lists and plays every
+favourite channel whether or not the guide has a listing**, so a channel broadcasting through a
+guide hole stays watchable. The app reads three guide routes and **never reads `span` or `empty`** —
+the only two lines that touch a block read `block.program` — and the Guide screen has never rounded:
+cells are placed and sized from `program.start`/`end`, absolutely positioned, so a listings gap
+already draws as empty background. The precondition given was about **field shape, not times**:
+`GuideBlock.title/.subtitle/.span/.isLive/.channelId` are non-optional in this app's decoder and
+dropping any would fail the whole Guide screen.
+
+**Corrections from the marlin-dvr project, received 2026-09-07 and recorded here rather than by
+editing the landed report:** the change is their **Pass 42, not Pass 41** (Pass 41 stopped at its
+first step and built nothing); **Pass 42 made no server-side change at all** — `/api/guide`, the
+half-hour round-up at `guide.go:699` and the `span` values are byte-for-byte unchanged, and only
+their own admin Guide page changed how it lays out what it receives. **Our field-shape clearance was
+verified against their repo and stands** — every field present, non-optional, unrenamed, no
+`omitempty`, with `channelId` still on the block as well as the row. Their **Pass 45** added
+`GET /api/guide/find`, purely additive; **this app does not call it and needs nothing**. Their
+Pass 42 also made the web UI's Watch Now render for any live non-DRM channel, matching what this app
+already does. Three server changes are built and undeployed; the container still runs 1.4.0.
+
+Pass 27 (`reports/2026-09-07-pass27-framestep-recon.md`): frame-step recon on paused recordings.
+**`step(byCount:)` is inert on this app's HLS recordings** — `canStepForward` and `canStepBackward`
+are both false, and forty step calls moved the playhead zero nanoseconds, in the server's copy mode
+and its transcode mode alike. That measurement stands. **Its verdict does not**: the report concluded
+frame stepping was unachievable, and Pass 28 overturned it. The report carries an addendum saying so.
+Recordings are an HLS **EVENT** playlist, not VOD.
+
+Passes 28 and 29 (`reports/2026-09-07-pass28-framestep.md`,
+`reports/2026-09-07-pass29-framestep-fix.md`, **accepted by the owner on Home Theater 2026-09-07**):
+**frame-by-frame on a paused recording.** The mechanism is an **exact seek** — `currentTime() ± 1/fps`
+with `toleranceBefore` and `toleranceAfter` both `.zero`, which is what lands on the adjacent frame
+instead of the nearest keyframe — never `step(byCount:)`. Pending seeks are cancelled first, each
+step is computed fresh from `currentTime()` so it cannot drift, and play/pause is never touched.
+**Left and right clicks only, and only while paused on a recording**; swipes never reach the code at
+all, because a swipe is not a `UIPress`. Measured: **+0.033367 s per click on 29.97 fps material and
+0.016667 s on 59.94 fps**, forward and backward, in both encode modes.
+
+Pass 29 fixed the defect the owner found: each click was frame-stepping **and** being taken by Apple
+as a 10-second skip, so five clicks banked 50 seconds. Claiming the press was never enough —
+**`AVPlayerViewController` handles the arrow with its own gesture recognizers**, which run alongside
+the responder chain rather than in it (proved on the device: every press reached `pressesBegan`,
+none was forwarded to `super`, and Apple skipped anyway). `armArrowOwnership`
+(`PlayerHost.swift:108-120`) disables exactly those recognizers — matched on the public
+`allowedPressTypes`, never by class name — while the app owns the arrow, and restores precisely the
+ones it disabled otherwise, including on `viewWillDisappear`. The transport bar is not suppressed:
+it still draws, Select is still Apple's, and the arrows return to Apple on resume. Accumulation gone
+(10 clicks = +0.334 s, resume advanced only by playback), and fast clicks 400 ms apart now step
+perfectly. The frame rate comes from the video track, believed only when it lands within 5% of a
+real rate (23.976 … 60) — a raw 28.00 reading on 29.97 material would have skipped a frame every
+fifteenth click.
+
+### KNOWN AND UNFIXED after Pass 29 — do not mistake these for proven, and do not re-derive them
+
+- **Stepping is erratic near the end of the prepared range.** Measured at **1:05:27 of a 1:11:10
+  recording**: forward clicking moved the clock *backwards* by 3 s and the per-second counts came out
+  6, 21, 30 instead of a flat 30. **It is not Apple** — the counters read `arrows=134 super=0
+  owns=true supp=2`, so every press was the app's. Suspect is the app's own seek-past-the-prepared-range
+  restart, `PlayerModel.swift:382`. This is Pass 28 Open Question 3, **unfixed**, and wants its own
+  pass. Everywhere else in the same recording, and throughout the 20:45 one, stepping was exact.
+- **The recognizer-disabling fix depends on `AVPlayerViewController`'s internals.** It matches on a
+  public property, but if a future tvOS changes how many arrow recognizers the player has or where
+  they live, it quietly stops working. It **fails open** — back to Apple's skip and the old
+  accumulation defect, not a crash. There is no public API to decline the transport's arrow handling.
+- **Live playback was never driven on the device across Passes 28 and 29.** Tuning a channel takes a
+  tuner and live was scoped out. It is unchanged by diff, and `frameStep` bails at its first guard
+  when the item is not a recording.
+- **Nobody has diffed two stills.** The evidence is a timeline moving by exactly one frame duration;
+  no one has proved the *picture* advances one frame of motion rather than the clock alone.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
@@ -190,9 +262,12 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Pass 25 is pushed to `origin main` and is waiting on the owner's Home Theater test.** Passes 24
-and 25 went up together; nothing is committed locally and unpushed, and there is no sweep in flight.
-Pass 22 remains the last pass the owner accepted.
+**Passes 28 and 29 were accepted by the owner on Home Theater 2026-09-07 and are pushed to
+`origin main`** (`58ebb12`, `26f7e2b`), together with Passes 26 and 27, which were read-only reports.
+Nothing is committed locally and unpushed, and there is no sweep in flight.
+
+The one thing waiting to be picked up is the first entry under **KNOWN AND UNFIXED** above — frame
+stepping near the end of the prepared range.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 

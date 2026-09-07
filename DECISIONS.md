@@ -259,3 +259,43 @@
   fix did not need it, since "focus is nil" already means the remote is in the content; Select on the
   rail entry of the screen you are already on still does nothing; and the sub-screens (show detail,
   the Manage DVR sections, the Radar, the airing sheet) were not looked at.
+
+## 2026-09-07 (frame-by-frame)
+
+- **Frame-by-frame stepping is for recordings only. Live is explicitly out** (owner, 2026-09-07).
+  It was out of scope from the first recon and stayed out through the fix; `frameStep` declines at
+  its first guard unless the item is a recording, so a live channel or a camera never arms. Live was
+  never driven on the device across Passes 27–29 — tuning takes a tuner — and is unchanged by diff.
+- **Clicks step; swipes keep their fixed skips** (owner, 2026-09-07). Left and right **clicks** move
+  one frame while paused on a recording, matching the owner's older DVR app: the discrete press is
+  the precise tool. Swipes were never touched and structurally cannot be — a swipe on the touch
+  surface is not a `UIPress`, so it never reaches the code that steps. While **playing**, left and
+  right stay Apple's skip (measured at +12 s and +13 s throughout Passes 28–29).
+- **The step API is ruled out; exact seeks are the mechanism.** `AVPlayerItem.step(byCount:)` is
+  inert on this app's HLS recordings — `canStepForward` and `canStepBackward` both false, forty
+  calls, zero nanoseconds moved, in copy mode and transcode mode alike (Pass 27, measured on Home
+  Theater). A frame is instead a **seek to `currentTime() ± 1/fps` with `toleranceBefore` and
+  `toleranceAfter` both `.zero`**; the zero tolerance is what makes AVFoundation land on the adjacent
+  frame rather than the nearest keyframe (owner's approach, from his earlier DVR app; proven in
+  Pass 28). Pending seeks are cancelled first so a chase seek cannot overwrite one with its own
+  tolerance, each step is computed fresh from `currentTime()` so it cannot drift, and play/pause is
+  never touched — AVPlayer renders the seek target while paused, so the frame simply appears.
+- **The app takes the arrow away from `AVPlayerViewController` while paused on a recording, and
+  gives it straight back otherwise** (Pass 29). Claiming the press was not enough: the player handles
+  the arrow with its **own gesture recognizers**, which run alongside the responder chain rather than
+  in it. The app disables exactly those recognizers — matched on the public `allowedPressTypes`,
+  never by class name — and restores precisely the ones it disabled. **The transport bar itself is
+  not suppressed**: it still draws, Select is still Apple's, and the arrows return on resume. This
+  is a deliberate dependency on another framework's internals, taken knowingly; it fails open, back
+  to Apple's skip, rather than crashing.
+- **Owner acceptance: Passes 28 and 29 were tested on Home Theater 2026-09-07 and accepted** —
+  frame-by-frame works and the 10-second accumulation is gone. Both commits — `58ebb12` (the exact
+  seek and the click binding) and `26f7e2b` (the recognizer ownership, and the frame-rate guard that
+  only believes real rates) — were approved for push and **pushed to `origin main`** in Pass 30,
+  with that pass's own notebook commit. Fast-forward from `a720858`, which is still an ancestor;
+  nothing forced, rebased or amended.
+- **Known and unfixed, recorded so no later pass mistakes it for proven:** frame stepping goes
+  erratic near the end of the prepared range (measured at 1:05:27 of a 1:11:10 recording, clock
+  moving backwards; not Apple — every press was the app's). Suspect is the seek-past-the-prepared-range
+  restart at `PlayerModel.swift:382`. It is Pass 28 Open Question 3 and wants its own pass. The full
+  list is under **KNOWN AND UNFIXED** in COLD-START.md.
