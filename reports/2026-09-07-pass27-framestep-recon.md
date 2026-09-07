@@ -308,3 +308,29 @@ only then were the flags read.
 stub, not a disabled path**, live playback was not touched, and nothing in `design/` was read or
 written. The only server traffic was the library reads and the play sessions the harness opened
 and then DELETEd; no write route was called.
+
+---
+
+# ADDENDUM — 2026-09-07, added by Pass 28
+
+**The measurement above stands. The verdict does not.**
+
+Everything this report says about `step(byCount:)` is correct and was correctly measured:
+`canStepForward` and `canStepBackward` are both false on these HLS items, and forty step calls
+moved the playhead zero nanoseconds. None of that has changed.
+
+But §6's conclusion — "frame-by-frame stepping is not achievable on a paused recording" — was
+wrong, because `step(byCount:)` was the wrong mechanism. **Frame stepping is achievable, and it is
+now built and measured on the device.** An *exact seek* does it: `currentTime() ± 1/fps` with
+`toleranceBefore` and `toleranceAfter` both `.zero`. The zero tolerance is what makes AVFoundation
+land on the adjacent frame instead of the nearest keyframe.
+
+Measured on Home Theater in Pass 28, on the same class of HLS recording this report tested:
+**+0.033367 s per click on 29.97 fps material** and **0.016667 s on 59.94 fps material**, forward
+and backward, in copy mode and in transcode mode alike.
+
+The lesson worth keeping: this report established that *one API* is inert and then generalised
+from it to the capability. The flags were telling the truth about `step(byCount:)` and nothing
+more.
+
+See `reports/2026-09-07-pass28-framestep.md`.

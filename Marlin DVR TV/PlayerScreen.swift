@@ -33,7 +33,8 @@ struct PlayerScreen: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if model.phase == .playing {
-                PlayerHost(player: model.player, linearOnly: model.isCamera, shortWindowSelect: model.isLive) { dismiss() }
+                PlayerHost(player: model.player, linearOnly: model.isCamera, shortWindowSelect: model.isLive,
+                           frameStep: { model.frameStep($0) }) { dismiss() }
                     .ignoresSafeArea()
                 hud
             }

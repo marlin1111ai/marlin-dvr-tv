@@ -51,6 +51,11 @@ final class PlayerModel {
     private(set) var behindLive: Double = 0         // live: seconds behind the live edge
     private(set) var bufferSeconds: Double = 0      // live: the advertised window (contract §4)
     private(set) var isPaused = false
+    /// Pass 28: the rate this recording runs at, for the frame-step distance. 30 until a track
+    /// reports one, and only ever replaced by a value above 1.
+    private(set) var frameRate: Double = PlayerModel.defaultFrameRate
+    /// The last frame step's measured distance, for the console line only.
+    private(set) var lastFrameStep: Double = 0
     private(set) var pausedAt: Date?
     private(set) var pausedPosition: Double = 0     // live: seconds behind live when paused
     private(set) var notice: String?
@@ -73,6 +78,10 @@ final class PlayerModel {
     private var attachedAt: Date?
     private var lastResumeSave = Date.distantPast
     private var restartingBeyond = false
+
+    static let defaultFrameRate: Double = 30
+    /// Frame durations are built at 90 kHz: 1/25, 1/30 and 1/29.97 all land within a microsecond.
+    private static let frameTimescale: CMTimeScale = 90_000
 
     var isLive: Bool { if case .live = request { return true }; return false }
     var isRecording: Bool { if case .recording = request { return true }; return false }
@@ -197,6 +206,7 @@ final class PlayerModel {
         guard t.isFinite else { return }
         if isRecording {
             position = startOffset + t
+            refreshFrameRate()
             if let range = seekableRange { preparedTo = startOffset + range.end }
             if Date().timeIntervalSince(lastResumeSave) >= 10, !isPaused {
                 saveResume()
@@ -247,6 +257,93 @@ final class PlayerModel {
             showHUD(for: 8)
             print("[player] pause point left the window: seeking to \(range.start + 2)")
         }
+    }
+
+    // MARK: Frame stepping (Pass 28) — recordings only, paused only
+
+    /// The video track's `nominalFrameRate`, which is the value this asks for. HLS items very
+    /// often expose no `assetTrack` (Pass 27 read 0 from it on both recordings), so the
+    /// `AVPlayerItemTrack`'s `currentVideoFrameRate` — the rate actually being rendered, and the
+    /// same number — is the fallback. Read every tick while playing, so by the time anyone
+    /// pauses the real rate is already in hand. Never accepts a value of 1 or less.
+    private func refreshFrameRate() {
+        guard let item = player.currentItem else { return }
+        for track in item.tracks {
+            if let nominal = track.assetTrack?.nominalFrameRate, nominal > 1 {
+                adopt(Double(nominal), from: "nominalFrameRate")
+                return
+            }
+        }
+        // HLS items expose no assetTrack, so fall back to the rate actually being rendered —
+        // but only while it is a plausible broadcast rate. `currentVideoFrameRate` sags towards
+        // zero during start-up and rebuffering, and one bad sample is enough to poison every
+        // later step: a 2.17 fps reading was measured on the device making each frame step
+        // 0.46 s long instead of 0.033 s.
+        for track in item.tracks where track.currentVideoFrameRate > 10 && track.currentVideoFrameRate < 121 {
+            adopt(Double(track.currentVideoFrameRate), from: "currentVideoFrameRate")
+            return
+        }
+    }
+
+    /// The broadcast and film rates a recording can actually be. `currentVideoFrameRate` is a
+    /// rolling average and reads a little off (30.59 was measured for 29.97 material), so a
+    /// reading within 5% of a real rate is taken as that rate. Being exact matters: an
+    /// over-estimated rate makes a step land short of the next frame, and two clicks in a row
+    /// then show the same picture.
+    private static let standardFrameRates: [Double] = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60]
+
+    private func adopt(_ measured: Double, from source: String) {
+        let rate = Self.standardFrameRates.first { abs($0 - measured) / $0 < 0.05 } ?? measured
+        guard rate > 1, abs(rate - frameRate) > 0.001 else { return }
+        frameRate = rate
+        print(String(format: "[framestep] frame rate %.4f fps (%@ read %.4f) → one frame = %.6f s",
+                     rate, source, measured, 1 / rate))
+    }
+
+    /// One frame forward (`+1`) or back (`-1`), while paused on a recording.
+    ///
+    /// The move is an **exact seek**: both tolerances `.zero`, which is what makes AVFoundation
+    /// land on the adjacent frame rather than the nearest keyframe. Play/pause is not touched —
+    /// AVPlayer renders the seek target while paused, so the frame simply appears. Each step is
+    /// computed fresh from `currentTime()`, never from an accumulated frame index, so a step can
+    /// neither drift nor compound a rounding error.
+    ///
+    /// Returns **true** when it acted, which is the caller's signal to swallow the press. It
+    /// returns false while playing, on live, on a camera, and before the item exists — in every
+    /// one of those cases the press falls straight through to Apple's transport bar, unchanged.
+    @discardableResult
+    func frameStep(_ frames: Int) -> Bool {
+        guard isRecording, isPaused, phase == .playing, frames != 0, let item = player.currentItem else { return false }
+        if frameRate <= 1 { refreshFrameRate() }
+        let fps = frameRate > 1 ? frameRate : Self.defaultFrameRate
+        let frameDuration = CMTime(value: CMTimeValue((Double(Self.frameTimescale) / fps).rounded()),
+                                   timescale: Self.frameTimescale)
+        // A coalescing or chase seek still in flight would overwrite this one with its own
+        // tolerance, and the frame would land on a keyframe instead.
+        item.cancelPendingSeeks()
+        let from = item.currentTime()
+        var target = frames > 0 ? CMTimeAdd(from, frameDuration) : CMTimeSubtract(from, frameDuration)
+        if let range = seekableRange {
+            let low = CMTime(seconds: range.start, preferredTimescale: Self.frameTimescale)
+            let high = CMTime(seconds: max(range.start, range.end - 0.05), preferredTimescale: Self.frameTimescale)
+            if CMTimeCompare(target, low) < 0 { target = low }
+            if CMTimeCompare(target, high) > 0 { target = high }
+        }
+        item.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.frameStepLanded(from: from) }
+        }
+        return true
+    }
+
+    /// Where the step actually landed. `position` is refreshed here because `tick()` does not run
+    /// while paused, and the HUD's "x of y" would otherwise stand still as the picture moved.
+    private func frameStepLanded(from: CMTime) {
+        guard let item = player.currentItem else { return }
+        let landed = item.currentTime()
+        lastFrameStep = CMTimeGetSeconds(landed) - CMTimeGetSeconds(from)
+        position = startOffset + CMTimeGetSeconds(landed)
+        print(String(format: "[framestep] %+.6f s (one frame at %.4f fps = %.6f s) → t=%.6f",
+                     lastFrameStep, frameRate, 1 / frameRate, CMTimeGetSeconds(landed)))
     }
 
     private func itemStatusChanged() {

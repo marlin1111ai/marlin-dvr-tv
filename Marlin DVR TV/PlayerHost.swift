@@ -14,6 +14,12 @@
 //  player is still in the state it was, pauses or resumes it. From the threshold on, the
 //  press is Apple's alone. Edge clicks and swipes are never touched.
 //
+//  Pass 28: left and right **clicks** step one frame while paused on a recording, through the
+//  same `pressesBegan`/`pressesEnded` pair that already claims Menu. `frameStep` answers false
+//  in every other case — playing, live, camera — and the press falls straight through to
+//  Apple's transport bar unchanged. Swipes are untouched: a swipe on the touch surface is not
+//  a `UIPress`, so only the discrete click reaches this code at all.
+//
 
 import AVKit
 import SwiftUI
@@ -23,17 +29,22 @@ struct PlayerHost: UIViewControllerRepresentable {
     let player: AVPlayer
     let linearOnly: Bool               // cameras: a 6-entry window, no seeking (standing call)
     let shortWindowSelect: Bool        // live channels only (Pass 7C)
+    /// Pass 28: one frame back (-1) or forward (+1). Returns true when it acted, which is the
+    /// signal to swallow the press rather than hand it to Apple's transport.
+    let frameStep: (Int) -> Bool
     let onMenu: () -> Void
 
     func makeUIViewController(context: Context) -> PlayerContainerController {
         let controller = PlayerContainerController()
         controller.onMenu = onMenu
+        controller.frameStep = frameStep
         controller.attach(player: player, linearOnly: linearOnly, shortWindowSelect: shortWindowSelect)
         return controller
     }
 
     func updateUIViewController(_ controller: PlayerContainerController, context: Context) {
         controller.onMenu = onMenu
+        controller.frameStep = frameStep
     }
 }
 
@@ -46,6 +57,10 @@ final class PlayerContainerController: UIViewController {
     static let appleGrace: TimeInterval = 0.35
 
     var onMenu: () -> Void = {}
+    var frameStep: (Int) -> Bool = { _ in false }
+    /// Set when a left/right press was consumed as a frame step, so its release is swallowed too
+    /// and Apple's transport never sees half a press.
+    private var swallowArrowRelease = false
     private let playerController = AVPlayerViewController()
     private var shortWindowSelect = false
     private var pendingSelect: DispatchWorkItem?
@@ -93,6 +108,16 @@ final class PlayerContainerController: UIViewController {
             onMenu()
             return
         }
+        // Pass 28. `frameStep` decides: it acts only while paused on a recording and answers
+        // false everywhere else, so nothing here changes playing, live or camera behaviour.
+        if presses.contains(where: { $0.type == .leftArrow }) {
+            print("[framestep] leftArrow press reached the container")
+            if frameStep(-1) { swallowArrowRelease = true; return }
+        }
+        if presses.contains(where: { $0.type == .rightArrow }) {
+            print("[framestep] rightArrow press reached the container")
+            if frameStep(1) { swallowArrowRelease = true; return }
+        }
         if shortWindowSelect, presses.contains(where: { $0.type == .select }) {
             handleShortWindowSelect()
         }
@@ -101,6 +126,10 @@ final class PlayerContainerController: UIViewController {
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         if presses.contains(where: { $0.type == .menu }) { return }
+        if swallowArrowRelease, presses.contains(where: { $0.type == .leftArrow || $0.type == .rightArrow }) {
+            swallowArrowRelease = false
+            return
+        }
         super.pressesEnded(presses, with: event)
     }
 
