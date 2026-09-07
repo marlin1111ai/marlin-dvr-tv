@@ -43,6 +43,12 @@ final class RadarModel {
     private(set) var index = 0
 
     private var loopTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
+    /// NOAA lands a new scan every 355 to 483 seconds (measured this pass, mean 419 s). Five
+    /// minutes sits inside the shortest of those gaps, so the newest scan reaches the screen
+    /// within about a minute of NOAA publishing it, and it costs one catalog request an
+    /// interval — negligible beside the tile traffic. It runs only while the radar is up.
+    private static let refreshEvery: Duration = .seconds(300)
     /// Radar loops read best at about two frames a second, with a pause on the newest frame
     /// so the eye can land on it.
     private static let step: Duration = .milliseconds(550)
@@ -55,6 +61,7 @@ final class RadarModel {
     func load(near coordinate: CLLocationCoordinate2D) async {
         phase = .loading
         NOAARadarTileOverlay.resetCounters()
+        startRefreshing(near: coordinate)
         do {
             let found = try await RadarSource.frames(near: coordinate)
             frames = found
@@ -85,9 +92,33 @@ final class RadarModel {
         }
     }
 
+    /// Re-reads NOAA's frame list while the view is up, so the picture and its timestamp keep
+    /// current. `stop()` cancels it and the view calls that on disappear, so nothing polls
+    /// behind another screen and no timer outlives a back out.
+    private func startRefreshing(near coordinate: CLLocationCoordinate2D) {
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.refreshEvery)
+                guard !Task.isCancelled, let self else { return }
+                // A refresh that fails leaves what is already on screen alone: the radar keeps
+                // running on the frames it has rather than blanking on a hiccup.
+                guard let fresh = try? await RadarSource.frames(near: coordinate),
+                      !fresh.isEmpty,
+                      fresh.map(\.id) != self.frames.map(\.id) else { continue }
+                self.frames = fresh
+                self.index = fresh.count - 1
+                self.phase = .ready
+                self.startLoop()
+            }
+        }
+    }
+
     func stop() {
         loopTask?.cancel()
         loopTask = nil
+        refreshTask?.cancel()
+        refreshTask = nil
         tileWatchTask?.cancel()
         tileWatchTask = nil
     }
@@ -291,7 +322,7 @@ struct RadarMapView: UIViewRepresentable {
 
     func updateUIView(_ map: MKMapView, context: Context) {
         context.coordinator.sync(frames: frames, on: map)
-        context.coordinator.show(index: visibleIndex)
+        context.coordinator.show(index: visibleIndex, on: map)
     }
 
     static func dismantleUIView(_ map: MKMapView, coordinator: Coordinator) {
@@ -304,48 +335,46 @@ struct RadarMapView: UIViewRepresentable {
         private var renderers: [ObjectIdentifier: MKTileOverlayRenderer] = [:]
         private var frameIDs: [String] = []
         private var shown = -1
+        /// The single overlay currently on the map.
+        private var attached: MKTileOverlay?
 
-        /// Adds every frame's overlay once, so all of them are fetching tiles and a step in the
-        /// loop is a change of alpha rather than a fresh download.
+        /// Builds one overlay per frame but attaches none — `show(index:on:)` attaches exactly
+        /// one at a time.
         func sync(frames: [RadarFrame], on map: MKMapView) {
             let ids = frames.map(\.id)
             guard ids != frameIDs else { return }
             frameIDs = ids
-            map.removeOverlays(overlays)
+            if let attached { map.removeOverlay(attached) }
+            attached = nil
             renderers.removeAll()
             shown = -1
-
             overlays = frames.map(RadarSource.overlay(for:))
-            if !overlays.isEmpty {
-                map.addOverlays(overlays, level: .aboveLabels)
-            }
         }
 
-        /// The whole animation: one frame opaque, the rest transparent.
+        /// The animation: exactly one frame's overlay is on the map, and stepping the loop
+        /// swaps it for the next one's.
         ///
-        /// Only the two renderers that change are invalidated. Calling `setNeedsDisplay()` on
-        /// every renderer each step made MapKit re-request the tiles of all of them — measured
-        /// on the Apple TV at roughly 470 tile loads a second — which starved the main actor
-        /// and stopped the loop task advancing at all (Pass 13 §"what went wrong").
-        func show(index: Int) {
+        /// Pass 13 stacked all the frames and revealed one by setting `MKOverlayRenderer.alpha`.
+        /// That does not repaint on tvOS — proven twice on the device, once with
+        /// `setNeedsDisplay()` (Pass 14) and again with `setNeedsDisplayInMapRect:` (Pass 15,
+        /// attempt 1): every tile loads, nothing draws. Attaching and detaching is the
+        /// mechanism MapKit does honour, because adding an overlay is what makes it ask for a
+        /// renderer and draw one.
+        func show(index: Int, on map: MKMapView) {
             guard index != shown, overlays.indices.contains(index) else { return }
-            let previous = shown
             shown = index
-            for position in [previous, index] where overlays.indices.contains(position) {
-                guard let renderer = renderers[ObjectIdentifier(overlays[position])] else { continue }
-                let wanted: CGFloat = position == index ? 1 : 0
-                guard renderer.alpha != wanted else { continue }
-                renderer.alpha = wanted
-                renderer.setNeedsDisplay()
+            let incoming = overlays[index]
+            if let attached {
+                guard attached !== incoming else { return }
+                map.removeOverlay(attached)                      // PASS15 attempt 3
             }
+            map.addOverlay(incoming, level: .aboveLabels)
+            attached = incoming
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: any MKOverlay) -> MKOverlayRenderer {
             guard let tiles = overlay as? MKTileOverlay else { return MKOverlayRenderer(overlay: overlay) }
             let renderer = MKTileOverlayRenderer(tileOverlay: tiles)
-            // Radar is a wash over the map, not a replacement for it.
-            let position = overlays.firstIndex(of: tiles) ?? 0
-            renderer.alpha = position == shown ? 1 : 0
             renderers[ObjectIdentifier(tiles)] = renderer
             return renderer
         }

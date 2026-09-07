@@ -86,23 +86,16 @@ nonisolated enum RadarSource {
     static let minimumZ = 3
     static let maximumZ = 8
 
-    /// How many frames to ask for.
+    /// How many frames to ask for — as many as NOAA has.
     ///
-    /// **One**, and the reason is a defect this pass found rather than a limit of NOAA's.
-    /// NOAA has plenty of history — the mosaic catalog offers about two hours, eighteen MRMS
-    /// scans, six to eight minutes apart — and asking for six of them works: all six frame
-    /// times come back, the loop steps through them and their tiles all download (measured on
-    /// the Apple TV: 215 tiles requested, 215 loaded, 0 failed). What does **not** happen is
-    /// drawing. Pass 13's loop stacks one tile overlay per frame and shows one by setting
-    /// `MKOverlayRenderer.alpha`, and on the device MapKit does not repaint a tile renderer
-    /// whose alpha goes 0 → 1: most frames render blank, one renders a stale fragment. With a
-    /// single frame there is no alpha swap and the whole viewport draws correctly.
+    /// The service keeps a rolling window of MRMS scans per region. Counted by hand this pass
+    /// for the Apple TV's own region: **17 scans spanning 112 minutes**, 355 to 483 seconds
+    /// apart (mean 419 s, about seven minutes). This cap is a guard against a surprise, not a
+    /// target — whatever the catalog returns is what the loop runs over.
     ///
-    /// So this ships the newest scan as one live layer, which is honest and complete, rather
-    /// than an animation that is mostly blank. Repairing the loop means changing how the
-    /// visible frame is selected — Pass 13's code, which Pass 14 was told not to rebuild — so
-    /// it is Open Question 1 of the Pass 14 report, with the evidence.
-    static let frameCount = 1
+    /// Pass 14 pinned this at 1 because the loop would not repaint. Pass 15 fixed the repaint,
+    /// so the pin is gone.
+    static let frameCount = 24
 
     // MARK: The frames
 
