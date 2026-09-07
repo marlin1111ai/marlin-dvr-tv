@@ -99,6 +99,17 @@ list and the one the server project never reached even with curl: AVFoundation r
 track as `'aac ' 22050 Hz 1 ch`. The MP3 station reported `'.mp3' 22050 Hz 1 ch`. **Both stations
 play**: WBAL NewsRadio 1090 and WCBM Talk Radio 680, each driven by the real Siri Remote.
 
+Pass 20 (`reports/2026-09-06-pass20-home-radio-count.md`): Pass 19 **pushed to `origin main`**
+(`2a3b43b` and `dc28aec`, verified by fetch, `git rev-parse` and `git ls-remote` all reading the
+same SHA — fast-forward, nothing forced, rebased or amended), and the **Home Radio tile given the
+station count**. Home now reads a sixth endpoint, `GET /api/radio`, alongside the five it already
+read, and the tile says **"2 stations"** in place of the static word "Stations" — the number first
+and a lowercase noun, the shape every other counted tile uses. The count is the server's own
+`count` field. If the server does not answer, or the list is empty, the tile drops back to
+"Stations" rather than showing "0 stations", "unavailable", or a number kept from an earlier read;
+both fallbacks were photographed on the Apple TV. No other tile changed, which was asserted by
+capturing all nine on the device.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
@@ -122,7 +133,9 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-None assigned — the owner directs what comes next. **Pass 19 (Radio) is committed locally and not pushed**: the push gate says the owner tests it on Home Theater first, and the push is approved after that.
+None assigned — the owner directs what comes next. Pass 19 is accepted and on `origin main`.
+**Pass 20's Home Radio count is committed locally and not pushed**: the push gate says the owner
+tests it on Home Theater first, and the push is approved after that.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
@@ -136,11 +149,17 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
 
 The Manage DVR and rail UI tests (`ManageDVRUITests`, `RailManageUITests`) drive the Simulator;
 `ManageDVRUITests` needs a scheduled recording and a series pass to exist. Both are evidence
-harnesses from their passes, not standing tests. So is `RadioUITests` (Pass 19), which needs the
-physical Apple TV and the owner's two stations:
+harnesses from their passes, not standing tests. So are `RadioUITests` (Pass 19) and
+`HomeRadioCountUITests` (Pass 20), which need the physical Apple TV and the owner's two stations:
 
 ```
 xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
   -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
   -only-testing:"Marlin DVR TVUITests/RadioUITests"
+```
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/HomeRadioCountUITests"
 ```

@@ -132,3 +132,32 @@
   which ATS permits by default, and the icons come from the DVR's own IP, which the existing
   `NSAllowsLocalNetworking` exception already covers. `Info.plist` is untouched. The rule for a
   plain-`http://` station is still open (Pass 18 Open Question 3).
+
+## 2026-09-06 (Pass 20 — Pass 19 accepted and pushed, and the Home Radio count)
+
+- **Owner acceptance: Radio was tested on Home Theater 2026-09-06 and accepted.** Both stations
+  play. The two Pass 19 commits were approved for push and **pushed to `origin main`** —
+  `2a3b43b` ("the Radio screen, playing on the Apple TV") and `dc28aec` ("the notebook, and the
+  report with the step 6 findings"). Verified by fetching and comparing three independent
+  readings: local `HEAD`, `origin/main`, and `git ls-remote origin main`, all
+  `dc28aec90f9eeb60fd183cf47b8ca68e8d740c26`. Fast-forward from `3aa6ebe`, which is still an
+  ancestor; nothing forced, rebased or amended.
+- **The Home Radio tile shows the station count from the server** instead of the static word
+  "Stations" (owner, 2026-09-06). Home reads a **sixth endpoint**, `GET /api/radio`, beside the
+  five it already read, and the tile draws **"2 stations"**. The number is the endpoint's own
+  `count` field (`radio.go:87`), not the length of the array.
+- **The wording follows the tiles that were already there**, which was the instruction: the count
+  first, then a lowercase noun — "83 channels live", "6 upcoming", "4 favourite channels", "1 of 1
+  online". Radio's is "*n* station" / "*n* stations", pluralised the way the Favorites tile
+  pluralises. It also matches the design's own sub-line for this tile, "6 stations" (`dc:1361`),
+  and the Radio screen's own header. **No other tile was touched.**
+- **The fallback is the word "Stations", not a number and not "unavailable"** (owner, 2026-09-06).
+  A server that does not answer and a list with nothing in it both leave the tile exactly as it has
+  read since Pass 5. This deliberately differs from every other tile, which says "unavailable" when
+  its read fails. The count is also **cleared** on those paths rather than left alone: `HomeModel`
+  outlives the Home screen, which reloads on every return to it, so a number kept from an earlier
+  read could otherwise sit under a server that had since gone away. Nothing stale is ever shown.
+- **The tile-subtitle precedence is flipped.** `HomeModel.subtitle(for:)` used to return the static
+  line first and consult the loaded one only if there was none, which is why Radio could never show
+  a number. A loaded value now wins and the static line is the fallback. Weather and Settings are
+  unaffected — they have no loaded value at all.
