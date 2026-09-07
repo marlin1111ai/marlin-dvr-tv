@@ -10,6 +10,12 @@
 //  Pass 10 briefly put a "Manage DVR" row above the shelves; Pass 10B moved that entry to
 //  the rail (owner, 2026-09-06), so this screen is frame 5b again with nothing added.
 //
+//  Pass 31: the shelves used to be read once, by the `.task` below, and opening show detail
+//  does not end that task — so a recording deleted in the detail screen left the shelves
+//  drawn from the library as it was before the delete, until the owner left Recordings
+//  altogether and `ScreenShell`'s `.id(current)` built the screen again. `onLibraryChanged`
+//  now re-reads `GET /api/library` the moment a write in show detail changes it.
+//
 
 import SwiftUI
 
@@ -54,7 +60,7 @@ struct RecordingsScreen: View {
     var body: some View {
         Group {
             if let selected {
-                ShowDetailScreen(api: api, show: selected, onPlay: onPlay)
+                ShowDetailScreen(api: api, show: selected, onPlay: onPlay, onLibraryChanged: reloadShelves)
             } else {
                 shelves
             }
@@ -133,6 +139,32 @@ struct RecordingsScreen: View {
     private var firstCardID: String? {
         guard let section = model.library?.sections.first(where: { !$0.items.isEmpty }), let show = section.items.first else { return nil }
         return "\(section.key):\(show.id)"
+    }
+
+    /// Every card id currently on the shelves — the same "section:show" ids the cards focus on.
+    private var cardIDs: Set<String> {
+        guard let sections = model.library?.sections else { return [] }
+        return Set(sections.flatMap { section in section.items.map { "\(section.key):\($0.id)" } })
+    }
+
+    /// A write inside show detail has changed the library these shelves are drawn from — a
+    /// deleted recording above all. Re-read it straight away, while the detail screen is still
+    /// on top, so the shelves are already right the moment Menu comes back to them.
+    ///
+    /// It is a re-read and not a local edit on purpose: an episode count, the unwatched badge,
+    /// which shelves a show sits on and the header's own totals are all the server's, and the
+    /// `limit: 6` means one delete can pull a seventh show into view. Nothing here can be
+    /// computed from the episode the server just answered with.
+    private func reloadShelves() {
+        Task {
+            await model.load()
+            // The card that had focus may be gone now. Repair that, and only that: if the
+            // remote is in the rail `focused` is nil and is left alone, so a reload cannot
+            // pull focus out of the rail (the property Pass 25 measured for the timed reloads).
+            guard selected == nil, let current = focused, current != "loading",
+                  !cardIDs.contains(current) else { return }
+            focusSoon { focused = firstCardID ?? "loading" }
+        }
     }
 }
 

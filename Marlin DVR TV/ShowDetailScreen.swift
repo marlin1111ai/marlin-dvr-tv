@@ -13,6 +13,10 @@
 //  trashed episode leaves the list (the counts and the size line follow it). "Series pass"
 //  stays inert: this pass wires the airing sheet's series pass only (Pass 8 scope lock).
 //
+//  Pass 31: that write changes the library the Recordings shelves behind this screen are
+//  drawn from, and they had no way of knowing. `onLibraryChanged` tells them, so the owner
+//  does not have to leave Recordings and come back to see a deleted recording go.
+//
 
 import SwiftUI
 
@@ -76,15 +80,19 @@ final class ShowDetailModel {
 struct ShowDetailScreen: View {
     let api: APIClient
     let onPlay: (PlayRequest) -> Void
+    /// The server accepted a write on one of these episodes, so `GET /api/library` now answers
+    /// differently than it did when the shelves behind this screen were read.
+    let onLibraryChanged: () -> Void
     @Environment(RemoteHold.self) private var hold
     @State private var model: ShowDetailModel
     @FocusState private var focused: String?
     @State private var resumeTick = 0   // re-read the resume store after the Player closes
     @State private var menuEpisode: Episode?
 
-    init(api: APIClient, show: ShowSummary, onPlay: @escaping (PlayRequest) -> Void) {
+    init(api: APIClient, show: ShowSummary, onPlay: @escaping (PlayRequest) -> Void, onLibraryChanged: @escaping () -> Void) {
         self.api = api
         self.onPlay = onPlay
+        self.onLibraryChanged = onLibraryChanged
         _model = State(initialValue: ShowDetailModel(api: api, show: show))
     }
 
@@ -107,6 +115,7 @@ struct ShowDetailScreen: View {
                     api: api,
                     onApplied: { updated in
                         model.apply(updated, to: menuEpisode.id)
+                        onLibraryChanged()
                         closeMenu()
                     },
                     onClose: closeMenu
