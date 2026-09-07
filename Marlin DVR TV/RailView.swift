@@ -8,6 +8,12 @@
 //  strip while focus is in the content (the aside of frames 3a–5e, dc:180-185). Not shown
 //  on Home (dc:111). The footer names this Apple TV and the server (dc:69-72).
 //
+//  Pass 25: which entry the remote comes back to is `ScreenShell`'s to decide, not the focus
+//  engine's — the rail itself is unchanged. `focusScope` + `prefersDefaultFocus(destination ==
+//  current)` was tried here first and measured on the Apple TV to change nothing at all: the
+//  landing stayed Pass 24's, entry for entry. The rail draws the ring on the active entry
+//  (`railFocused`, dc:1144-1149); putting focus there is `ScreenShell.railRestore`.
+//
 
 import SwiftUI
 

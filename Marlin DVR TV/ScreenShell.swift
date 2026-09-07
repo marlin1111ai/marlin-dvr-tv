@@ -9,6 +9,12 @@
 //  ("Back again leaves the Guide"); the sweep-2 screens handle Menu themselves and call
 //  `onLeave` when they have nothing of their own to close.
 //
+//  Pass 25: the remote comes back to the rail entry of the screen it is on. `screen` was
+//  always the record of which entry opened the content — nothing ever restored it, so tvOS
+//  picked the rail icon nearest whatever the content had focused (Pass 24 §4.2). The restore
+//  is `railRestore` below, and it fires only on the crossing from the content into the rail,
+//  so Up/Down inside the rail still move freely.
+//
 
 import SwiftUI
 
@@ -20,6 +26,9 @@ struct ScreenShell: View {
     let weather: WeatherModel
     let onPlay: (PlayRequest) -> Void
     @FocusState private var focus: ShellFocus?
+    /// True while the remote is inside the rail; the guard on the restore, so it fires on the
+    /// way in and never again.
+    @State private var railHasFocus = false
 
     private var current: Destination { screen ?? .home }
 
@@ -48,7 +57,27 @@ struct ScreenShell: View {
                 .focusSection()
         }
         .background(Nocturne.bg)
+        .onChange(of: focus) { _, landed in railRestore(landed) }
         .onExitCommand { screen = nil }
+    }
+
+    /// Focus has moved. If it has just crossed into the rail from the content — from the Player
+    /// coming down, or from a reload, or from a plain swipe left — put it on the entry of the
+    /// screen that is open, whatever the focus engine picked by geometry. Movement *within* the
+    /// rail is left alone: `railHasFocus` is already true by then.
+    private func railRestore(_ landed: ShellFocus?) {
+        guard case .rail(let entry) = landed else {
+            railHasFocus = false
+            return
+        }
+        guard !railHasFocus else { return }
+        railHasFocus = true
+        if entry == current {
+            print("[rail] entered on \(entry.rawValue) — already the current screen")
+        } else {
+            print("[rail] entered on \(entry.rawValue), restoring to \(current.rawValue)")
+            focus = .rail(current)
+        }
     }
 
     /// The screens that exist: sweep 2's five, Favorites (Pass 10), Manage DVR (Pass 10B),
