@@ -35,7 +35,10 @@ struct HomeWeatherGlance: View {
                         .font(.nocturne(58))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(Nocturne.neutral300)
-                        .frame(width: 72)
+                        // The design's glyph is 58 pt and reserves no box (dc:134); the frame
+                        // only keeps the text column from moving as the symbol changes. It was
+                        // 72, and those 14 pt were 14 the fourth line did not have — see below.
+                        .frame(width: 58)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(alignment: .firstTextBaseline, spacing: 14) {
                             Text(WeatherFormat.degrees(current.temperature))
@@ -59,6 +62,12 @@ struct HomeWeatherGlance: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
+                    // The text column takes its width first and the spacer keeps whatever is
+                    // left, which is what the design's flex row does (the column is the last
+                    // child, dc:135). Without this SwiftUI splits the row between the column
+                    // and the spacer and the fourth line is cut — "Apple Weat…" on the Apple
+                    // TV in Pass 22, the first run with data in this card.
+                    .layoutPriority(1)
                     Spacer(minLength: 0)
                 }
                 .padding(.vertical, 24)
@@ -93,9 +102,13 @@ struct HomeWeatherGlance: View {
     }
 
     /// "Feels 72° · humidity 54% · Apple WeatherKit" (dc:141)
+    ///
+    /// The service name is printed as WeatherKit gives it. It hands back "Apple Weather", and
+    /// prefixing a word "Apple" of our own made the line read "Apple Apple Weather" — seen on
+    /// the Apple TV in Pass 22, the first run with data in this card.
     private func detailLine(_ current: CurrentWeather) -> String {
-        let service = model.attribution?.serviceName ?? "Weather"
-        return "Feels \(WeatherFormat.degrees(current.apparentTemperature)) · humidity \(WeatherFormat.percent(current.humidity)) · Apple \(service)"
+        let service = model.attribution?.serviceName ?? "Apple Weather"
+        return "Feels \(WeatherFormat.degrees(current.apparentTemperature)) · humidity \(WeatherFormat.percent(current.humidity)) · \(service)"
     }
 
     private var waitingLine: String {

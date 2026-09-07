@@ -44,6 +44,12 @@ struct WeatherScreen: View {
         }
         .task {
             model.load()
+            // Home shares this model, so by the time this screen opens the read has usually
+            // already landed and `onChange` below never fires. Without this the content never
+            // takes focus and the remote is left in the rail — seen on the Apple TV in Pass 22,
+            // the first run with data on the screen. Frame 5f draws the ring on the first
+            // daily row (dc:1402-1403), so that is where it goes.
+            if model.phase == .ready { focusSoon { focused = .day(0) } }
         }
         .onChange(of: model.phase) { _, phase in
             if phase == .ready { focusSoon { focused = .day(0) } }
@@ -192,6 +198,11 @@ struct WeatherScreen: View {
                             .foregroundStyle(Nocturne.neutral500)
                     }
                 }
+                // The alert card is the flexible half of this row (`flex:1; min-width:0`,
+                // dc:721) and the current block is not, so it takes its natural width first.
+                // Without this SwiftUI proposes half the row to each and the detail line is
+                // cut — "wind 5 mph N…" on the Apple TV in Pass 22.
+                .layoutPriority(1)
             }
             alertCard
         }
