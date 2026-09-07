@@ -337,3 +337,49 @@
   Winkler S2 E20, 1.86 GB, `trash=true`, still on disk. `POST /api/library/trash/empty` was never
   sent.
 - **Committed locally and not pushed** — the owner tests first.
+
+## 2026-09-07 (Pass 32 — Stop recording from the Guide; the trash list blocked)
+
+- **A recording in progress can be stopped from the Guide** (owner request, 2026-09-07). Hold the
+  cell and the airing sheet offers **Stop recording**. Until now the only entry point to
+  `POST /api/schedule/jobs/{id}/stop` was frame 6g's "Stop the recording and watch", which appears
+  only on a tuner-busy 502 during a live start — so a recording started from the Guide could not be
+  stopped from it.
+- **The button turns on `Job.status == "Recording"`, and on nothing else.** Queued, Skipped and
+  Conflict have not started; COMPLETED, STOPPED and FAILED are over. **A pass's airing qualifies
+  exactly as a Record Now booking does** — it is deliberately not gated on `passId == "manual"` the
+  way the sheet's existing "● Scheduled" chip is.
+- **Stop is armed on the first click**, like Manage DVR's Cancel recording: the label becomes "Stop
+  recording — click again" and the sheet says "This keeps what has recorded so far and stops the
+  rest." Only the second click sends anything. What has not been recorded cannot be recovered.
+- **On success the sheet re-reads the schedule rather than editing what it holds** — Pass 31's rule.
+  The `?? job` fallback the sheet's other writes use is deliberately absent here: keeping a stale
+  `Recording` job would leave a Stop button on a recording that is already over. On this server the
+  job stays listed as `STOPPED`, so that nil branch was not exercised.
+- **The sheet now re-reads `GET /api/schedule` when it opens, not only when it writes.** The Guide
+  refreshes its schedule only when the sheet writes and never on a timer, so a booking that had since
+  started recording would still read Queued and Stop would not appear.
+- **Proven on Home Theater with the real remote**: *Midday Maryland* on 2.1 booked from the Guide,
+  the sheet reopened, armed, confirmed — "Recording stopped · STOPPED · stopped by owner", the button
+  gone, and the server reading `rec-mtrfm5v9d1fd63 STOPPED` with a 7.66 MB partial in the library.
+- **Item B — the trash list — is a STOP AND REPORT, and nothing was built for it.** The server has
+  no trash listing: `GET /api/library/trash`, `/api/trash`, `/api/library/recordings?trash=1` and
+  `/api/library/shows` all answer **404**, and `GET /api/library?trash=1` returns bytes identical to
+  `GET /api/library`. The only trash-aware read is per show and needs an id the app cannot obtain,
+  because a show whose last episode is trashed leaves `GET /api/library` altogether (Pass 31).
+  **`ManageDVRScreen.swift` and `TrashManageView.swift` are untouched.**
+- **A client-side cache of show ids was considered and rejected**, not merely unbuilt: it would be a
+  guess at server state and would miss anything deleted from the web UI or the other Apple TV. Step 5
+  forbids working around the missing endpoint.
+- **The unblock is a server change, raised for the marlin-dvr project** as the standing rule
+  requires: one read, `GET /api/library/trash`, answering the trashed `episodeView`s the way
+  `?trash=1` already does per show. With it, item B is a small change to `ManageModel.refreshTrash`.
+- **Restore is still wired but never exercised live** — step 7 could not be run, because the episode
+  it names cannot be reached from the Apple TV. Unchanged since Pass 10.
+- **The reference clone and `HLS-CLIENT-API.md` were not read.** Step 1 asked for them while the same
+  prompt put the clone on ABSOLUTE DO-NOT-TOUCH; the do-not-touch list was taken as the stronger
+  instruction and the contradiction is reported rather than resolved unilaterally.
+- **Left on the server, disclosed:** `midday-maryland` `b7a3822d83b4` (7.66 MB, the step-4
+  throwaway) and `the-view` `eccf81dbdab2` (275.92 MB, booked by an aborted first run of the harness
+  and left to finish when that run was killed). Neither was deleted — that was not in the steps.
+- **Committed locally and not pushed** — the owner tests Passes 31 and 32 together.

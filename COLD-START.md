@@ -268,6 +268,43 @@ disappears outright.
 - **Nobody has diffed two stills.** The evidence is a timeline moving by exactly one frame duration;
   no one has proved the *picture* advances one frame of motion rather than the clock alone.
 
+Pass 32 (`reports/2026-09-07-pass32-cancel-and-restore.md`): **item A built and proven; item B
+stopped at its gate and nothing was built for it.**
+
+**A — stop a recording from the Guide.** Hold a Guide cell that is recording and the airing sheet
+now offers **Stop recording**, armed on the first click like Manage DVR's Cancel. The call is
+`POST /api/schedule/jobs/{id}/stop` — the same one frame 6g makes, proven live in Pass 8 — and until
+now 6g was its only entry point, reachable solely from a tuner-busy 502 on a live start, so a
+recording started from the Guide could not be stopped from it. The button turns on `Job.status ==
+"Recording"` and on nothing else, so it is absent before a booking, absent while Queued, and gone
+once the recording is over; a pass's airing qualifies exactly as a Record Now does. On success the
+sheet re-reads `GET /api/schedule` rather than editing what it holds (Pass 31's rule), which redraws
+the Guide's ● marks at the same time. **The sheet also re-reads the schedule when it opens** — the
+Guide refreshes only when the sheet writes, never on a timer, so a booking that had since started
+recording would otherwise still read Queued and Stop would not appear.
+**Proven on Home Theater** (`StopRecordingUITests`, 42.4 s, 0 failures): booked *Midday Maryland* on
+2.1 from the Guide, reopened the sheet, armed, confirmed — the sheet read
+`Recording stopped · STOPPED · stopped by owner`, the Stop button went, and the server agreed
+seconds later (`GET /api/schedule` → `rec-mtrfm5v9d1fd63` **STOPPED**; the 7.66 MB partial in the
+library). One click alone never sends anything, asserted.
+
+**B — the trash list. STOP AND REPORT, per step 5: the server exposes no trash listing.** Measured
+read-only today, not inferred: `GET /api/library/trash` 404, `GET /api/trash` 404,
+`GET /api/library/recordings?trash=1` 404, `GET /api/library/shows` 404, and `GET /api/library?trash=1`
+returns **bytes identical** to `GET /api/library`, so the parameter is ignored. The only trash-aware
+read is per show and needs an id you already hold — and Pass 31 measured that a show whose last
+episode is trashed leaves `GET /api/library` entirely, so the app cannot learn that id at all. It is
+undiscoverable, not merely awkward. Caching ids the app has seen would miss anything deleted from
+the web UI or the other Apple TV, and is the workaround step 5 forbids. **`ManageDVRScreen.swift`
+and `TrashManageView.swift` are untouched by diff**, Restore is still unexercised live, and the
+unblock is a server change for the marlin-dvr project: one read, `GET /api/library/trash`.
+
+**Note on the brief:** step 1 asked for the server side "per HLS-CLIENT-API.md and the reference
+clone" while the same prompt put the reference clone on ABSOLUTE DO-NOT-TOUCH. The do-not-touch list
+was taken as the stronger instruction; **neither the clone nor `HLS-CLIENT-API.md` was read**, and
+every server fact in the report rests on this app's typed calls, the notebook's recorded citations,
+Pass 8's live evidence, or read-only probes of the running server.
+
 ### KNOWN AND UNFIXED after Pass 31
 
 - **A recording trashed as the last episode of its show cannot be restored from the Apple TV.**
@@ -277,7 +314,15 @@ disappears outright.
   Manage DVR → Trash reads "The trash is empty" while the server still holds the recording. It is
   visible and restorable in the server's own web UI. Pass 31 found this and was scoped out of
   fixing it. **`6007a13f0b46` (Hazardous History With Henry Winkler S2 E20, 1.86 GB) is in that
-  state now**, deleted for Pass 31's test and deliberately not restored (owner, 2026-09-07).
+  state now**, deleted for Pass 31's test and deliberately not restored (owner, 2026-09-07). **Pass 32 confirmed
+  the server offers no way to fix this from the client** (§B.2) and built nothing; the unblock is a
+  `GET /api/library/trash` in the marlin-dvr project. **Restore remains wired but never exercised
+  live**, unchanged since Pass 10.
+
+- **Left on the server by Pass 32, disclosed rather than tidied away:** `midday-maryland`
+  `b7a3822d83b4` (7.66 MB, the step-4 throwaway) and `the-view` `eccf81dbdab2` (275.92 MB, booked by
+  an aborted first run of the harness and left to finish when that run was killed). Neither was
+  deleted, because deleting them was not in the steps.
 
 ## What is NOT built
 
@@ -299,11 +344,13 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Pass 31 is committed locally and NOT pushed** — the owner tests the delete refresh on Home
+**Passes 31 and 32 are committed locally and NOT pushed** — the owner tests them together on Home
 Theater first. Everything before it is pushed: Passes 28 and 29 were accepted on 2026-09-07 and
 went up as `58ebb12` and `26f7e2b`, together with Passes 26 and 27, which were read-only reports.
 
-Waiting to be picked up: Pass 31's push gate; the first entry under **KNOWN AND UNFIXED after
+Waiting to be picked up: the Passes 31–32 push gate; **item B of Pass 32**, which needs a
+`GET /api/library/trash` raised as a decision for the marlin-dvr project before this app can do
+anything; the first entry under **KNOWN AND UNFIXED after
 Pass 29** — frame stepping near the end of the prepared range; and the entry under **KNOWN AND
 UNFIXED after Pass 31** — a last-episode recording being unreachable in the app's Trash.
 
