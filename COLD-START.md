@@ -134,6 +134,13 @@ Apple Weather" and was cut. **The alert card is still unseen** — no alert is i
 location and `WeatherKit.WeatherAlert` has no public initializer, so its layout was checked with a
 disclosed, reverted diagnostic and not with real data.
 
+Pass 23 (no report — it is recorded here and in DECISIONS.md): **Pass 22 was accepted by the owner
+on Home Theater 2026-09-06 and pushed to `origin main`** — `d4ee05c` (the signing), `9063207` (the
+three fixes), `6d7d887` (the device harness and its screenshots) and `b52c4e4` (the notebook and
+the report), with this pass's own notebook commit — verified by fetch, `git rev-parse` and
+`git ls-remote` all reading the same SHA. Fast-forward from `bf5e9ba`; nothing forced, rebased or
+amended.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
@@ -154,9 +161,8 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-None assigned — the owner directs what comes next. **Pass 22 is committed locally and NOT
-pushed**: its push gate is the owner's Home Theater test, as the pass was written. Everything
-before it, up to `bf5e9ba`, is on `origin main`.
+None assigned — the owner directs what comes next. Pass 22 is accepted and on `origin main`;
+nothing is committed locally and unpushed, and there is no sweep in flight.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 

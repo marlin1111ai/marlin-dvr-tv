@@ -220,3 +220,11 @@
 - **The second row of the daily list says "Tomorrow" where the design says a weekday name**
   (dc:1391, "Saturday"). Left as it is: the string comes from `TimeFormat.relativeDay`, which the
   Guide, On Later and Recordings all share, and changing it would change those screens.
+- **Owner acceptance: Pass 22 was tested on Home Theater 2026-09-06 and accepted** — WeatherKit
+  enabled on the explicit App ID `com.marlin1111.MarlinDVRTV`, the app signing against it instead
+  of the team wildcard, and the Weather screen (frame 5f) and the Home glance (frame 2a) both
+  drawing real data, with the three defects that populating them revealed fixed. The four Pass 22
+  commits — `d4ee05c` (the signing), `9063207` (the three fixes), `6d7d887` (the device harness
+  and its screenshots) and `b52c4e4` (the notebook and the report) — were approved for push and
+  **pushed to `origin main`** in Pass 23, together with that pass's own notebook commit.
+  Fast-forward from `bf5e9ba`, which is still an ancestor; nothing forced, rebased or amended.
