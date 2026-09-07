@@ -34,6 +34,7 @@ struct PlayerScreen: View {
             Color.black.ignoresSafeArea()
             if model.phase == .playing {
                 PlayerHost(player: model.player, linearOnly: model.isCamera, shortWindowSelect: model.isLive,
+                           ownsArrows: model.isRecording && model.isPaused,
                            frameStep: { model.frameStep($0) }) { dismiss() }
                     .ignoresSafeArea()
                 hud

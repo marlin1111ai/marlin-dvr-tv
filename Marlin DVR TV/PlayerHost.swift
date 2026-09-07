@@ -20,6 +20,16 @@
 //  Apple's transport bar unchanged. Swipes are untouched: a swipe on the touch surface is not
 //  a `UIPress`, so only the discrete click reaches this code at all.
 //
+//  Pass 29: claiming the press was not enough. Measured on the device — every arrow press
+//  reached `pressesBegan` and none was forwarded to `super`, and Apple skipped 10 s anyway —
+//  because **AVPlayerViewController handles the arrow with its own gesture recognizers**, not
+//  through the responder chain. Two `AVNonDigitizerTapRecognizer`s inside its view claim
+//  `[up/down/left/right]`, and a recognizer fires in parallel with the responder chain, so no
+//  amount of not-calling-super can stop one. `armArrowOwnership` disables exactly those
+//  recognizers — found by their public `allowedPressTypes`, never by class name — for as long
+//  as the app owns the arrow, and re-enables the very same ones the moment it does not. The
+//  transport bar itself is untouched: it still draws, and Select still belongs to Apple.
+//
 
 import AVKit
 import SwiftUI
@@ -29,6 +39,8 @@ struct PlayerHost: UIViewControllerRepresentable {
     let player: AVPlayer
     let linearOnly: Bool               // cameras: a 6-entry window, no seeking (standing call)
     let shortWindowSelect: Bool        // live channels only (Pass 7C)
+    /// Pass 29: true exactly while the app owns left/right — paused on a recording.
+    let ownsArrows: Bool
     /// Pass 28: one frame back (-1) or forward (+1). Returns true when it acted, which is the
     /// signal to swallow the press rather than hand it to Apple's transport.
     let frameStep: (Int) -> Bool
@@ -39,12 +51,14 @@ struct PlayerHost: UIViewControllerRepresentable {
         controller.onMenu = onMenu
         controller.frameStep = frameStep
         controller.attach(player: player, linearOnly: linearOnly, shortWindowSelect: shortWindowSelect)
+        controller.armArrowOwnership(ownsArrows)
         return controller
     }
 
     func updateUIViewController(_ controller: PlayerContainerController, context: Context) {
         controller.onMenu = onMenu
         controller.frameStep = frameStep
+        controller.armArrowOwnership(ownsArrows)
     }
 }
 
@@ -64,6 +78,10 @@ final class PlayerContainerController: UIViewController {
     private let playerController = AVPlayerViewController()
     private var shortWindowSelect = false
     private var pendingSelect: DispatchWorkItem?
+    /// The player's own arrow recognizers that this controller switched off, so exactly those
+    /// are switched back on again and nothing else is ever touched.
+    private var suppressed: [UIGestureRecognizer] = []
+    private var armed = false
 
     func attach(player: AVPlayer, linearOnly: Bool, shortWindowSelect: Bool) {
         playerController.player = player
@@ -81,6 +99,43 @@ final class PlayerContainerController: UIViewController {
         playerController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(playerController.view)
         playerController.didMove(toParent: self)
+    }
+
+    /// Pass 29. While the app owns the arrow, the player's own left/right recognizers are
+    /// disabled; otherwise the exact ones that were disabled are restored. Recognizers are
+    /// matched on `allowedPressTypes`, which is public API — no private class name is relied on.
+    /// Nothing else about the transport is changed: it still draws, and Select is still Apple's.
+    func armArrowOwnership(_ owns: Bool) {
+        guard owns != armed else { return }
+        armed = owns
+        if owns {
+            suppressed = Self.arrowRecognizers(in: playerController.view).filter(\.isEnabled)
+            suppressed.forEach { $0.isEnabled = false }
+            print("[framestep] app owns the arrow — \(suppressed.count) player recognizer(s) disabled")
+        } else {
+            suppressed.forEach { $0.isEnabled = true }
+            print("[framestep] arrow returned to the player — \(suppressed.count) recognizer(s) restored")
+            suppressed = []
+        }
+    }
+
+    private static func arrowRecognizers(in view: UIView) -> [UIGestureRecognizer] {
+        var found: [UIGestureRecognizer] = []
+        let arrows: Set<Int> = [UIPress.PressType.leftArrow.rawValue, UIPress.PressType.rightArrow.rawValue]
+        func walk(_ v: UIView) {
+            for g in v.gestureRecognizers ?? [] where !g.allowedPressTypes.isEmpty {
+                if g.allowedPressTypes.contains(where: { arrows.contains($0.intValue) }) { found.append(g) }
+            }
+            v.subviews.forEach(walk)
+        }
+        walk(view)
+        return found
+    }
+
+    /// The player's recognizers must never be left switched off behind us.
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        armArrowOwnership(false)
     }
 
     override var preferredFocusEnvironments: [UIFocusEnvironment] { [playerController] }
@@ -111,11 +166,9 @@ final class PlayerContainerController: UIViewController {
         // Pass 28. `frameStep` decides: it acts only while paused on a recording and answers
         // false everywhere else, so nothing here changes playing, live or camera behaviour.
         if presses.contains(where: { $0.type == .leftArrow }) {
-            print("[framestep] leftArrow press reached the container")
             if frameStep(-1) { swallowArrowRelease = true; return }
         }
         if presses.contains(where: { $0.type == .rightArrow }) {
-            print("[framestep] rightArrow press reached the container")
             if frameStep(1) { swallowArrowRelease = true; return }
         }
         if shortWindowSelect, presses.contains(where: { $0.type == .select }) {

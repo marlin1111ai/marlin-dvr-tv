@@ -293,8 +293,19 @@ final class PlayerModel {
     private static let standardFrameRates: [Double] = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60]
 
     private func adopt(_ measured: Double, from source: String) {
-        let rate = Self.standardFrameRates.first { abs($0 - measured) / $0 < 0.05 } ?? measured
-        guard rate > 1, abs(rate - frameRate) > 0.001 else { return }
+        // Only a reading that lands on a real rate is believed. `currentVideoFrameRate` is a
+        // rolling average and drifts while the pipeline settles — 28.00 was read on the device
+        // from 29.97 material just after a resume, which is 6.6% out and would have made every
+        // step 0.0357 s: enough to skip a frame every fifteenth click. A reading that matches
+        // nothing is a measurement artefact, so the rate already in hand is kept instead.
+        guard let rate = Self.standardFrameRates.first(where: { abs($0 - measured) / $0 < 0.05 }) else {
+            if abs(measured - frameRate) > 0.001 {
+                print(String(format: "[framestep] ignoring %@ reading %.4f fps — not a real rate; keeping %.4f",
+                             source, measured, frameRate))
+            }
+            return
+        }
+        guard abs(rate - frameRate) > 0.001 else { return }
         frameRate = rate
         print(String(format: "[framestep] frame rate %.4f fps (%@ read %.4f) → one frame = %.6f s",
                      rate, source, measured, 1 / rate))
