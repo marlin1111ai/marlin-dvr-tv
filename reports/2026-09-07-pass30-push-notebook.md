@@ -31,8 +31,8 @@ After `git fetch`, all three readings agree:
 seek and the click binding) and `26f7e2b` (Pass 29, the recognizer ownership) — and `a720858`, the
 tip before this push, is still an ancestor, so nothing in the history was rewritten.
 
-The notebook commit made by this pass was pushed the same way and verified the same way; its SHAs
-are at the end of this report.
+The notebook commit made by this pass was pushed the same way and verified the same way; §5 has
+its readings.
 
 ---
 
@@ -109,3 +109,24 @@ implementation:
 No work was done on the end-of-range defect. Nothing in `design/`, the reference clone, or on any
 host outside this folder was read or written; the landed Pass 26 report was **not** edited — its
 corrections live in the notebook.
+
+---
+
+## 5. The notebook push, verified
+
+The notebook commit `604320d` ("Pass 30: push Passes 28 and 29, and catch the notebook up") went up
+as a fast-forward from `26f7e2b`. After `git fetch`:
+
+| | |
+|---|---|
+| `git rev-parse HEAD` | `604320d7076357a450d2192ab4ef882a76bff517` |
+| `git rev-parse origin/main` | `604320d7076357a450d2192ab4ef882a76bff517` |
+| `git ls-remote origin refs/heads/main` | `604320d7076357a450d2192ab4ef882a76bff517` |
+
+**All three match.** `a720858`, `58ebb12` and `26f7e2b` are all still ancestors, so nothing was
+rewritten, and the working tree is clean. The only files in that commit are `COLD-START.md`,
+`DECISIONS.md` and this report — confirmed with `git diff --name-only 26f7e2b..604320d`, which lists
+those three and nothing else.
+
+This section was appended after `604320d` was pushed, because it records that push; it therefore
+lands as a small follow-up commit of its own, and that commit is the new tip of `origin main`.
