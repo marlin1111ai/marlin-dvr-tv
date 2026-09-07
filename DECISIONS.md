@@ -228,3 +228,34 @@
   and its screenshots) and `b52c4e4` (the notebook and the report) — were approved for push and
   **pushed to `origin main`** in Pass 23, together with that pass's own notebook commit.
   Fast-forward from `bf5e9ba`, which is still an ancestor; nothing forced, rebased or amended.
+
+## 2026-09-07 (rail focus)
+
+- **Owner decision: the remote comes back to the rail entry that opened the screen you are on.**
+  Swipe left from the Guide and the ring is on Guide; from Radio, on Radio — every screen, every
+  time, regardless of how the content happens to be laid out. Recorded here because Pass 24 raised
+  it as an open question (its Open Question 1) and the owner answered it: restore-to-origin, not
+  "the last entry the remote touched". It is also what the approved design already drew — the rail
+  data gives the 4 pt accent focus ring to the **active** index and to no other (`railFocused`,
+  dc:1144-1149), and the one frame that draws the rail expanded is fed `railFocused(2)` on the
+  On Now screen (dc:55, dc:1345).
+- **Home stays as it is: no rail, by design** (dc:111). Selecting Home from the rail leaves the
+  shell, so there is nothing to come back to. Untouched this pass and asserted on the device.
+- **The fix records nothing new.** `ScreenShell.screen` was always the record of which entry opened
+  the content; only the restore was missing. It is `ScreenShell.railRestore`, and it fires on the
+  crossing from the content into the rail and never again — otherwise Up and Down inside the rail
+  would snap back and the rail would be unusable.
+- **`focusScope` + `prefersDefaultFocus` was tried first and is not the mechanism.** Built that way,
+  put on Home Theater with no other change, it reproduced Pass 24's landings entry for entry: 2 of 9
+  right, 7 wrong. The tvOS focus engine does not consult a scope's default-focus preference when the
+  remote swipes directionally into it. The code was removed and the measurement is recorded in
+  `RailView.swift`'s header so nobody spends another device run on it.
+- **Verified on Home Theater with the real Siri Remote** (Pass 25 report §3–§6): all nine
+  rail-drawing entries over three rounds, **27 of 27 correct**; Home draws no rail; the On Now (60 s)
+  and Cameras (45 s) reloads move focus neither in the rail nor in the content, with each screen's
+  own subtitle proving the refresh happened; and one Player round trip returns focus to the same
+  card it left and still lands on Cameras.
+- **Still open and deliberately untouched**: `ShellFocus.content` remains declared and unused — this
+  fix did not need it, since "focus is nil" already means the remote is in the content; Select on the
+  rail entry of the screen you are already on still does nothing; and the sub-screens (show detail,
+  the Manage DVR sections, the Radar, the airing sheet) were not looked at.

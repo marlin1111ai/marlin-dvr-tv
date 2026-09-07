@@ -141,6 +141,35 @@ the report), with this pass's own notebook commit — verified by fetch, `git re
 `git ls-remote` all reading the same SHA. Fast-forward from `bf5e9ba`; nothing forced, rebased or
 amended.
 
+Pass 24 (`reports/2026-09-06-pass24-rail-focus-recon.md`): rail focus recon, read-only, report
+only — a stop-and-report at step 4, because one cause explained every failure. **Nothing in the app
+had ever set rail focus.** `ScreenShell`'s `@FocusState focus` was read in two places and written in
+none, `ShellFocus.content` was dead code, the rail had no `.defaultFocus`, and no last-selection was
+stored anywhere, so on a swipe left tvOS picked the rail icon nearest the **vertical centre of
+whatever the content had focused**. Measured on Home Theater over three identical rounds: of the ten
+rail entries, nine open a screen with a rail to come back to, **2 landed on the right entry and 7 did
+not** — and the two that worked (Favorites, Weather) were coincidences of layout, Weather by 1.5 pt.
+A twelve-probe test proved the mechanism by walking the highlight down a screen's content and
+watching the rail landing walk down with it, twelve out of twelve. Nothing was changed.
+
+Pass 25 (`reports/2026-09-07-pass25-rail-focus-restore.md`): **the fix — swipe left lands on the
+entry you came from, every screen, every time.** Twelve lines of behaviour in one file. Nothing new
+is recorded, because the record already existed: `ScreenShell.screen` *is* the entry that opened the
+content; only the restore was missing, and it is now `ScreenShell.railRestore`, fired on the crossing
+from the content into the rail and never again, so Up/Down inside the rail still move freely. This is
+what the design draws (`railFocused`, dc:1144-1149). **The declarative approach was tried first and
+measured to do nothing**: `focusScope` + `prefersDefaultFocus(destination == current)` on the rail,
+built and put on the Apple TV with no other change, reproduced Pass 24's table entry for entry — the
+focus engine does not consult a scope's default-focus preference on a directional swipe into it. That
+code was removed; `RailView.swift` is comment-only this pass. Verified on Home Theater with the real
+remote: **all nine rail-drawing entries, three rounds, 27 of 27 correct** (Pass 24's 7 failures all
+fixed, and the content focus in each case is the same one Pass 24 measured). Home still draws no
+rail, asserted rather than assumed. The **periodic reloads do not steal or move focus** — On Now
+(60 s) and Cameras (45 s) each watched with the remote parked in the rail and again with it in the
+content, sampled every 5 s, with each screen's own subtitle proving the refresh actually happened —
+and **one Player round trip** returns focus to the very card it left (same element, same frame) and
+still lands on Cameras. `RailFocusRestoreUITests` is the harness and is committed.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
@@ -161,8 +190,9 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-None assigned — the owner directs what comes next. Pass 22 is accepted and on `origin main`;
-nothing is committed locally and unpushed, and there is no sweep in flight.
+**Pass 25 is pushed to `origin main` and is waiting on the owner's Home Theater test.** Passes 24
+and 25 went up together; nothing is committed locally and unpushed, and there is no sweep in flight.
+Pass 22 remains the last pass the owner accepted.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
@@ -193,6 +223,18 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
 
 `WeatherKitEnabledUITests` (Pass 22) is the same kind of harness: the physical Apple TV, the real
 remote, and it photographs the Weather screen and the Home glance with WeatherKit data in them.
+
+`RailFocusRestoreUITests` (Pass 25) is the same kind of harness and needs the physical Apple TV. Its
+four tests are `testEveryRailEntryLandsOnItself` (all nine entries, three rounds),
+`testHomeStillDrawsNoRail`, `testReloadsDoNotMoveFocus` (about five minutes — it waits out a full
+On Now and Cameras reload cycle twice each) and `testFocusSurvivesAPlayerRoundTrip`, which opens a
+camera, the one Player path that holds no tuner.
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/RailFocusRestoreUITests"
+```
 
 ```
 xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
