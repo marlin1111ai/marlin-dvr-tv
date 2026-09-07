@@ -49,10 +49,20 @@ final class RadarModel {
     /// within about a minute of NOAA publishing it, and it costs one catalog request an
     /// interval — negligible beside the tile traffic. It runs only while the radar is up.
     private static let refreshEvery: Duration = .seconds(300)
-    /// Radar loops read best at about two frames a second, with a pause on the newest frame
-    /// so the eye can land on it.
-    private static let step: Duration = .milliseconds(550)
-    private static let holdOnNewest: Duration = .milliseconds(1400)
+    /// The pace, retuned in Pass 16 once the tile store made every frame draw from memory.
+    ///
+    /// Rendering is no longer what sets it: with the store, frames come up whole at 550 ms —
+    /// twenty-five one-second samples at varied phases, every one fully painted, and complete
+    /// six seconds into a cold start. What does set it is the one burst left on NOAA. The first
+    /// cycle still has to fetch each frame once, about 432 tiles, and cramming that into a
+    /// 10-second cycle peaked at 2,389 requests a minute — the same shape of load that drew a
+    /// 403 in Pass 15. At 900 ms the same 432 requests spread over about 17 seconds instead.
+    ///
+    /// It also reads better: eighteen scans is about two hours of weather, and two hours in
+    /// seventeen seconds lets the eye follow a storm rather than blink at it. The pause on the
+    /// newest frame is kept in proportion so "now" is where the loop rests.
+    private static let step: Duration = .milliseconds(900)
+    private static let holdOnNewest: Duration = .milliseconds(2200)
 
     var currentFrame: RadarFrame? {
         frames.indices.contains(index) ? frames[index] : nil
@@ -106,6 +116,7 @@ final class RadarModel {
                 guard let fresh = try? await RadarSource.frames(near: coordinate),
                       !fresh.isEmpty,
                       fresh.map(\.id) != self.frames.map(\.id) else { continue }
+                NOAARadarTileOverlay.store.keepOnly(frames: Set(fresh.map(\.id)))
                 self.frames = fresh
                 self.index = fresh.count - 1
                 self.phase = .ready
@@ -119,6 +130,8 @@ final class RadarModel {
         loopTask = nil
         refreshTask?.cancel()
         refreshTask = nil
+        // Nothing outlives the view: backing out of the radar frees every cached tile.
+        NOAARadarTileOverlay.store.removeAll()
         tileWatchTask?.cancel()
         tileWatchTask = nil
     }

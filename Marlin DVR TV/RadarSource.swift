@@ -194,6 +194,85 @@ nonisolated enum RadarSource {
     }
 }
 
+/// The tiles already fetched, kept so a step of the loop redraws instead of re-downloading.
+///
+/// Pass 15 fixed the animation by detaching one frame's overlay and attaching the next, which is
+/// the only mechanism tvOS repaints — but MapKit discards a detached overlay's tiles, so every
+/// step went back to NOAA. Measured on the Apple TV: **about 2,300 requests a minute** with the
+/// radar simply open, and NOAA answered HTTP 403 under it.
+///
+/// This is the store the owner approved in answer to that. It is deliberately small in what it
+/// promises:
+///
+/// - **In memory only.** No file is written and nothing survives the app.
+/// - **Nothing survives the view.** `RadarModel.stop()` empties it on disappear, so backing out
+///   of the radar frees every byte.
+/// - **Keyed by the whole tile URL**, which carries NOAA's own `time=` for that scan. A cached
+///   tile is therefore always exactly the tile for the frame being drawn — the cache cannot show
+///   one scan's weather under another scan's timestamp.
+/// - **Bounded**, and trimmed oldest-first when the budget is reached.
+/// - **Only successes are kept.** A failed or empty response is never stored, so a failure stays
+///   a failure and the screen still says so.
+nonisolated final class RadarTileStore: @unchecked Sendable {
+    /// 96 MB. The realistic worst case is NOAA's full window at this zoom — Pass 16 measured 17
+    /// frames at about 24 tiles each, and the tiles that carry weather run 100-160 KB — so
+    /// roughly 50 MB. The budget leaves room above that and still cannot run away.
+    private let budgetBytes = 96 * 1024 * 1024
+
+    private let lock = NSLock()
+    private var data: [String: Data] = [:]
+    /// Insertion order, so the oldest tiles go first when the budget is reached.
+    private var order: [String] = []
+    private var bytes = 0
+
+    /// What the store is holding, for the report and for the on-screen probe.
+    var currentBytes: Int { lock.withLock { bytes } }
+    var currentCount: Int { lock.withLock { data.count } }
+
+    func tile(for key: String) -> Data? {
+        lock.withLock { data[key] }
+    }
+
+    func store(_ tile: Data, for key: String) {
+        guard !tile.isEmpty else { return }
+        lock.withLock {
+            if data[key] == nil { order.append(key) } else { bytes -= data[key]!.count }
+            data[key] = tile
+            bytes += tile.count
+            while bytes > budgetBytes, let oldest = order.first {
+                order.removeFirst()
+                if let gone = data.removeValue(forKey: oldest) { bytes -= gone.count }
+            }
+        }
+    }
+
+    /// Called when the frame list changes: tiles belonging to scans that have rolled out of
+    /// NOAA's window are dead weight and go.
+    func keepOnly(frames keep: Set<String>) {
+        lock.withLock {
+            for key in order where !keep.contains(Self.frameID(of: key)) {
+                if let gone = data.removeValue(forKey: key) { bytes -= gone.count }
+            }
+            order.removeAll { data[$0] == nil }
+        }
+    }
+
+    /// A key is "<frame id>|<tile url>".
+    static func key(frame: String, url: String) -> String { frame + "|" + url }
+    private static func frameID(of key: String) -> String {
+        String(key.prefix(while: { $0 != "|" }))
+    }
+
+    func removeAll() {
+        lock.withLock {
+            data.removeAll()
+            order.removeAll()
+            bytes = 0
+        }
+    }
+}
+
+
 /// Turns MapKit's z/x/y into the one thing NOAA serves: a picture of a bounding box.
 ///
 /// `url(forTilePath:)` is MKTileOverlay's documented hook for exactly this — the class's own
@@ -210,12 +289,20 @@ nonisolated final class NOAARadarTileOverlay: MKTileOverlay {
     nonisolated(unsafe) static var tilesLoaded = 0
     nonisolated(unsafe) static var tilesFailed = 0
     nonisolated(unsafe) static var lastFailure: String?
+    nonisolated(unsafe) static var tilesFromStore = 0
+    nonisolated(unsafe) static var tilesFromNOAA = 0
+
+    /// The one store every frame's overlay draws from. It belongs to the radar view's lifetime:
+    /// `RadarModel.stop()` empties it on disappear.
+    static let store = RadarTileStore()
 
     static func resetCounters() {
         tilesRequested = 0
         tilesLoaded = 0
         tilesFailed = 0
         lastFailure = nil
+        tilesFromStore = 0
+        tilesFromNOAA = 0
     }
 
     init(frame: RadarFrame, imageServer: String) {
@@ -258,12 +345,26 @@ nonisolated final class NOAARadarTileOverlay: MKTileOverlay {
             print("[radar] \(frame.id) tile z\(path.z) x\(path.x) y\(path.y) -> \(url(forTilePath: path).absoluteString)")
         }
         let frameID = frame.id
+        let key = RadarTileStore.key(frame: frameID, url: url(forTilePath: path).absoluteString)
+
+        // Already fetched for this very scan — redraw it rather than ask NOAA again. The key
+        // carries NOAA's own `time=`, so this is the same picture, not a stale one.
+        if let kept = Self.store.tile(for: key) {
+            Self.tilesFromStore += 1
+            Self.tilesLoaded += 1
+            result(kept, nil)
+            return
+        }
+
+        Self.tilesFromNOAA += 1
         super.loadTile(at: path) { data, error in
             if let error {
                 print("[radar] tile failed for \(frameID): \(error.localizedDescription)")
                 Self.tilesFailed += 1
                 Self.lastFailure = error.localizedDescription
             } else if let data, !data.isEmpty {
+                // Only a success is kept, so a failure can never be papered over by the store.
+                Self.store.store(data, for: key)
                 Self.tilesLoaded += 1
             } else {
                 Self.tilesFailed += 1
