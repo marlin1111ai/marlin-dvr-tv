@@ -74,9 +74,34 @@ Pass 15 (`reports/2026-09-06-pass15-radar-animation.md`): the radar **animates**
 
 Pass 16 (`reports/2026-09-06-pass16-radar-cache.md`, accepted by the owner on Home Theater 2026-09-06 and pushed in Pass 17): Passes 14 and 15 pushed to `origin main` (`9dcc135`), and the radar's traffic problem solved. `RadarTileStore` keeps the tiles already fetched and serves them back on the next step, so a loop that re-downloaded everything now redraws from memory: **2,327 requests a minute became 53 a minute over eight minutes, and about 5 a minute at rest** once the frames are loaded. Measured on the Apple TV: 432 tiles held, **43 MB**, 2.4 MB per frame across 18 frames, with the app at 497 MB and 1.6 GB of headroom. The store is memory only, bounded at 96 MB, trimmed of scans that roll out of NOAA's window, and emptied by `RadarModel.stop()` when the view closes. NOAA answered every request — **no 403 and no failures anywhere in this pass**. The frame pace is retuned from 550 ms to **900 ms** (hold 2200 ms): frames render whole at either now, so the pace was chosen to spread the one-time cold burst — 2,389 requests a minute peak became 1,426 — and to make two hours of weather read in a seventeen-second cycle. The **five-minute refresh was seen to fire** for the first time: 17 frames became 18, NOAA requests rose by exactly one frame's worth, and the newest timestamp advanced.
 
+Pass 17 (commit `6a724fb`, no report — it is recorded in DECISIONS.md): Pass 16's acceptance.
+Pass 18 (`reports/2026-09-06-pass18-radio-recon.md`): Radio recon, read-only, report only — the
+contract's §9, one `GET /api/radio`, the design's frame 5g field by field, and what the existing
+Player can and cannot do for a station.
+
+Pass 19 (`reports/2026-09-06-pass19-radio.md`): the **Radio screen**, built and playing. The rail
+entry and the Home tile were drawn and inert since Pass 5 and are live now. The screen is built to
+the app's look, not to frame 5g (owner, 2026-09-06): a two-column grid of station tiles, each the
+icon the DVR has already cached plus the station's name, in the server's order and never sorted;
+and a now-playing bar carrying that station's icon, its name and a Stop. The design's frequency
+string, genre, bitrate, track/artist line and favourite star are dropped — the server has no data
+for any of them — and `format` is ignored entirely (it is the empty string on both of the owner's
+stations). Audio is a **bare AVPlayer**: `AVPlayerItem(url:)` on the URL the server gives, no play
+session, no HLS, no keep-alive, no `AVPlayerViewController` and **no MIME option of any kind**.
+Leaving the screen stops the stream, and so does the app leaving the foreground; there is no audio
+session category and no background mode.
+
+**The two things nobody had ever observed are settled, on the Apple TV.** *(a)* **AVPlayer follows
+the StreamTheWorld 302.** The redirector answers `302` with a **zero-byte body**, and AVPlayer
+decoded twenty-eight seconds of audio from it — audio it could only have got from the CDN the
+`Location` names. *(b)* **tvOS plays the `.aac` mount**, which is the first station in the owner's
+list and the one the server project never reached even with curl: AVFoundation reported the decoded
+track as `'aac ' 22050 Hz 1 ch`. The MP3 station reported `'.mp3' 22050 Hz 1 ch`. **Both stations
+play**: WBAL NewsRadio 1090 and WCBM Talk Radio 680, each driven by the real Siri Remote.
+
 ## What is NOT built
 
-The future screens **Radio and Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13.
+The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
 
 **Built but blocked on the owner** (Pass 13):
 
@@ -97,9 +122,9 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-None assigned — the owner directs what comes next. Passes 8, 9, 10 and 10B are accepted and on `origin main`; there is no sweep in flight.
+None assigned — the owner directs what comes next. **Pass 19 (Radio) is committed locally and not pushed**: the push gate says the owner tests it on Home Theater first, and the push is approved after that.
 
-Standing candidates, should the owner want them: the three untested-live paths above; the parked screens (Radio, Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
+Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
 To run the on-device hold tests again:
 
@@ -111,4 +136,11 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
 
 The Manage DVR and rail UI tests (`ManageDVRUITests`, `RailManageUITests`) drive the Simulator;
 `ManageDVRUITests` needs a scheduled recording and a series pass to exist. Both are evidence
-harnesses from their passes, not standing tests.
+harnesses from their passes, not standing tests. So is `RadioUITests` (Pass 19), which needs the
+physical Apple TV and the owner's two stations:
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/RadioUITests"
+```

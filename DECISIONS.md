@@ -84,3 +84,51 @@
 - **The five-minute refresh was observed firing** for the first time (Pass 15 never saw it): at the five-minute mark the frame list went from 17 to 18, NOAA requests rose by exactly 24 — one frame's tiles — and the newest displayed timestamp advanced.
 - **Owner acceptance: Pass 16 tested on Home Theater 2026-09-06 and accepted** — the radar tile store, the 900 ms frame pace and the five-minute refresh. Pushed in Pass 17.
 - **The radar tile store dies with the view** (owner, 2026-09-06). Each visit to the radar pays the cold cycle again — about seventeen seconds and roughly 432 tiles — and the store is not kept alive between visits. This settles Pass 16 Open Question 3.
+
+## 2026-09-06 (Pass 19 — the Radio screen)
+
+- **Radio comes off the parked list and is built now** (owner, 2026-09-06). **Settings stays
+  parked** — present as drawn and inert, a Home tile only. Radio's rail entry and Home tile,
+  drawn and inert since Pass 5, are live: `Destination.radio.isBuiltNow` is `true` and
+  `ScreenShell` routes it to `RadioScreen`.
+- **The station tile is built to the app's look, not designed first** (owner, 2026-09-06) — the
+  same route the radar, Manage DVR and Favorites took. **A tile carries the server's cached icon
+  and the station name, and nothing else.** The design's frequency string, genre, bitrate,
+  track/artist line and favourite star are **dropped**: the server has no data for any of them
+  (Pass 18 §3.6 — of the eleven values frame 5g draws, `/api/radio` supplies three). The icon takes
+  the 76 px square the design gave to a frequency string, which is the one field the server is
+  generous with and the design had nowhere to put.
+- **The now-playing bar is kept**, carrying the playing station's icon, its name, and a stop
+  control (owner, 2026-09-06). **Nothing else** — no programme, track, bitrate, frequency,
+  favourite star or volume slider. The one addition is that a station which will not play says so
+  there, naming the failure, because silence presented as playing is not allowed.
+- **Leaving the Radio screen stops the stream** (owner, 2026-09-06). Radio does **not** continue
+  behind other screens and does **not** survive the screen dimming: it has the same lifetime as
+  every other player in the app. `RadioScreen.onDisappear` and its Menu handler call
+  `RadioPlayer.stop()`, and so does `UIApplication.didEnterBackgroundNotification`. **No
+  `AVAudioSession` category and no `UIBackgroundModes` entry** were added, so nothing in the build
+  could let audio outlive the foreground. This overrides the design's footer line, which says
+  playback continues with the screen dimmed and that Menu returns to the rail without stopping the
+  stream (`dc:844`, `dc:767`).
+- **`format` is ignored entirely** (owner, 2026-09-06). The contract calls it "a hint only"
+  (`HLS-CLIENT-API.md:297`) and it is the **empty string on both** of the owner's stations. It is
+  never drawn, and above all it is never handed to AVFoundation: **no MIME option of any kind is
+  passed**, in particular not `AVURLAssetOverrideMIMETypeKey`, whose header states that a supplied
+  type is the only one considered and that the server-provided MIME type and the path extension are
+  ignored (`AVAsset.h:550-552`). AVFoundation reads the type off the wire.
+- **The app is read-only against `/api/radio`.** No station is added, edited, reordered or deleted
+  from the Apple TV, and the list is rendered **in the server's order** with no sort anywhere
+  (`:302`).
+- **AVPlayer follows the StreamTheWorld 302** (Pass 19 step 6a, measured on the Apple TV — the
+  first time anyone measured AVPlayer rather than curl). The redirector answers `302 Found` with a
+  **zero-byte body**; AVPlayer decoded 28.6 s of audio from that URL, which can only have come from
+  the CDN the `Location` header names.
+- **tvOS plays the `.aac` mount** (Pass 19 step 6b, measured on the Apple TV). This was the open
+  unknown — the AAC mount is the first station in the owner's list and the server project's Pass 32
+  never reached one even with curl. AVFoundation reported the decoded track as `'aac ' 22050 Hz
+  1 ch` for WBAL NewsRadio 1090 and `'.mp3' 22050 Hz 1 ch` for WCBM Talk Radio 680. **Both stations
+  play.**
+- **No ATS change was needed and none was made.** Both stations are `https://` on a public host,
+  which ATS permits by default, and the icons come from the DVR's own IP, which the existing
+  `NSAllowsLocalNetworking` exception already covers. `Info.plist` is untouched. The rule for a
+  plain-`http://` station is still open (Pass 18 Open Question 3).
