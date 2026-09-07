@@ -110,6 +110,12 @@ and a lowercase noun, the shape every other counted tile uses. The count is the 
 both fallbacks were photographed on the Apple TV. No other tile changed, which was asserted by
 capturing all nine on the device.
 
+Pass 21 (no report — it is recorded here and in DECISIONS.md): **Pass 20 was accepted by the owner
+on Home Theater 2026-09-06 and pushed to `origin main`** — `2e7542b` (the Home Radio count) and
+`ec0f863` (its notebook and report), with this pass's own notebook commit — verified by fetch,
+`git rev-parse` and `git ls-remote` all reading the same SHA. Fast-forward; nothing forced, rebased
+or amended.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
@@ -133,9 +139,8 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-None assigned — the owner directs what comes next. Pass 19 is accepted and on `origin main`.
-**Pass 20's Home Radio count is committed locally and not pushed**: the push gate says the owner
-tests it on Home Theater first, and the push is approved after that.
+None assigned — the owner directs what comes next. Passes 19 and 20 are both accepted and on
+`origin main`; nothing is committed locally and unpushed, and there is no sweep in flight.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 

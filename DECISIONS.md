@@ -161,3 +161,5 @@
   line first and consult the loaded one only if there was none, which is why Radio could never show
   a number. A loaded value now wins and the static line is the fallback. Weather and Settings are
   unaffected — they have no loaded value at all.
+- **Owner acceptance: Pass 20 was tested on Home Theater 2026-09-06 and accepted** — the Home Radio
+  tile showing the station count from the server. Pushed to `origin main` in Pass 21.
