@@ -18,6 +18,14 @@
 //     never shown: if the server still refuses (a pass created elsewhere between the read
 //     and the write), the sheet reloads, flips to Edit and says so in plain words.
 //
+//  Pass 32 item A: **Stop recording**, offered only while the recorder is actually running on
+//  this airing. Until now the only way to stop an in-progress recording was frame 6g's "Stop
+//  the recording and watch", which is reachable solely from a tuner-busy 502 on a live start —
+//  so a recording could be started from the Guide and not stopped from it. The call is the same
+//  one 6g makes, `POST /api/schedule/jobs/{id}/stop` (recorder.go:660-693), proven live in
+//  Pass 8. It is armed on the first click, like Manage DVR's Cancel recording, because what has
+//  not recorded yet is not recoverable.
+//
 
 import SwiftUI
 
@@ -52,6 +60,8 @@ struct AiringSheet: View {
     @State private var message: String?
     @State private var failed = false
     @State private var now = Date()
+    /// Stop is a two-click action: the first click arms it and says what will be lost.
+    @State private var stopArmed = false
 
     private var program: Program { selection.program }
     private var channel: MergedChannel { selection.channel }
@@ -59,6 +69,15 @@ struct AiringSheet: View {
     /// A Record Now booking on this airing: the manual job the server keeps (passes.go:60).
     private var manualJob: Job? {
         guard let job, job.passId == "manual", job.status != "Skipped" else { return nil }
+        return job
+    }
+
+    /// Pass 32: the job for this airing while the recorder is actually running on it. Status
+    /// is the server's own (passes.go), and "Recording" is the only value that means a file is
+    /// being written right now — Queued, Conflict and Skipped have not started, and COMPLETED,
+    /// STOPPED and FAILED are over. A pass's airing qualifies exactly as a Record Now does.
+    private var recordingJob: Job? {
+        guard let job, job.status == "Recording" else { return nil }
         return job
     }
 
@@ -127,6 +146,12 @@ struct AiringSheet: View {
         .task {
             job = selection.job
             await loadPass()
+            // Pass 32: whether Stop is offered turns on the job's *current* status, and the
+            // Guide's copy is only as fresh as its last fetch — it refreshes when this sheet
+            // writes, not on a timer, so a booking that has since started recording would
+            // still read "Queued". Ask the schedule what is true now; keep the Guide's copy
+            // if that read fails.
+            job = await onScheduleChanged() ?? selection.job
             try? await Task.sleep(for: .milliseconds(60))
             focused = firstFocusID
         }
@@ -222,6 +247,11 @@ struct AiringSheet: View {
                 }
                 .buttonStyle(BareButtonStyle())
                 .focused($focused, equals: "watch")
+            }
+            if recordingJob != nil {
+                action(stopArmed ? "Stop recording — click again" : "Stop recording", id: "stop", primary: false) {
+                    await stopRecording()
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -335,6 +365,41 @@ struct AiringSheet: View {
             failed = true
             message = Self.friendly(error, fallback: "The server could not create the series pass.")
             print("[sheet] pass failed: \(error)")
+        }
+        busy = nil
+    }
+
+    /// Pass 32 item A: stop the recorder on this airing. The same call frame 6g makes, and the
+    /// server does not answer until the recorder has closed the file (recorder.go:672-676), so
+    /// by the time this returns the tuner is free and what was recorded is on disk.
+    private func stopRecording() async {
+        guard let target = recordingJob else { return }
+        guard stopArmed else {
+            stopArmed = true
+            failed = false
+            message = "This keeps what has recorded so far and stops the rest. Click again to confirm."
+            return
+        }
+        busy = "stop"
+        failed = false
+        message = nil
+        do {
+            let outcome = try await api.stopJob(id: target.id)
+            var line = "Recording stopped · \(outcome.status)"
+            if let reason = outcome.reason, !reason.isEmpty { line += " · \(reason)" }
+            message = line
+            stopArmed = false
+            // Step 3, Pass 31's rule: re-read the server's state, never edit it here. And no
+            // `?? job` fallback — if the stopped job has left GET /api/schedule, then nil is
+            // the truth and this airing is bookable again; keeping the old Recording job would
+            // leave a Stop button on a recording that is already over.
+            job = await onScheduleChanged()
+            focused = "series"
+        } catch {
+            failed = true
+            stopArmed = false
+            message = Self.friendly(error, fallback: "The server could not stop this recording.")
+            print("[sheet] stop failed: \(error)")
         }
         busy = nil
     }
