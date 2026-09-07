@@ -98,9 +98,10 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Sub-line for tiles the Home read has no count for (no fabricated numbers). Radio keeps
-    /// "Stations" now that it is built: Home reads five endpoints and `/api/radio` is not one
-    /// of them, and Pass 19 was not asked to add a sixth.
+    /// Sub-line for tiles the Home read has no count for (no fabricated numbers). Radio's is
+    /// now a **fallback** rather than what it always shows: Pass 20 added `/api/radio` to Home's
+    /// reads, so the tile draws "2 stations" when the server answers and drops back to this
+    /// word when it does not, or when the list is empty.
     var staticTileSubtitle: String? {
         switch self {
         case .weather: return "Local weather"

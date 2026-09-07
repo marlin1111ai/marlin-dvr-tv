@@ -5,7 +5,8 @@
 //  Home, frame 2a: a launcher with no rail (dc:111) — greeting, the fixed name "Marlin"
 //  (owner decision), date and time, and nine tiles with a live sub-line each
 //  (dc:120-160; data dc:1353-1368). Pass 13 filled the weather glance card (dc:133-143) into
-//  the 520 pt slot Pass 5 held open for it — see HomeWeatherGlance.
+//  the 520 pt slot Pass 5 held open for it — see HomeWeatherGlance, and Pass 20 gave the Radio
+//  tile the station count from `GET /api/radio`, the sixth endpoint this screen reads.
 //
 
 import SwiftUI
@@ -21,9 +22,14 @@ final class HomeModel {
         self.api = api
     }
 
+    /// A count the server actually gave wins; the static line is the fallback — for the tiles
+    /// that have no count at all (Weather, Settings) and for Radio when the read failed or the
+    /// list came back empty. Pass 20 flipped this order: before it the static line always won,
+    /// which is why Radio could never show a number.
     func subtitle(for destination: Destination) -> String {
+        if let loaded = subtitles[destination] { return loaded }
         if let s = destination.staticTileSubtitle { return s }
-        return subtitles[destination] ?? "…"
+        return "…"
     }
 
     func load() async {
@@ -32,6 +38,9 @@ final class HomeModel {
         async let schedule = api.schedule()
         async let library = api.library()
         async let cameras = api.cameras()
+        // Pass 20: the sixth read, for the Radio tile's count. Same shape as the five above —
+        // one request, no retries, its own catch.
+        async let radio = api.radio()
 
         do {
             let list = try await channels
@@ -75,6 +84,21 @@ final class HomeModel {
         } catch {
             subtitles[.cameras] = "unavailable"
             print("[home] cameras: \(error)")
+        }
+        do {
+            // The server's own `count` (radio.go:87), not the array's length.
+            let count = try await radio.count
+            // Only a real count is ever drawn. A list with nothing in it drops the tile back to
+            // the "Stations" it has said since Pass 5 — not "0 stations" and not "unavailable"
+            // (owner decision, Pass 20 step 4).
+            //
+            // Clearing the key rather than leaving it alone is the point: `HomeModel` outlives
+            // Home, which reloads every time the user comes back to it, so a count kept from an
+            // earlier read would sit under a server that has since gone away. Nothing stale.
+            subtitles[.radio] = count > 0 ? "\(count) station\(count == 1 ? "" : "s")" : nil
+        } catch {
+            subtitles[.radio] = nil
+            print("[home] radio: \(error)")
         }
         loaded = true
     }
