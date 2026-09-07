@@ -163,3 +163,60 @@
   unaffected — they have no loaded value at all.
 - **Owner acceptance: Pass 20 was tested on Home Theater 2026-09-06 and accepted** — the Home Radio
   tile showing the station count from the server. Pushed to `origin main` in Pass 21.
+
+## 2026-09-06 (Pass 22 — WeatherKit enabled, and both weather screens populated)
+
+- **The owner registered the explicit App ID.** Description "Marlin DVR TV", bundle id
+  `com.marlin1111.MarlinDVRTV`, with **WeatherKit ticked** under App Services. This clears the
+  stop-and-report of Pass 13 step 2. Confirmed from Apple's own answer before anything in the
+  repo was touched: asked with a scratchpad-only entitlements file and a scratchpad derived-data
+  path, Apple returned a new development profile — `tvOS Team Provisioning Profile:
+  com.marlin1111.MarlinDVRTV`, `AppIDName` **"Marlin DVR TV"**, application-identifier
+  `<team>.com.marlin1111.MarlinDVRTV`, and `com.apple.developer.weatherkit = true`. **Xcode
+  cannot have done that**: WeatherKit is `"canRequestFromPortal": false` in Xcode's own portal
+  capability table (`DVTPortal.framework/.../DVTPortalCachedPortalCapabilities.json`, entry
+  `data[185]`, read by hand this pass), so the capability on that App ID is the owner's doing.
+- **The app signs against that App ID, not the team wildcard** (owner, 2026-09-06). Two things
+  in the repo make it so and nothing else: a new `Marlin DVR TV.entitlements` at the repo root
+  holding the single key `com.apple.developer.weatherkit`, and `CODE_SIGN_ENTITLEMENTS =
+  "Marlin DVR TV.entitlements"` in the app target's Debug and Release configurations.
+  **`CODE_SIGN_STYLE` stays `Automatic`** — no profile is pinned in the project; automatic
+  signing picked the explicit profile by itself once the entitlement existed. The UI-test target
+  is untouched and still signs with the wildcard. Bundle id, `TVOS_DEPLOYMENT_TARGET = 18.0`,
+  `DEVELOPMENT_TEAM` and `Info.plist` are unchanged, and **no ATS change was needed or made**.
+- **WeatherKit answers on the Apple TV.** Pass 13's `xpcConnectionFailed(… "The connection to
+  service named com.apple.weatherkit.authservice was invalidated … Sandbox restriction.")` no
+  longer appears: zero `[weather]` lines in the device console across the runs of this pass, and
+  the screens draw data.
+- **Three defects that only content could reveal were found on the device and fixed** (owner's
+  rule for this pass: fix what populating reveals, add nothing).
+  1. **The current-conditions detail line was cut** — "H 78° · L 61° · humidity 71% · wind 5 mph
+     N…". `WeatherScreen`'s current block now carries `.layoutPriority(1)`, so it takes its
+     natural width and the alert card is the flexible half of the row, which is what the design
+     draws (`flex:1; min-width:0`, dc:721).
+  2. **The Weather screen's content never took focus.** The read is shared with Home, so by the
+     time the screen opened the model was already `.ready` and `onChange(of: phase)` never fired;
+     the remote stayed in the rail and the daily rows could not be reached. The screen now asks
+     for the first daily row in `.task` as well, which is where frame 5f draws the ring
+     (dc:1402-1403).
+  3. **The Home glance read "Apple Apple Weather", and was cut.** `WeatherAttribution.serviceName`
+     is already "Apple Weather" and the card prefixed a second "Apple" of its own; the prefix is
+     gone. The line still did not fit the 520 pt card, so the text column now takes its width
+     before the trailing spacer (`.layoutPriority(1)`) and the glyph's box is the design's 58 pt
+     rather than 72 (dc:134). All four lines of frame 2a now render whole.
+- **The daily list stays 5 rows** and **the hourly strip 8 columns**, as decided in Pass 13; both
+  were counted on the screen this pass.
+- **The alert card has still never been drawn with real data** (Pass 22 Open Question 1). No
+  alert is in force for this location, and `WeatherKit.WeatherAlert` has no public initializer
+  (`SDK: WeatherKit.swiftinterface:1235-1241`), so it cannot be staged with a real value. Its
+  *layout* was checked with a disclosed diagnostic that fed the card two strings of WeatherKit's
+  own shape; the card wrapped and sat correctly, and **the diagnostic was reverted before
+  committing**. Its screenshot is labelled `-diagnostic`.
+- **The design's "Now" column does not appear, and that is correct.** `WeatherFormat.hourLabel`
+  labels the current hour "Now", but WeatherKit's hourly forecast starts at the top of the hour
+  and the screen drops hours more than 30 minutes gone, so between :30 and :59 the first column
+  is the next clock hour. Frame 5f draws no "Now" either (its strip is 3 PM → 10 PM, dc:1379-1386),
+  so what renders matches the design.
+- **The second row of the daily list says "Tomorrow" where the design says a weekday name**
+  (dc:1391, "Saturday"). Left as it is: the string comes from `TimeFormat.relativeDay`, which the
+  Guide, On Later and Recordings all share, and changing it would change those screens.

@@ -116,14 +116,29 @@ on Home Theater 2026-09-06 and pushed to `origin main`** — `2e7542b` (the Home
 `git rev-parse` and `git ls-remote` all reading the same SHA. Fast-forward; nothing forced, rebased
 or amended.
 
+Pass 22 (`reports/2026-09-06-pass22-weatherkit.md`): **WeatherKit is enabled and both weather
+screens are populated at last.** The owner registered the explicit App ID
+`com.marlin1111.MarlinDVRTV` ("Marlin DVR TV") with WeatherKit ticked; this pass confirmed that
+from Apple's own answer before changing anything, added the capability to the target (a new
+`Marlin DVR TV.entitlements` carrying `com.apple.developer.weatherkit`, and
+`CODE_SIGN_ENTITLEMENTS` in the app target's two configurations — nothing else), and the app now
+signs against **`tvOS Team Provisioning Profile: com.marlin1111.MarlinDVRTV`** instead of the team
+wildcard. Pass 13's `xpcConnectionFailed … com.apple.weatherkit.authservice … Sandbox restriction`
+is **gone**: zero `[weather]` errors in the device console, and the Weather screen (frame 5f) and
+the Home glance (frame 2a) both draw **real data on Home Theater** — 64°, Clear, feels like 61°,
+H 78° / L 61° / humidity 71% / wind 5 mph NNE, 8 hourly columns and 5 daily rows with their range
+bars, under the Apple Weather attribution. Three defects that only content could reveal were found
+and fixed: the current-conditions detail line was cut ("wind 5 mph N…"), the Weather screen's
+content never took focus so the remote was stuck in the rail, and the Home glance read "Apple
+Apple Weather" and was cut. **The alert card is still unseen** — no alert is in force for this
+location and `WeatherKit.WeatherAlert` has no public initializer, so its layout was checked with a
+disclosed, reverted diagnostic and not with real data.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
 
-**Built but blocked on the owner** (Pass 13):
-
-- **Every WeatherKit value** — the Weather screen's current conditions, alert card, 8 hourly columns and 5 daily rows, and the Home glance card. The code is written and the screens are reachable, but `com.apple.developer.weatherkit` is not in this app's signing, so on the Apple TV every call fails with `xpcConnectionFailed … com.apple.weatherkit.authservice … Sandbox restriction`. The capability has to be enabled on the App ID `com.marlin1111.MarlinDVRTV` in the developer portal and added to the target in Xcode; Pass 13 was forbidden to do either. **Until then the populated layout has never been seen.**
-- *(The radar's request rate was the entry here; Pass 16 built the tile store and closed it.)*
+**Built but blocked on the owner**: nothing. Both entries this block ever held are closed — the radar's request rate by Pass 16's tile store, and **every WeatherKit value by Pass 22**: the App ID carries the capability, the target is entitled, and both weather screens draw real data on the Apple TV. The one thing still unproven there is the **alert card**, which needs a real alert in the owner's area to be seen (Pass 22 Open Question 1).
 
 Deliberately still inert or absent: show detail's "Series pass" button and the Player's 6e "Delete this recording" (Pass 8 Open Question 1); any click behaviour on the Guide's channel cell — the hold favourites it, a click does nothing (Pass 9 Open Question 1); any way to un-skip a cancelled pass airing; and any auto-refresh of the Manage DVR lists (Pass 10 Open Questions 2 and 4). Cancelling a booking, which Pass 8 lacked, now lives in Manage DVR → Scheduled Recordings.
 
@@ -139,8 +154,9 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-None assigned — the owner directs what comes next. Passes 19 and 20 are both accepted and on
-`origin main`; nothing is committed locally and unpushed, and there is no sweep in flight.
+None assigned — the owner directs what comes next. **Pass 22 is committed locally and NOT
+pushed**: its push gate is the owner's Home Theater test, as the pass was written. Everything
+before it, up to `bf5e9ba`, is on `origin main`.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
@@ -167,4 +183,13 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
 xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
   -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
   -only-testing:"Marlin DVR TVUITests/HomeRadioCountUITests"
+```
+
+`WeatherKitEnabledUITests` (Pass 22) is the same kind of harness: the physical Apple TV, the real
+remote, and it photographs the Weather screen and the Home glance with WeatherKit data in them.
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/WeatherKitEnabledUITests"
 ```
