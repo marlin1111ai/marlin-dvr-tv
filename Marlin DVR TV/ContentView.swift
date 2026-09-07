@@ -32,7 +32,8 @@ struct ContentView: View {
                     if destination.isBuiltNow {
                         screen = destination
                     }
-                    // Radio and Settings: present as drawn, inert (DECISIONS.md).
+                    // Settings: present as drawn, inert (DECISIONS.md). Radio went live in
+                    // Pass 19 and reaches its screen through `isBuiltNow` above.
                 }
             }
         }

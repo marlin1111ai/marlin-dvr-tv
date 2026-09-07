@@ -36,7 +36,7 @@ struct ScreenShell: View {
                 } else if destination.isBuiltNow {
                     screen = destination
                 }
-                // Radio: present as drawn, inert (DECISIONS.md).
+                // Every rail entry is built now; Settings is a Home tile only and stays parked.
             }
             content
                 .id(current)
@@ -51,8 +51,8 @@ struct ScreenShell: View {
         .onExitCommand { screen = nil }
     }
 
-    /// The screens that exist: sweep 2's five, Favorites (Pass 10), Manage DVR (Pass 10B)
-    /// and Weather (Pass 13). Anything else keeps the placeholder.
+    /// The screens that exist: sweep 2's five, Favorites (Pass 10), Manage DVR (Pass 10B),
+    /// Weather (Pass 13) and Radio (Pass 19). Anything else keeps the placeholder.
     @ViewBuilder
     private var content: some View {
         let leave = { screen = nil }
@@ -65,6 +65,7 @@ struct ScreenShell: View {
         case .cameras: CamerasScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .manage: ManageDVRScreen(api: api, onLeave: leave)
         case .weather: WeatherScreen(model: weather, onLeave: leave)
+        case .radio: RadioScreen(api: api, onLeave: leave)
         default: PlaceholderScreen(destination: current)
         }
     }

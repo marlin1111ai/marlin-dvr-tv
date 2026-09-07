@@ -4,9 +4,9 @@
 //
 //  The nine rail destinations of frame 1b (design data `nav`, dc:1133-1137) and the nine
 //  Home tiles of frame 2a (`tiles`, dc:1353-1368), with the design's Phosphor icons mapped
-//  to SF Symbols (owner decision: nothing bundled). Radio and Settings are present as drawn
-//  and inert until the owner says otherwise (DECISIONS.md); Favorites went live in Pass 10 and
-//  Weather in Pass 13.
+//  to SF Symbols (owner decision: nothing bundled). Settings is present as drawn and inert
+//  until the owner says otherwise (DECISIONS.md); Favorites went live in Pass 10, Weather in
+//  Pass 13 and Radio in Pass 19.
 //
 //  Pass 10B adds a tenth rail entry, `manage`, below the design's nine (owner, 2026-09-06):
 //  the design's rail has no settings-area entry of its own — Settings is a Home tile only
@@ -89,16 +89,18 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
     }
 
     /// The screens that exist. Favorites went live in Pass 10, Manage DVR moved into the
-    /// rail in Pass 10B and Weather was built in Pass 13; Radio and Settings are still present
-    /// as drawn and inert (DECISIONS.md).
+    /// rail in Pass 10B, Weather was built in Pass 13 and Radio in Pass 19; Settings is still
+    /// present as drawn and inert (DECISIONS.md).
     var isBuiltNow: Bool {
         switch self {
-        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather: return true
-        case .home, .radio, .settings: return false
+        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather, .radio: return true
+        case .home, .settings: return false
         }
     }
 
-    /// Sub-line for tiles that are present as drawn but inert (no fabricated numbers).
+    /// Sub-line for tiles the Home read has no count for (no fabricated numbers). Radio keeps
+    /// "Stations" now that it is built: Home reads five endpoints and `/api/radio` is not one
+    /// of them, and Pass 19 was not asked to add a sixth.
     var staticTileSubtitle: String? {
         switch self {
         case .weather: return "Local weather"
