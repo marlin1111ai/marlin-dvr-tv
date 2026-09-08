@@ -382,7 +382,7 @@
 - **Left on the server, disclosed:** `midday-maryland` `b7a3822d83b4` (7.66 MB, the step-4
   throwaway) and `the-view` `eccf81dbdab2` (275.92 MB, booked by an aborted first run of the harness
   and left to finish when that run was killed). Neither was deleted — that was not in the steps.
-- **Committed locally and not pushed** — the owner tests Passes 31 and 32 together.
+- **Committed locally and not pushed** — the owner tests Passes 31 and 32 together. (Accepted on Home Theater and pushed in Pass 34.)
 
 ## 2026-09-07 (pass 33)
 
@@ -408,4 +408,32 @@
   two ids and nothing else.
 - The owner emptied his own trash from the web UI at 20:51:50 on 2026-09-07, permanently deleting the
   four recordings this pass was written around. Recorded in COLD-START so no later pass hunts for them.
+
+## 2026-09-07 (pass 34)
+
+- **Passes 31, 32, 32A and 33 accepted by the owner on Home Theater and pushed** — delete refresh,
+  Stop recording from the Guide, the trash list off the new server endpoint, and Restore.
+  `origin/main` is at `93de296`.
+- **The Trash list comes from the server's `GET /api/library/trash` and from nothing else.** This
+  settles a choice that was open across Passes 31–33. The two alternatives are both rejected on the
+  record, so no later pass reopens them:
+  - **A per-show walk** (`GET /api/library/shows/{id}?trash=1` for every show, the Pass 10 design) —
+    rejected because it cannot see a recording whose show has left the library, which is most of what
+    the trash holds, and because under 1.6.0 the per-show read no longer returns trashed episodes at
+    all, so the walk now finds nothing whatever.
+  - **Caching show ids the app has seen**, so the walk has something to ask for — rejected as a
+    client-side guess at server state. It would miss anything deleted from the web UI or the other
+    Apple TV, and it invents a memory the server is the authority for.
+- **Empty Trash stays unexercised from the app.** It has been wired since Pass 10 and has never been
+  sent from an Apple TV, deliberately: it deletes files on disk permanently, for every client at
+  once, and the server offers no confirmation of its own. It keeps its two-click arming and stays out
+  of scope until the owner asks for it by name. Restore left this category in Pass 33; Empty Trash
+  and stopping a pass's airing have not.
+- **Automatic pruning is gone server-side in 1.6.0: a series pass never trashes anything on its own**
+  (owner, 2026-09-07). Nothing reaches the trash unless a person put it there. The keep rule in the
+  Edit series pass screen no longer causes deletions by itself, and the app must not describe it as
+  though it does.
+- Raised for the marlin-dvr project, recorded and not acted on: `trashedAt` does not update when the
+  same file is trashed twice, and Empty Trash has no confirmation step. Both are in COLD-START under
+  "Raised for the marlin-dvr project".
 

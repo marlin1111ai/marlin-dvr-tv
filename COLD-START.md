@@ -40,6 +40,19 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
 
 ## What is built
 
+**The server is marlin-dvr 1.6.0** (owner, 2026-09-07; `GET /api/system` → `version 1.6.0`,
+`build 2026.09.05`). Two things about that release this app depends on:
+
+- **`GET /api/library/trash` exists**, and Manage DVR → Trash is built on it (Pass 33).
+- **Automatic pruning is gone server-side: a series pass never trashes anything on its own**
+  (owner, 2026-09-07). Nothing reaches the trash unless a person put it there — from this app, from
+  the web UI, or from the other Apple TV. The keep rule in the Edit series pass screen (Pass 9) no
+  longer causes deletions by itself.
+
+Note that the read-only reference clone at `~/Xcode/marlin-dvr-reference` is **stale at 1.2.1**
+(`cmd/marlin-dvr/main.go:38`) and has none of this. Pulling it is the owner's job. Until it moves,
+server facts are measured against the running server's own responses and its `GET /api/logs`.
+
 The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVApp.swift`) and one `ContentView` showing the app name.
 
 Pass 2 (server recon, `reports/2026-09-05-pass2-server-recon.md`) and Pass 3 (HLS client recon against `HLS-CLIENT-API.md`, `reports/2026-09-05-pass3-hls-client-recon.md`) are done; both were read-only and wrote reports only.
@@ -224,8 +237,8 @@ perfectly. The frame rate comes from the video track, believed only when it land
 real rate (23.976 … 60) — a raw 28.00 reading on 29.97 material would have skipped a frame every
 fifteenth click.
 
-Pass 31 (`reports/2026-09-07-pass31-delete-refresh.md`): **a deleted recording leaves the
-Recordings shelves without leaving the screen.** The owner's defect: delete an episode from show
+Pass 31 (`reports/2026-09-07-pass31-delete-refresh.md`, accepted by the owner on Home Theater and
+pushed in Pass 34): **a deleted recording leaves the Recordings shelves without leaving the screen.** The owner's defect: delete an episode from show
 detail, press Menu, and the shelves still showed the recording. Cause, and it is the whole of it —
 `RecordingsModel.load()` was called from one place, the `.task` at `RecordingsScreen.swift:68`, and
 that task is attached to the `Group` that holds *both* branches, so opening show detail never ended
@@ -268,8 +281,9 @@ disappears outright.
 - **Nobody has diffed two stills.** The evidence is a timeline moving by exactly one frame duration;
   no one has proved the *picture* advances one frame of motion rather than the clock alone.
 
-Pass 32 (`reports/2026-09-07-pass32-cancel-and-restore.md`): **item A built and proven; item B
-stopped at its gate and nothing was built for it.**
+Pass 32 (`reports/2026-09-07-pass32-cancel-and-restore.md`, accepted by the owner on Home Theater
+and pushed in Pass 34): **item A built and proven; item B stopped at its gate and nothing was built
+for it. Item B is now closed by Pass 33** — the server change it asked for shipped as 1.6.0.
 
 **A — stop a recording from the Guide.** Hold a Guide cell that is recording and the airing sheet
 now offers **Stop recording**, armed on the first click like Manage DVR's Cancel. The call is
@@ -288,8 +302,10 @@ recording would otherwise still read Queued and Stop would not appear.
 seconds later (`GET /api/schedule` → `rec-mtrfm5v9d1fd63` **STOPPED**; the 7.66 MB partial in the
 library). One click alone never sends anything, asserted.
 
-**B — the trash list. STOP AND REPORT, per step 5: the server exposes no trash listing.** Measured
-read-only today, not inferred: `GET /api/library/trash` 404, `GET /api/trash` 404,
+**B — the trash list. STOP AND REPORT, per step 5: the server exposed no trash listing.**
+**Superseded — this is history now**: 1.6.0 added `GET /api/library/trash` and Pass 33 built the
+screen on it. Kept because it records what the API looked like before. Measured read-only that day,
+not inferred: `GET /api/library/trash` 404, `GET /api/trash` 404,
 `GET /api/library/recordings?trash=1` 404, `GET /api/library/shows` 404, and `GET /api/library?trash=1`
 returns **bytes identical** to `GET /api/library`, so the parameter is ignored. The only trash-aware
 read is per show and needs an id you already hold — and Pass 31 measured that a show whose last
@@ -305,16 +321,43 @@ was taken as the stronger instruction; **neither the clone nor `HLS-CLIENT-API.m
 every server fact in the report rests on this app's typed calls, the notebook's recorded citations,
 Pass 8's live evidence, or read-only probes of the running server.
 
-### KNOWN AND UNFIXED after Pass 33
+### KNOWN AND UNFIXED after Pass 33 — do not mistake these for proven, and do not re-derive them
 
+Everything in this list survived the owner's Home Theater acceptance of Passes 31–33. None of it is
+a regression; it is what those passes deliberately did not reach.
+
+- **The airing sheet's series-pass chip is wrong for a pass-driven recording.** A recording that a
+  series pass started shows **"Record this airing" alongside "Stop recording"** — pressing it would
+  earn a 409 from the server. The cause is in the sheet's own gating: Stop turns on
+  `Job.status == "Recording"` and correctly ignores `passId`, while the "● Scheduled" chip and the
+  Record button are still gated on `passId == "manual"` (`AiringSheet.swift`, `manualJob` `:71-74`).
+  **Never driven on the device** — Pass 32 proved Stop for a one-off Record Now, not for a pass.
+  Found in Pass 32, scoped out there and in Pass 33. **Unfixed.**
+- **Stopping a pass's airing has never been exercised on the device.** Only the one-off Record Now
+  case was. The code path is identical and deliberately not gated on `passId`, but that is reasoning,
+  not evidence.
+- **Old-form (pre-1.6.0) trash entries are untested and now untestable.** Pass 33 proved Restore for
+  the 1.6.0 form only — a file the server moved to `DVR/Trash/`. The owner's four old-form
+  recordings were deleted before they could be used (see below), and 1.6.0 always moves the file, so
+  no old-form entry can be made again. Whether the server's Restore handles a file that never moved
+  is **server behaviour no client change can affect**.
+- **The id rule is an inference, not a proof.** "A recording's id is derived from its file path, so
+  it changes when the file moves into the trash and changes back on restore" rests on **two files,
+  three cycles each**, plus the server's own log line `id X -> Y`. It held every time and the
+  trash-time id was identical on each cycle, but the sample is two.
+- **Resume survival was reasoned, never watched.** That a resume position survives a trash-and-restore
+  follows from the id round trip plus `ResumeStore.clear` having exactly one call site
+  (`PlayerModel.swift:449`, end-of-playback). **Nobody has watched a "22 min in" label survive one.**
+  Neither Pass 33 subject had a resume entry.
 - **`trashedAt` does not update when the same file is trashed a second time.** Measured across three
   trash/restore cycles on one recording (Pass 33): the listing kept reporting the *first* trashing.
   The app shows what the server says. A marlin-dvr matter; nothing was changed here.
-- **The old-form trash is untested from the Apple TV and now untestable.** Pass 33 proved Restore
-  only for the 1.6.0 form — a file the server moved to `DVR/Trash/`. See below for why.
+- **Stepping is erratic near the end of the prepared range** — still open, unchanged since Pass 29.
+  See the first entry under **KNOWN AND UNFIXED after Pass 29** for the measurement and the suspect.
 
-Pass 33 (`reports/2026-09-07-pass33-trash-restore.md`): **the Trash screen reads the new endpoint,
-and Restore is proven live for the first time.**
+Pass 33 (`reports/2026-09-07-pass33-trash-restore.md`, accepted by the owner on Home Theater and
+pushed in Pass 34): **the Trash screen reads the new endpoint, and Restore is proven live for the
+first time.**
 
 **The server's `GET /api/library/trash` (1.6.0) is real and matches what was announced.** All eight
 fields (`id`, `show`, `episodeTitle`, `season`, `episode`, `aired`, `trashedAt`, `size`) on every
@@ -354,7 +397,7 @@ in the Pass 10 code too; nobody had ever emptied the trash from the Apple TV.
 **At 20:51:50 on 2026-09-07 a `POST /api/library/trash/empty` from the owner's own web-UI session
 permanently deleted all four** — 3.80 GB freed, 0 failed, per the server's own log. **Not this
 project**: every non-GET request logged from the server's 20:36:52 start until that moment was the
-owner's browser, and this pass sent no POST/PUT/DELETE before 21:09.
+owner's browser, and Pass 33 sent no POST/PUT/DELETE before 21:09.
 
 - **`6007a13f0b46`** (Hazardous History With Henry Winkler S2 E20, 1.86 GB), tracked here since
   Pass 31 as the unreachable trashed recording, **no longer exists**. The Pass 31/32 entry about it
@@ -382,6 +425,24 @@ Deliberately still inert or absent: show detail's "Series pass" button and the P
 
 - **Empty Trash** (`POST /api/library/trash/empty`) — it deletes files on disk permanently for every client; never sent.
 - **Cancel recording on a pass's airing** — only the one-off Record Now case was cancelled live. Same call; the server answers `removed: false` and skips that airing while the pass carries on.
+- **Stop recording on a pass's airing** — Pass 32 proved Stop on the device for a one-off Record Now only. The code path is the same and deliberately not gated on `passId`, but it has never been driven for a pass, and the sheet shows a wrong "Record this airing" control beside it in exactly that case (**KNOWN AND UNFIXED after Pass 33**).
+- **Restore is no longer on this list.** Pass 33 exercised it live on Home Theater, twice.
+
+## Raised for the marlin-dvr project — recorded here, not acted on
+
+Server behaviour this project measured and does not own. The standing rule is that server changes are
+raised as decisions for marlin-dvr (see **The rules**); nothing below was changed, worked around, or
+compensated for in the app.
+
+- **`trashedAt` does not update when the same file is trashed twice.** Measured across three
+  trash/restore cycles on one recording (Pass 33): `GET /api/library/trash` kept reporting the
+  *first* trashing, so a row can read "Trashed today at 9:09 PM" during a 9:16 PM session. The app
+  shows the server's value unaltered.
+- **Empty Trash has no confirmation step server-side.** `POST /api/library/trash/empty` deletes every
+  trashed file on disk, permanently, for every client, the moment it arrives — there is no
+  are-you-sure and no dry run. Both this app and the web UI have to invent their own guard; this app
+  arms the button on the first click and sends only on the second. On 2026-09-07 that call removed
+  3.80 GB of the owner's recordings in one request (see above).
 
 ## Open questions
 
@@ -389,15 +450,18 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Passes 31, 32 and 33 are committed locally and NOT pushed** — the owner tests them together on Home
-Theater first. Everything before it is pushed: Passes 28 and 29 were accepted on 2026-09-07 and
-went up as `58ebb12` and `26f7e2b`, together with Passes 26 and 27, which were read-only reports.
+**Nothing is unpushed.** The owner accepted Passes 31, 32, 32A and 33 on Home Theater — delete
+refresh, Stop recording from the Guide, the trash list off the new server endpoint, and Restore —
+and Pass 34 pushed all of them. `origin/main` is at **`93de296`**, verified against local HEAD and
+`git ls-remote` (`reports/2026-09-07-pass34-push-notebook.md`).
 
-Waiting to be picked up: the Passes 31–33 push gate; the first entry under **KNOWN AND UNFIXED after
-Pass 29** — frame stepping near the end of the prepared range; and the two entries under **KNOWN AND
-UNFIXED after Pass 33**. **Item B of Pass 32 is closed**: the server change it asked for shipped as
-1.6.0's `GET /api/library/trash`, and Pass 33 built on it — as is the Pass 31 entry about a
-last-episode recording being unreachable, which that endpoint fixes.
+Waiting to be picked up, in no particular order: **the series-pass sheet chip**, the first thing a
+later pass should take, since it is a wrong control the owner can press today; **stopping a pass's
+airing on the device**, which would settle the same area; frame stepping near the end of the
+prepared range (**KNOWN AND UNFIXED after Pass 29**); and the rest of **KNOWN AND UNFIXED after
+Pass 33**. **Item B of Pass 32 is closed** — the server change it asked for shipped as 1.6.0's
+`GET /api/library/trash` and Pass 33 built on it — as is the Pass 31 entry about a last-episode
+recording being unreachable, which that endpoint fixes.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
