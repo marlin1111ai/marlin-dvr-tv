@@ -166,7 +166,30 @@ this report go up in one commit, and a second small commit writes the verificati
 into this section. **The values below are filled in after the push, never before it** — the table is
 empty until `git ls-remote` has answered.
 
-<!-- PASS34-VERIFY -->
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   93de296..802db02  main -> main
+```
+
+Two dots, no `+`: a fast-forward again.
+
+| Source | SHA |
+|---|---|
+| `git rev-parse HEAD` (local) | `802db0283461764899213ad668409f7408c8b4e4` |
+| `git rev-parse origin/main` | `802db0283461764899213ad668409f7408c8b4e4` |
+| `git ls-remote origin refs/heads/main` | `802db0283461764899213ad668409f7408c8b4e4` |
+
+```
+$ git rev-list --left-right --count origin/main...main   0    0
+$ git status --short                                     (clean)
+```
+
+**Identical, level in both directions, and the working tree clean.**
+
+**`802db02` is the SHA to quote for Pass 34's notebook work.** This paragraph is itself a further
+commit on top of it — a commit cannot contain its own SHA — so the final head of `main` is one
+commit later, and that commit changes nothing but this section.
 
 ## SCOPE CHECK — every file touched, and the step that required it
 
