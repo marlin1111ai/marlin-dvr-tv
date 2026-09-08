@@ -86,6 +86,13 @@ extension APIClient {
         try await get("/api/library/shows/\(id)", query: trash ? [URLQueryItem(name: "trash", value: "1")] : [])
     }
 
+    /// GET /api/library/trash (server 1.6.0) — every trashed recording in one read, including
+    /// the ones whose show has left the library and which no per-show read can reach. Server
+    /// order is newest trashed first, and this keeps it (Pass 33 step 2).
+    func trash() async throws -> TrashResponse {
+        try await get("/api/library/trash")
+    }
+
     /// GET /api/system (system.go:257-260) — the Manage DVR storage line (Pass 10 step 2a).
     func system() async throws -> SystemInfo {
         try await get("/api/system")

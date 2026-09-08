@@ -10,11 +10,15 @@
 //    Storage              GET /api/system disk fields (system.go:16-46; Pass 2 §2.1)
 //    Scheduled Recordings GET /api/schedule            (passes.go:838-879)
 //    Your Passes          GET /api/passes              (passes.go:575-596)
-//    Trash                per show, GET /api/library/shows/{id}?trash=1 (library.go:586-640)
+//    Trash                GET /api/library/trash (server 1.6.0)
 //
-//  The trash has no list endpoint of its own: the only way to it is show by show, so the hub
-//  reads the library once and then asks each show for its trashed episodes, a few at a time.
 //  Every count on this screen is the server's own (step 3).
+//
+//  Pass 33: the trash used to be assembled show by show from GET /api/library/shows/{id}?trash=1,
+//  because the library had no trash listing. That never showed a recording whose show had left
+//  the library — the app had no way to learn such a show's id (Pass 32 §B.3) — and against 1.6.0
+//  it shows nothing at all, since the per-show read no longer returns trashed episodes (measured,
+//  Pass 33 §1). One read replaces the whole walk.
 //
 
 import SwiftUI
@@ -32,13 +36,13 @@ final class ManageModel {
     private(set) var system: SystemInfo?
     private(set) var schedule: ScheduleResponse?
     private(set) var passes: [PassView] = []
-    /// Every trashed episode in the library, newest show order; `Episode.show` names its show.
-    private(set) var trash: [Episode] = []
+    /// Every trashed recording the server holds, in its own order — newest trashed first.
+    private(set) var trash: [TrashItem] = []
     private(set) var loaded = false
     private(set) var error: String?
-
-    /// How many show-trash reads run at once, so a big library does not flood the server.
-    private static let trashFetchWidth = 6
+    /// Why the trash list is empty when it is: nil means the server said so, a string means the
+    /// read failed and the screen must not claim the trash is empty.
+    private(set) var trashError: String?
 
     init(api: APIClient) {
         self.api = api
@@ -71,38 +75,21 @@ final class ManageModel {
         do { passes = try await api.passes() } catch { print("[manage] passes: \(error)") }
     }
 
-    /// The library has no trash list, so: every show once, then its trashed episodes.
+    /// GET /api/library/trash — one read, kept in the server's order (newest trashed first).
     func refreshTrash() async {
         do {
-            let library = try await api.library(limit: 500)
-            var ids: [String] = []
-            var seen = Set<String>()
-            for section in library.sections {
-                for item in section.items where !seen.contains(item.id) {
-                    seen.insert(item.id)
-                    ids.append(item.id)
-                }
-            }
-            var found: [Episode] = []
-            var index = 0
-            while index < ids.count {
-                let slice = ids[index ..< min(index + Self.trashFetchWidth, ids.count)]
-                index += Self.trashFetchWidth
-                await withTaskGroup(of: [Episode].self) { group in
-                    for id in slice {
-                        group.addTask { [api] in
-                            (try? await api.show(id: id, trash: true))?.episodes ?? []
-                        }
-                    }
-                    for await episodes in group { found.append(contentsOf: episodes) }
-                }
-            }
-            trash = found.sorted { $0.show == $1.show ? $0.id < $1.id : $0.show < $1.show }
-            print("[manage] trash: \(trash.count) episode(s) across \(ids.count) show(s)")
+            let response = try await api.trash()
+            trash = response.recordings
+            trashError = nil
+            print("[manage] trash: \(trash.count) recording(s), server count \(response.count), \(SizeFormat.serverStyle(trashBytes))")
         } catch {
-            print("[manage] library: \(error)")
+            trashError = WriteError.text(error)
+            print("[manage] trash: \(error)")
         }
     }
+
+    /// What the trash is holding on disk, for the screen's subtitle.
+    var trashBytes: Int { trash.reduce(0) { $0 + $1.size } }
 
     /// The pass a scheduled job belongs to, for "Manage pass". Nil for a Record Now job.
     func pass(for job: Job) -> PassView? {
@@ -177,7 +164,7 @@ struct ManageDVRScreen: View {
                         focused: focused == "passes") { section = .passes }
                     .focused($focused, equals: "passes")
                 MenuRow(title: "Trash",
-                        state: model.trashCount == 0 ? "empty" : "\(model.trashCount) in trash",
+                        state: trashState,
                         focused: focused == "trash") { section = .trash }
                     .focused($focused, equals: "trash")
             }
@@ -188,6 +175,14 @@ struct ManageDVRScreen: View {
             Spacer(minLength: 0)
         }
         .defaultFocus($focused, "schedule")
+    }
+
+    /// "4 in trash · 3.80 GB". The size is the listing's own byte counts added up (Pass 33
+    /// step 2) — the hub had no figure for it while the list was assembled show by show.
+    private var trashState: String {
+        if model.trashError != nil && model.trash.isEmpty { return "could not read" }
+        guard model.trashCount > 0 else { return "empty" }
+        return "\(model.trashCount) in trash · \(SizeFormat.serverStyle(model.trashBytes))"
     }
 
     private func count(_ n: Int, _ word: String, plural: String? = nil) -> String {

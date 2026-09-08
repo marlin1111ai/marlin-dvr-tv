@@ -75,6 +75,44 @@ enum SizeFormat {
 
     /// "579.4 MB", "1.2 GB"
     static func bytes(_ count: Int) -> String { bytesFormatter.string(fromByteCount: Int64(count)) }
+
+    /// The server's own `humanBytes` (system.go:120-131), reproduced: 1024-based, "%.0f" for
+    /// bytes and KB and "%.2f" above that. `ByteCountFormatter` above is 1000-based, so the two
+    /// disagree by 7% on a gigabyte. Used where the app formats a byte count the server would
+    /// otherwise have labelled itself — the trash rows, whose listing carries no `sizeLabel` —
+    /// so the same recording reads "1.86 GB" here and in the web UI (Pass 33 step 2).
+    static func serverStyle(_ count: Int) -> String {
+        let units = ["B", "KB", "MB", "GB", "TB", "PB"]
+        var value = Double(count)
+        var index = 0
+        while value >= 1024 && index < units.count - 1 {
+            value /= 1024
+            index += 1
+        }
+        return String(format: index <= 1 ? "%.0f %@" : "%.2f %@", value, units[index])
+    }
+}
+
+/// The RFC 3339 stamps the library hands out (`aired`, `trashedAt`). They carry the server's
+/// UTC offset, so unlike its `dateLabel` strings they can be shown in this Apple TV's own time.
+enum ServerTime {
+    private static let internetDate: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    /// "2026-09-06T21:00:00-04:00", and Go's nanosecond form
+    /// "2026-09-07T11:12:13.882484831-04:00" — which `ISO8601DateFormatter` will not take at
+    /// any option, since it allows at most three fractional digits. The fraction is dropped
+    /// and the rest parsed; a second is finer than any label here needs.
+    static func date(_ text: String) -> Date? {
+        if let date = internetDate.date(from: text) { return date }
+        guard let dot = text.firstIndex(of: "."),
+              let zone = text[text.index(after: dot)...].firstIndex(where: { $0 == "Z" || $0 == "+" || $0 == "-" })
+        else { return nil }
+        return internetDate.date(from: String(text[..<dot]) + String(text[zone...]))
+    }
 }
 
 extension String {

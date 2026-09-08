@@ -383,3 +383,29 @@
   throwaway) and `the-view` `eccf81dbdab2` (275.92 MB, booked by an aborted first run of the harness
   and left to finish when that run was killed). Neither was deleted — that was not in the steps.
 - **Committed locally and not pushed** — the owner tests Passes 31 and 32 together.
+
+## 2026-09-07 (pass 33)
+
+- The Trash screen reads `GET /api/library/trash` (marlin-dvr 1.6.0). The show-by-show walk it used
+  since Pass 10 is deleted; against 1.6.0 that walk returns nothing at all, because the per-show
+  `?trash=1` read no longer surfaces trashed episodes.
+- A trashed recording is its own type, `TrashItem` (eight fields), not `Episode` (28). The listing
+  carries no `showId`, `file`, `thumb` or server-made label, and cannot: the show may have left the
+  library. Decoding is strict on the item so a shape change fails loudly; the `recordings` array is
+  taken leniently so a future `null` for empty cannot blank the screen.
+- Byte counts the server would otherwise have labelled itself are formatted the server's way —
+  `SizeFormat.serverStyle`, 1024-based, two decimals, a copy of its `humanBytes`. The existing
+  `SizeFormat.bytes` is 1000-based and disagrees by 7% on a gigabyte; a trash row has no `sizeLabel`
+  to fall back on, and the Apple TV must not contradict the web UI about a recording's size.
+- **A recording's id changes while it is in the trash** (1.6.0 moves the file to `DVR/Trash/` and the
+  id follows the path), and Restore changes it back exactly. Nothing in the app may treat a trash-time
+  id as durable. `ResumeStore` keys on the library id and therefore survives a restore.
+- Empty Trash keeps the `"empty-trash"` focus id; the empty-state sentence is focusable and holds
+  `"empty"`. A screen must always have something focusable, or the remote's Menu leaves the app
+  instead of reaching `.onExitCommand`.
+- Owner, 2026-09-07: Pass 32's two leftovers (`b7a3822d83b4` Midday Maryland, `eccf81dbdab2` The View)
+  are throwaway and may be trashed and restored freely for evidence. That authorisation covers those
+  two ids and nothing else.
+- The owner emptied his own trash from the web UI at 20:51:50 on 2026-09-07, permanently deleting the
+  four recordings this pass was written around. Recorded in COLD-START so no later pass hunts for them.
+

@@ -305,24 +305,70 @@ was taken as the stronger instruction; **neither the clone nor `HLS-CLIENT-API.m
 every server fact in the report rests on this app's typed calls, the notebook's recorded citations,
 Pass 8's live evidence, or read-only probes of the running server.
 
-### KNOWN AND UNFIXED after Pass 31
+### KNOWN AND UNFIXED after Pass 33
 
-- **A recording trashed as the last episode of its show cannot be restored from the Apple TV.**
-  `ManageModel.refreshTrash` (`ManageDVRScreen.swift:75-89`) collects show ids from
-  `GET /api/library`'s section items, because the library has no trash endpoint of its own
-  (`TrashManageView.swift:5-7`). Once the show leaves that list the loop has nothing to ask, so
-  Manage DVR → Trash reads "The trash is empty" while the server still holds the recording. It is
-  visible and restorable in the server's own web UI. Pass 31 found this and was scoped out of
-  fixing it. **`6007a13f0b46` (Hazardous History With Henry Winkler S2 E20, 1.86 GB) is in that
-  state now**, deleted for Pass 31's test and deliberately not restored (owner, 2026-09-07). **Pass 32 confirmed
-  the server offers no way to fix this from the client** (§B.2) and built nothing; the unblock is a
-  `GET /api/library/trash` in the marlin-dvr project. **Restore remains wired but never exercised
-  live**, unchanged since Pass 10.
+- **`trashedAt` does not update when the same file is trashed a second time.** Measured across three
+  trash/restore cycles on one recording (Pass 33): the listing kept reporting the *first* trashing.
+  The app shows what the server says. A marlin-dvr matter; nothing was changed here.
+- **The old-form trash is untested from the Apple TV and now untestable.** Pass 33 proved Restore
+  only for the 1.6.0 form — a file the server moved to `DVR/Trash/`. See below for why.
 
-- **Left on the server by Pass 32, disclosed rather than tidied away:** `midday-maryland`
-  `b7a3822d83b4` (7.66 MB, the step-4 throwaway) and `the-view` `eccf81dbdab2` (275.92 MB, booked by
-  an aborted first run of the harness and left to finish when that run was killed). Neither was
-  deleted, because deleting them was not in the steps.
+Pass 33 (`reports/2026-09-07-pass33-trash-restore.md`): **the Trash screen reads the new endpoint,
+and Restore is proven live for the first time.**
+
+**The server's `GET /api/library/trash` (1.6.0) is real and matches what was announced.** All eight
+fields (`id`, `show`, `episodeTitle`, `season`, `episode`, `aired`, `trashedAt`, `size`) on every
+row, always present — `""` and `0` rather than omitted. Two facts the announcement did not carry:
+the rows come **wrapped** as `{"count": N, "recordings": [...]}`, and **`trashedAt` has nanosecond
+precision**, which `ISO8601DateFormatter` refuses at every option (`ServerTime.date` in
+`Formatting.swift` drops the fraction first). **Empty is `{"count":0,"recordings":[]}`** — `[]`, not
+`null`, measured. The endpoint takes **no parameters**: `limit`, `show`, `trash`, `q` are all ignored
+and the whole list comes at once.
+
+**`ManageModel.refreshTrash` is one read now**, and `TrashItem` is its own eight-field type — not
+`Episode`, which has 28 and whose `showId`/`file`/`thumb` cannot exist for a recording whose show has
+left the library. **The per-show `?trash=1` read no longer returns trashed episodes at all** under
+1.6.0 (measured: it returned the Henry Winkler episode at 12:03 and 0 episodes at 20:52), so the old
+Pass 10 walk would now show an empty Trash **even for a show still in the library**. The rebuild was
+the only thing that still works, not an optimisation.
+
+**Restore works, proven on Home Theater** (`TrashRestoreUITests`, 83.3 s, 0 failures): two recordings
+restored from the list, both back in the library and **on the Recordings shelves**, the list dropping
+each one as it went and the hub falling to "empty". This closes "Restore is wired but never exercised
+live", which had stood since Pass 10.
+
+**The recording id CHANGES while a recording is in the trash** (new in 1.6.0, because the file moves):
+`b7a3822d83b4 ⇄ 3ded51f52f76`, `eccf81dbdab2 ⇄ eda86144bf38`, deterministic and exactly reversed by
+Restore. The server logs the swap itself. **`ResumeStore` therefore survives a restore** — its key is
+the library id, which comes back — but the entry is unreachable while the recording sits in the trash.
+`ResumeStore.clear` is called from one place only, `PlayerModel.swift:449` at end-of-playback, so
+nothing in the trash path deletes it.
+
+**Fixed on the way:** restoring the *last* recording in the trash used to trap the user on the screen —
+rows gone, Empty Trash disabled, so nothing could take focus and Menu left the app instead of reaching
+`.onExitCommand`. The empty-state sentence is focusable now and holds the `"empty"` focus id. Present
+in the Pass 10 code too; nobody had ever emptied the trash from the Apple TV.
+
+### THE OWNER'S FOUR TRASHED RECORDINGS ARE GONE — do not go looking for them
+
+**At 20:51:50 on 2026-09-07 a `POST /api/library/trash/empty` from the owner's own web-UI session
+permanently deleted all four** — 3.80 GB freed, 0 failed, per the server's own log. **Not this
+project**: every non-GET request logged from the server's 20:36:52 start until that moment was the
+owner's browser, and this pass sent no POST/PUT/DELETE before 21:09.
+
+- **`6007a13f0b46`** (Hazardous History With Henry Winkler S2 E20, 1.86 GB), tracked here since
+  Pass 31 as the unreachable trashed recording, **no longer exists**. The Pass 31/32 entry about it
+  is closed by deletion, not by a fix.
+- The server's delete log names every path: all four were `/mnt/unas4pro/DVR/<Show>/<file>.mpg`,
+  **still in their original show folders** — the pre-1.6.0 form. **That form can no longer be
+  produced**, since every trash under 1.6.0 moves the file to `DVR/Trash/`. So Pass 33 could test
+  the **new form only**, and the old form's Restore path is server behaviour no client change can
+  affect.
+
+- **Pass 32's two leftovers are back in the library and clean**: `midday-maryland` `b7a3822d83b4`
+  (7.66 MB) and `the-view` `eccf81dbdab2` (275.92 MB). The owner authorised trashing and restoring
+  **these two ids only** for Pass 33's evidence, and both were restored to their original ids and
+  paths. The trash is empty and the pass left nothing behind.
 
 ## What is NOT built
 
@@ -334,7 +380,6 @@ Deliberately still inert or absent: show detail's "Series pass" button and the P
 
 **Built but never exercised against the live server** — wired and code-traced, not proven, and named here so no one assumes otherwise (Pass 10 §4c and Open Question 3):
 
-- **Restore** from the trash (`PUT /api/library/recordings/{id} {"trash": false}`) — the trash held a real recording of the owner's, so it was not pressed. The same function was exercised live in the other direction in Pass 8.
 - **Empty Trash** (`POST /api/library/trash/empty`) — it deletes files on disk permanently for every client; never sent.
 - **Cancel recording on a pass's airing** — only the one-off Record Now case was cancelled live. Same call; the server answers `removed: false` and skips that airing while the pass carries on.
 
@@ -344,15 +389,15 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Passes 31 and 32 are committed locally and NOT pushed** — the owner tests them together on Home
+**Passes 31, 32 and 33 are committed locally and NOT pushed** — the owner tests them together on Home
 Theater first. Everything before it is pushed: Passes 28 and 29 were accepted on 2026-09-07 and
 went up as `58ebb12` and `26f7e2b`, together with Passes 26 and 27, which were read-only reports.
 
-Waiting to be picked up: the Passes 31–32 push gate; **item B of Pass 32**, which needs a
-`GET /api/library/trash` raised as a decision for the marlin-dvr project before this app can do
-anything; the first entry under **KNOWN AND UNFIXED after
-Pass 29** — frame stepping near the end of the prepared range; and the entry under **KNOWN AND
-UNFIXED after Pass 31** — a last-episode recording being unreachable in the app's Trash.
+Waiting to be picked up: the Passes 31–33 push gate; the first entry under **KNOWN AND UNFIXED after
+Pass 29** — frame stepping near the end of the prepared range; and the two entries under **KNOWN AND
+UNFIXED after Pass 33**. **Item B of Pass 32 is closed**: the server change it asked for shipped as
+1.6.0's `GET /api/library/trash`, and Pass 33 built on it — as is the Pass 31 entry about a
+last-episode recording being unreachable, which that endpoint fixes.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
@@ -400,4 +445,16 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
 xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
   -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
   -only-testing:"Marlin DVR TVUITests/WeatherKitEnabledUITests"
+```
+
+`TrashRestoreUITests` (Pass 33) is the same kind of harness and needs the physical Apple TV. It reads
+Manage DVR → Trash and restores what is in it, so **it only passes with something in the trash** —
+put a recording there first with `PUT /api/library/recordings/{id} {"trash": true}` and edit the two
+show names in `Self.trashed` to match. It makes two writes, both Restores, and never presses Empty
+Trash.
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/TrashRestoreUITests"
 ```

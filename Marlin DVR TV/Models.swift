@@ -283,6 +283,56 @@ struct ShowResponse: Decodable {
     let rss: String
 }
 
+// MARK: Trash (GET /api/library/trash — server 1.6.0; Pass 33)
+
+/// One trashed recording as the trash listing hands it over.
+///
+/// Deliberately its own type and not `Episode`. The listing answers eight fields and no more
+/// (measured against 1.6.0 on 2026-09-07, Pass 33 §1): there is no `showId`, no `file`, no
+/// `thumb`, no `exists`, and none of the server-made labels. It has to be that thin, because a
+/// recording in here may belong to a show that has left the library altogether — which is the
+/// whole reason the endpoint exists (Pass 32 §B.3).
+///
+/// Decoding is strict on purpose: if the server's shape moves, the read should fail loudly
+/// rather than draw a screen of blank rows.
+struct TrashItem: Decodable, Identifiable {
+    let id: String              // the recording id — the same one the library used (Pass 33 §5)
+    let show: String            // the show's title, not its slug
+    let episodeTitle: String    // "" when the listing has none
+    let season: Int             // 0 when unknown
+    let episode: Int            // 0 when unknown
+    let aired: String           // RFC 3339 with the server's offset, "2026-09-06T21:00:00-04:00"
+    let trashedAt: String       // RFC 3339, nanosecond precision — see `ServerTime.date`
+    let size: Int               // bytes
+
+    /// The show's poster. The per-recording thumbnail 404s once a recording is trashed
+    /// (measured, Pass 33 §1), and this one answers for a show that has left the library,
+    /// so it is what the row can actually draw.
+    var artPath: String {
+        var components = URLComponents()
+        components.path = "/api/art/show"
+        components.queryItems = [URLQueryItem(name: "title", value: show)]
+        return components.string ?? ""
+    }
+}
+
+struct TrashResponse: Decodable {
+    let count: Int
+    let recordings: [TrashItem]
+
+    /// `recordings` is taken leniently for one reason only: the empty trash could not be
+    /// measured without emptying the owner's (out of scope this pass), and Go marshals an
+    /// empty slice as `null` about as often as `[]`. Either answer, and a missing key, read
+    /// as no recordings. `count` is always present in every response measured.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        recordings = try container.decodeIfPresent([TrashItem].self, forKey: .recordings) ?? []
+        count = try container.decodeIfPresent(Int.self, forKey: .count) ?? recordings.count
+    }
+
+    private enum CodingKeys: String, CodingKey { case count, recordings }
+}
+
 // MARK: Cameras (cameras.go:23-39, 280-289)
 
 struct Camera: Decodable, Identifiable {
