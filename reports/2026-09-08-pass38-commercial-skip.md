@@ -38,6 +38,14 @@ times, not asserted:
 
 No fetch, pull, checkout, merge, commit or push was run there.
 
+**It vanished again.** After the build and the device runs were finished,
+`~/Desktop/marlin-dvr-context/` was gone a second time — `ls` answered "No such file or
+directory", exactly the way Pass 37 found it. Nothing in this pass writes to or removes
+anything on the Desktop other than that one `git show` redirect. It was recreated once more by
+the same command, and the file is there now with the same sha256. **Something outside these
+passes is removing that folder**, and it is worth the owner knowing, because a later pass that
+depends on it will keep finding it missing.
+
 ### §10 versus this prompt — no stop
 
 §10 was read in full (`HLS-CLIENT-API.md:341-509`). **There is no disagreement with the prompt
@@ -460,12 +468,16 @@ Raised, not acted on. Nothing below was built, changed or worked around.
    approved design and the prompt's position was not specified; it was placed bottom-trailing.
    **Where the owner wants it is his call.**
 
-8. **`devicectl`'s console drops lines under high output volume.** Proved while diagnosing §3:
+8. **The Desktop reference folder disappeared for a second time**, mid-pass, as it did in
+   Pass 37. Recreated both times from the clone. Not this pass's doing — nothing here writes to
+   the Desktop except that one redirect — but two passes running is a pattern, not an accident.
+
+9. **`devicectl`'s console drops lines under high output volume.** Proved while diagnosing §3:
    with a per-tick print the console showed tick #1 at a position 324 seconds later than the
    session start, and the numbered diagnostic proved the earlier lines had simply not arrived.
    Recorded so a later pass does not read a missing console line as a missing event.
 
-9. **Pass 37 Open Question 2 is closed**, by §3 `:134`: the session response's `duration` is the
+10. **Pass 37 Open Question 2 is closed**, by §3 `:134`: the session response's `duration` is the
    whole recording's, even for a session started at an offset. The clamp in step 7 is built on
    the right number.
 
