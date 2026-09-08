@@ -30,6 +30,16 @@
 //  as the app owns the arrow, and re-enables the very same ones the moment it does not. The
 //  transport bar itself is untouched: it still draws, and Select still belongs to Apple.
 //
+//  Pass 38: **while, and only while, the commercial-skip prompt is on screen**, the app owns
+//  Select too, by exactly the same claim-and-return machine. `armSelectOwnership` disables
+//  the player's own `.select` recognizers — found by their public `allowedPressTypes`, never
+//  by class name — and restores precisely those: on the prompt's dismissal, on a skip, on a
+//  pause and in `viewWillDisappear`, all of which reach here as `ownsSelect` going false.
+//  `onSelectSkip` answers false whenever no prompt is up, so at every other moment Select is
+//  Apple's exactly as it is today. The arrows are untouched: the two claims match on
+//  different press types, and they never overlap in time either — the arrow claim is armed
+//  only while paused on a recording, the Select claim only while one is playing.
+//
 
 import AVKit
 import SwiftUI
@@ -41,24 +51,33 @@ struct PlayerHost: UIViewControllerRepresentable {
     let shortWindowSelect: Bool        // live channels only (Pass 7C)
     /// Pass 29: true exactly while the app owns left/right — paused on a recording.
     let ownsArrows: Bool
+    /// Pass 38: true exactly while the app owns Select — the commercial-skip prompt is up.
+    let ownsSelect: Bool
     /// Pass 28: one frame back (-1) or forward (+1). Returns true when it acted, which is the
     /// signal to swallow the press rather than hand it to Apple's transport.
     let frameStep: (Int) -> Bool
+    /// Pass 38: skip the break the prompt is offering. Returns true when it acted; false —
+    /// which is every moment no prompt is on screen — leaves the press to Apple.
+    let onSelectSkip: () -> Bool
     let onMenu: () -> Void
 
     func makeUIViewController(context: Context) -> PlayerContainerController {
         let controller = PlayerContainerController()
         controller.onMenu = onMenu
         controller.frameStep = frameStep
+        controller.onSelectSkip = onSelectSkip
         controller.attach(player: player, linearOnly: linearOnly, shortWindowSelect: shortWindowSelect)
         controller.armArrowOwnership(ownsArrows)
+        controller.armSelectOwnership(ownsSelect)
         return controller
     }
 
     func updateUIViewController(_ controller: PlayerContainerController, context: Context) {
         controller.onMenu = onMenu
         controller.frameStep = frameStep
+        controller.onSelectSkip = onSelectSkip
         controller.armArrowOwnership(ownsArrows)
+        controller.armSelectOwnership(ownsSelect)
     }
 }
 
@@ -72,9 +91,12 @@ final class PlayerContainerController: UIViewController {
 
     var onMenu: () -> Void = {}
     var frameStep: (Int) -> Bool = { _ in false }
+    var onSelectSkip: () -> Bool = { false }
     /// Set when a left/right press was consumed as a frame step, so its release is swallowed too
     /// and Apple's transport never sees half a press.
     private var swallowArrowRelease = false
+    /// The same, for a Select consumed as a commercial skip (Pass 38).
+    private var swallowSelectRelease = false
     private let playerController = AVPlayerViewController()
     private var shortWindowSelect = false
     private var pendingSelect: DispatchWorkItem?
@@ -82,6 +104,10 @@ final class PlayerContainerController: UIViewController {
     /// are switched back on again and nothing else is ever touched.
     private var suppressed: [UIGestureRecognizer] = []
     private var armed = false
+    /// The same pair for Select (Pass 38), kept apart from the arrows' so that each claim
+    /// restores precisely what it disabled and neither can touch the other's recognizers.
+    private var selectSuppressed: [UIGestureRecognizer] = []
+    private var selectArmed = false
 
     func attach(player: AVPlayer, linearOnly: Bool, shortWindowSelect: Bool) {
         playerController.player = player
@@ -120,11 +146,40 @@ final class PlayerContainerController: UIViewController {
     }
 
     private static func arrowRecognizers(in view: UIView) -> [UIGestureRecognizer] {
+        recognizers(in: view, claiming: [UIPress.PressType.leftArrow.rawValue, UIPress.PressType.rightArrow.rawValue])
+    }
+
+    /// Pass 38, and the exact counterpart of `armArrowOwnership` for Select. While the
+    /// commercial-skip prompt is up the player's own Select recognizers are disabled;
+    /// otherwise the exact ones that were disabled are restored. Nothing else is touched:
+    /// the transport bar still draws, and the arrows are matched on a different press type
+    /// and are never in this list.
+    func armSelectOwnership(_ owns: Bool) {
+        guard owns != selectArmed else { return }
+        selectArmed = owns
+        if owns {
+            selectSuppressed = Self.selectRecognizers(in: playerController.view).filter(\.isEnabled)
+            selectSuppressed.forEach { $0.isEnabled = false }
+            let alsoArrows = selectSuppressed.filter { suppressed.contains($0) }.count
+            print("[commercials] app owns Select — \(selectSuppressed.count) player recognizer(s) disabled, \(alsoArrows) of them also arrow recognizer(s)")
+        } else {
+            selectSuppressed.forEach { $0.isEnabled = true }
+            print("[commercials] Select returned to the player — \(selectSuppressed.count) recognizer(s) restored")
+            selectSuppressed = []
+        }
+    }
+
+    private static func selectRecognizers(in view: UIView) -> [UIGestureRecognizer] {
+        recognizers(in: view, claiming: [UIPress.PressType.select.rawValue])
+    }
+
+    /// Every recognizer in the tree whose public `allowedPressTypes` claims one of these
+    /// press types. No private class name is relied on anywhere.
+    private static func recognizers(in view: UIView, claiming types: Set<Int>) -> [UIGestureRecognizer] {
         var found: [UIGestureRecognizer] = []
-        let arrows: Set<Int> = [UIPress.PressType.leftArrow.rawValue, UIPress.PressType.rightArrow.rawValue]
         func walk(_ v: UIView) {
             for g in v.gestureRecognizers ?? [] where !g.allowedPressTypes.isEmpty {
-                if g.allowedPressTypes.contains(where: { arrows.contains($0.intValue) }) { found.append(g) }
+                if g.allowedPressTypes.contains(where: { types.contains($0.intValue) }) { found.append(g) }
             }
             v.subviews.forEach(walk)
         }
@@ -136,6 +191,7 @@ final class PlayerContainerController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         armArrowOwnership(false)
+        armSelectOwnership(false)
     }
 
     override var preferredFocusEnvironments: [UIFocusEnvironment] { [playerController] }
@@ -171,6 +227,12 @@ final class PlayerContainerController: UIViewController {
         if presses.contains(where: { $0.type == .rightArrow }) {
             if frameStep(1) { swallowArrowRelease = true; return }
         }
+        // Pass 38. `onSelectSkip` decides: it acts only while the commercial-skip prompt is
+        // on screen and answers false everywhere else, so at every other moment Select
+        // reaches Apple's transport exactly as it does today.
+        if presses.contains(where: { $0.type == .select }) {
+            if onSelectSkip() { swallowSelectRelease = true; return }
+        }
         if shortWindowSelect, presses.contains(where: { $0.type == .select }) {
             handleShortWindowSelect()
         }
@@ -181,6 +243,10 @@ final class PlayerContainerController: UIViewController {
         if presses.contains(where: { $0.type == .menu }) { return }
         if swallowArrowRelease, presses.contains(where: { $0.type == .leftArrow || $0.type == .rightArrow }) {
             swallowArrowRelease = false
+            return
+        }
+        if swallowSelectRelease, presses.contains(where: { $0.type == .select }) {
+            swallowSelectRelease = false
             return
         }
         super.pressesEnded(presses, with: event)

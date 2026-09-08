@@ -35,9 +35,14 @@ struct PlayerScreen: View {
             if model.phase == .playing {
                 PlayerHost(player: model.player, linearOnly: model.isCamera, shortWindowSelect: model.isLive,
                            ownsArrows: model.isRecording && model.isPaused,
-                           frameStep: { model.frameStep($0) }) { dismiss() }
+                           ownsSelect: model.commercialPrompt != nil,
+                           frameStep: { model.frameStep($0) },
+                           onSelectSkip: { model.skipCommercialBreak() }) { dismiss() }
                     .ignoresSafeArea()
                 hud
+                // Pass 38 step 5: the commercial-skip prompt, over running playback, in the
+                // same ZStack the HUD already uses. Not focusable — the press is claimed.
+                if model.commercialPrompt != nil { CommercialSkipPrompt() }
             }
             switch model.phase {
             case .starting: StartingOverlay(model: model)
@@ -264,6 +269,42 @@ struct RecordingHUD: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.top, Nocturne.Layout.marginVertical)
         .padding(.leading, Nocturne.Layout.marginHorizontal)
+        .transition(.opacity)
+    }
+}
+
+// MARK: Pass 38 — the commercial-skip prompt (no approved design; built to the app's look)
+
+/// A small card, bottom-trailing, for the five seconds `PlayerModel` keeps
+/// `commercialPrompt` non-nil. It says the break can be skipped and names the press that
+/// does it, and that is all it does.
+///
+/// **Nothing here is focusable and nothing here is a control.** No `Button`, no
+/// `.focusable`, no `@FocusState`: a focusable view has never been placed over a running
+/// `AVPlayerViewController` in this app (Pass 37 Open Question 1) and this pass was told not
+/// to be the first. The press is claimed instead — `PlayerHost.armSelectOwnership` — so this
+/// view can be pure picture. It follows the two HUDs' treatment: the Nocturne surface at 86%
+/// over the picture, the large radius, and the standard 60 / 80 pt screen margins.
+struct CommercialSkipPrompt: View {
+    var body: some View {
+        HStack(spacing: 20) {
+            Text("SELECT")
+                .font(.nocturne(Nocturne.TextSize.floor, .semibold))
+                .tracking(0.14 * Nocturne.TextSize.floor)
+                .foregroundStyle(Nocturne.bg)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 18)
+                .background(Nocturne.accent, in: Capsule())
+            Text("Skip the commercial break")
+                .font(.nocturne(Nocturne.TextSize.body))
+                .foregroundStyle(Nocturne.text)
+        }
+        .padding(.vertical, 20)
+        .padding(.horizontal, 28)
+        .background(Nocturne.surface.opacity(0.86), in: RoundedRectangle(cornerRadius: Nocturne.Radius.lg, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+        .padding(.bottom, Nocturne.Layout.marginVertical)
+        .padding(.trailing, Nocturne.Layout.marginHorizontal)
         .transition(.opacity)
     }
 }

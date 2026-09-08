@@ -59,6 +59,10 @@ final class PlayerModel {
     private(set) var pausedAt: Date?
     private(set) var pausedPosition: Double = 0     // live: seconds behind live when paused
     private(set) var notice: String?
+    /// Pass 38: the break the prompt is offering to skip, or nil when nothing is on screen.
+    /// Non-nil is also exactly when the app owns Select — `PlayerScreen` hands this straight
+    /// to `PlayerHost.ownsSelect`, so clearing it gives the press back to Apple.
+    private(set) var commercialPrompt: CommercialPrompt?
     private(set) var hudVisible = true
     private(set) var countdown = 10
     private(set) var markedWatched = false
@@ -78,6 +82,13 @@ final class PlayerModel {
     private var attachedAt: Date?
     private var lastResumeSave = Date.distantPast
     private var restartingBeyond = false
+
+    // Pass 38 — commercial segments (contract §10). The ranges this recording's answer gave,
+    // which of them have already been offered, and the prompt's own 5-second timer.
+    private var commercialRanges: [CommercialRange] = []
+    private var commercialsRequested = false
+    private var promptedRanges: Set<Int> = []
+    private var commercialPromptTask: Task<Void, Never>?
 
     static let defaultFrameRate: Double = 30
     /// Frame durations are built at 90 kHz: 1/25, 1/30 and 1/29.97 all land within a microsecond.
@@ -149,6 +160,7 @@ final class PlayerModel {
         attachedAt = Date()
         phase = .playing
         showHUD(for: 6)
+        loadCommercialsOnce()
     }
 
     private static func metadata(for request: PlayRequest) -> [AVMetadataItem] {
@@ -206,6 +218,7 @@ final class PlayerModel {
         guard t.isFinite else { return }
         if isRecording {
             position = startOffset + t
+            noticeCommercialBreak()
             refreshFrameRate()
             if let range = seekableRange { preparedTo = startOffset + range.end }
             if Date().timeIntervalSince(lastResumeSave) >= 10, !isPaused {
@@ -225,6 +238,9 @@ final class PlayerModel {
                 isPaused = true
                 pausedAt = Date()
                 pausedPosition = behindLive
+                // Pass 38 step 6: the prompt goes on a pause, and Select goes back to Apple
+                // with it — an offer to skip must not stand while the app is not listening.
+                dismissCommercialPrompt()
                 showHUD(for: nil)
                 if isRecording { saveResume() }
                 print("[player] paused (\(isLive ? "\(Int(behindLive)) s behind live" : PlayerTime.clock(position)))")
@@ -355,6 +371,145 @@ final class PlayerModel {
         position = startOffset + CMTimeGetSeconds(landed)
         print(String(format: "[framestep] %+.6f s (one frame at %.4f fps = %.6f s) → t=%.6f",
                      lastFrameStep, frameRate, 1 / frameRate, CMTimeGetSeconds(landed)))
+    }
+
+    // MARK: Commercial segments (Pass 38, contract §10) — recordings only, playing only
+
+    /// How long the prompt stands before it goes by itself and the break plays normally.
+    private static let commercialPromptSeconds: Double = 5
+    /// §10.4: "the last one can end within a tenth of a second of the end of the file", and
+    /// the commercials response carries no duration of its own. A skip is kept this far
+    /// clear of the end of the recording so it can never land at or past it.
+    private static let commercialSkipEndMargin: Double = 1
+
+    /// Step 2: one call, the moment a recording starts playing, and never a second time.
+    ///
+    /// Recordings only — a live channel, a camera or a radio station never asks, because
+    /// `isRecording` is false and `request.episode` is nil for all three. There is no poll
+    /// and no retry: §10.3 warns that an `"unknown"` may never resolve and says "Do not poll
+    /// it forever", and a `"running"` is taken here as this playback simply having no
+    /// segments. Nothing waits on the call, so playback is never blocked, delayed or altered
+    /// by it — including when it fails.
+    private func loadCommercialsOnce() {
+        guard isRecording, !commercialsRequested, let recordingID = request.episode?.id else { return }
+        commercialsRequested = true
+        Task { @MainActor [weak self] in await self?.loadCommercials(recordingID: recordingID) }
+    }
+
+    /// **On the main actor, deliberately.** `tick()` is the only reader of `commercialRanges`
+    /// and runs on the main queue; an answer stored from the cooperative pool instead was
+    /// measured on Home Theater not to reach it at all — a recording resumed at 1374 s, inside
+    /// a break running 1271.20-1478.54 s, played the whole break with no prompt, while the
+    /// answer had already been decoded and logged. A `@MainActor async` function resumes on the
+    /// main actor after its await, so the store and the read are on the same thread.
+    @MainActor
+    private func loadCommercials(recordingID: String) async {
+        let answer: CommercialsResponse
+        do {
+            answer = try await api.commercials(recordingID: recordingID)
+        } catch {
+            // Step 3: a network failure, a 404 or any other non-200 does nothing at all —
+            // no prompt, no notice, nothing the viewer can see. This and `dontKnow` below
+            // are the ordinary outcome for most of the library.
+            print("[commercials] \(recordingID) → no answer: \(error)")
+            return
+        }
+        guard !stopped else { return }
+        switch answer.plan {
+        case .arm(let ranges):
+            commercialRanges = ranges
+            let list = ranges.map { String(format: "%.2f-%.2f", $0.startSeconds, $0.endSeconds) }.joined(separator: ", ")
+            print("[commercials] \(recordingID) → detected: \(ranges.count) break(s) [\(list)], from \"\(answer.from)\", source type \"\(answer.source.type)\" — \(answer.detail)")
+        case .playThrough:
+            // A real answer, not a failure: this recording has no breaks and no prompt will
+            // ever show for it (§10.6).
+            print("[commercials] \(recordingID) → none, from an m3u source: a real answer, this recording has no breaks")
+        case .dontKnow:
+            print("[commercials] \(recordingID) → \"\(answer.stateRaw)\" from source type \"\(answer.source.type)\": no prompt for this playback")
+        }
+    }
+
+    /// Step 4. Called once a second from `tick()` — the periodic observer the app already
+    /// had (`observe`, :169-173). No second observer and no boundary observer were added.
+    /// `position` is `startOffset + t`, which is §10.4's `edlTime = playerPosition + start`
+    /// already computed, so a range's seconds and `position` are the same number line.
+    ///
+    /// Each range prompts **at most once per playback**: `promptedRanges` keeps the ones
+    /// already offered or skipped, so seeking backwards into a break does not offer it again.
+    private func noticeCommercialBreak() {
+        guard commercialPrompt == nil, !isPaused, !commercialRanges.isEmpty else { return }
+        guard let index = commercialRanges.firstIndex(where: { position >= $0.startSeconds && position < $0.endSeconds }),
+              !promptedRanges.contains(index) else { return }
+        promptedRanges.insert(index)
+        commercialPrompt = CommercialPrompt(index: index, endSeconds: commercialRanges[index].endSeconds)
+        print(String(format: "[commercials] break %d starts at %.2f s (position %.2f s) — prompt up for %.0f s, skip would land at %.2f s",
+                     index + 1, commercialRanges[index].startSeconds, position,
+                     Self.commercialPromptSeconds, commercialRanges[index].endSeconds))
+        armPromptTimeout()
+    }
+
+    /// Step 5. Five seconds, then the prompt goes by itself and the commercial plays on.
+    /// This is the timed mechanism of `showHUD(for:)` (:632-641) — a cancellable task that
+    /// sleeps and then clears the flag — kept as its own task only so that showing the
+    /// prompt cannot drag the recording HUD on screen with it.
+    private func armPromptTimeout() {
+        commercialPromptTask?.cancel()
+        commercialPromptTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.commercialPromptSeconds))
+            guard !Task.isCancelled, let self, self.commercialPrompt != nil else { return }
+            print("[commercials] prompt timed out — the break plays normally")
+            self.dismissCommercialPrompt()
+        }
+    }
+
+    /// The prompt goes, and Select goes back to Apple with it: `PlayerScreen` passes
+    /// `commercialPrompt != nil` straight into `PlayerHost.ownsSelect`.
+    func dismissCommercialPrompt() {
+        commercialPromptTask?.cancel()
+        commercialPromptTask = nil
+        commercialPrompt = nil
+    }
+
+    /// Step 7. Select while the prompt is up: jump to the end of the break.
+    ///
+    /// The move is the app's existing in-item exact seek — the same call, the same zero
+    /// tolerances and the same seekable-range clamp as `frameStep` (:341-352) — and **not**
+    /// `restart(at:)`, which tears the session down and puts the Starting screen up.
+    /// Play/pause is never touched.
+    ///
+    /// Returns **true** when it acted, which is the caller's signal to swallow the press.
+    /// It returns false whenever no prompt is on screen, and that press falls straight
+    /// through to Apple's transport bar, unchanged.
+    @discardableResult
+    func skipCommercialBreak() -> Bool {
+        guard let prompt = commercialPrompt, phase == .playing, let item = player.currentItem else { return false }
+        dismissCommercialPrompt()
+        // Clamp against the whole recording's length before anything else. The commercials
+        // response carries no duration; `duration` here is the play session's, which contract
+        // §3 states is the whole recording's even for a session started at an offset.
+        var absolute = prompt.endSeconds
+        if duration > 0 { absolute = min(absolute, duration - Self.commercialSkipEndMargin) }
+        var target = CMTime(seconds: max(0, absolute - startOffset), preferredTimescale: Self.frameTimescale)
+        if let range = seekableRange {
+            let low = CMTime(seconds: range.start, preferredTimescale: Self.frameTimescale)
+            let high = CMTime(seconds: max(range.start, range.end - 0.05), preferredTimescale: Self.frameTimescale)
+            if CMTimeCompare(target, low) < 0 { target = low }
+            if CMTimeCompare(target, high) > 0 { target = high }
+        }
+        item.cancelPendingSeeks()
+        let from = item.currentTime()
+        item.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.commercialSkipLanded(from: from) }
+        }
+        return true
+    }
+
+    private func commercialSkipLanded(from: CMTime) {
+        guard let item = player.currentItem else { return }
+        let landed = item.currentTime()
+        position = startOffset + CMTimeGetSeconds(landed)
+        print(String(format: "[commercials] skipped %+.2f s → t=%.6f, position %.2f s of %.2f s",
+                     CMTimeGetSeconds(landed) - CMTimeGetSeconds(from), CMTimeGetSeconds(landed), position, duration))
     }
 
     private func itemStatusChanged() {
@@ -594,6 +749,7 @@ final class PlayerModel {
         detachPlayer()
         keepAliveTask?.cancel()
         hudTask?.cancel()
+        commercialPromptTask?.cancel()
         countdownTask?.cancel()
         if let id = session?.id { await sessions.stop(id: id) }
         session = nil
@@ -610,6 +766,9 @@ final class PlayerModel {
         player.replaceCurrentItem(with: nil)
         attachedAt = nil
         isPaused = false
+        // Pass 38: no prompt may outlive the item it belongs to, or the app would still be
+        // claiming Select over a screen that no longer has a player on it.
+        dismissCommercialPrompt()
     }
 
     private func saveResume() {
