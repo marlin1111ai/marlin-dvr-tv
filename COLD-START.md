@@ -2,7 +2,7 @@
 
 ## What the app is
 
-Marlin DVR TV is a tvOS app (SwiftUI) that will be a client of the Marlin DVR server — a Go DVR server running as a Docker container on Unraid at http://192.168.1.250:8090/ , source repo git@github.com:marlin1111ai/marlin-dvr.git . Pass 1 (2026-09-05) created the empty Xcode project and the plumbing only. No app features are written.
+Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — a Go DVR server running as a Docker container on Unraid at http://192.168.1.250:8090/ , source repo git@github.com:marlin1111ai/marlin-dvr.git . What is built is listed under "What is built" below.
 
 ## Where things live
 
@@ -452,8 +452,10 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 **Nothing is unpushed.** The owner accepted Passes 31, 32, 32A and 33 on Home Theater — delete
 refresh, Stop recording from the Guide, the trash list off the new server endpoint, and Restore —
-and Pass 34 pushed all of them. `origin/main` is at **`93de296`**, verified against local HEAD and
-`git ls-remote` (`reports/2026-09-07-pass34-push-notebook.md`).
+and **Pass 34 pushed Passes 31, 32, 32A and 33** on 2026-09-07
+(`reports/2026-09-07-pass34-push-notebook.md`). **On 2026-09-08 Pass 35 verified that push:** local
+HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`, and the working tree was
+clean (`reports/2026-09-08-pass35-context-refresh-recon.md`).
 
 Waiting to be picked up, in no particular order: **the series-pass sheet chip**, the first thing a
 later pass should take, since it is a wrong control the owner can press today; **stopping a pass's
