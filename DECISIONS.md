@@ -441,3 +441,65 @@
   same file is trashed twice, and Empty Trash has no confirmation step. Both are in COLD-START under
   "Raised for the marlin-dvr project".
 
+
+## 2026-09-08 (Pass 38 — commercial skip)
+
+- **Owner acceptance: Pass 38 was tested on Home Theater 2026-09-08 and accepted** — the commercial
+  skip prompt works. Pushed to `origin main` in Pass 39 together with Pass 37's recon report and
+  the notebook work recording the acceptance.
+- **The feature is exactly what the owner settled and nothing more** (owner, 2026-09-08): a
+  recording plays, playback reaches the start of a commercial break, a small prompt appears for
+  five seconds saying the break can be skipped, SELECT jumps to the end of the break, pressing
+  nothing lets the commercial play. **No auto-skip mode, no setting, no toggle, no preference, no
+  chapter marks and no timeline shading** were built, proposed or stubbed.
+- **The commercials route is `GET /api/library/recordings/{id}/commercials` (contract §10), and
+  `GET /api/library/recordings/{id}/segments` is not used.** §10.7 says the older route answers
+  `"02:57"` strings that have already lost the two decimals the `.edl` carried, collapses several
+  realities onto `"not run"`, and carries no source — so it is the wrong route for a player and
+  the owner asked for it to be left exactly as it is.
+- **Two decodings deliberately break this app's strict habit, because §10 instructs it.** `edl` is
+  optional (`:397`, `omitempty`; §10.5 says its absence is the ordinary case), and **`state` is
+  decoded as a `String` and mapped, never as a `Decodable` enum** — §10.3 (`:410`) says to treat
+  anything unrecognised as `"unknown"`, and an enum would throw on a fifth value from a future
+  server instead. Everything else follows §10.2's table and stays strict.
+- **Only `state: "detected"` arms the feature** (owner's step 3, 2026-09-08). A `"none"` from an
+  `m3u` source is a **real answer** — no prompt will ever show for that recording, and that is
+  correct behaviour, not a failure. A `"none"` from `hdhomerun` is treated like `"unknown"`,
+  per §10.6: comskip exits 1 with its clean "Commercials were not found" on the owner's 720p
+  antenna recordings, and on a commercial channel that answer is very probably wrong. `""` means
+  "source unknown, not antenna" (`:486`) and is not believed either. Everything else — `unknown`,
+  `running`, an unrecognised value, a transport failure, any non-200 — shows nothing at all, with
+  no user-visible message. **Playback is never blocked, delayed or altered by any of it.**
+- **The prompt is not focusable, and the press is claimed instead.** No focusable view has ever
+  been placed over a running `AVPlayerViewController` in this app (Pass 37 Open Question 1) and
+  Pass 38 was told not to be the first. `PlayerHost.armSelectOwnership` is the exact counterpart of
+  Pass 29's `armArrowOwnership`: it disables the player's own Select recognizers — matched on the
+  public `allowedPressTypes`, never by class name — for as long as the prompt is up, and restores
+  precisely those on dismissal, on a skip, on a pause and in `viewWillDisappear`. **Measured on the
+  device at every arming: 5 Select recognizers, 0 of them also arrow recognizers**, and frame
+  stepping unchanged at 0.033367 s a click. The two claims are separate and never overlap in time.
+- **The prompt is built to the app's look, not designed first** (owner, 2026-09-08) — the same
+  route the radar, Manage DVR, Favorites and Radio took. It sits bottom-trailing at the standard
+  60 / 80 pt margins, on the Nocturne surface at 86 %, with an accent SELECT capsule. **Its
+  position was chosen by this pass, not by the owner**, and it overlaps the right end of Apple's
+  transport bar when the transport happens to be on screen.
+- **The skip is the existing in-item exact seek, never `restart(at:)`** — that tears the session
+  down and shows the Starting screen. Play/pause is not touched, the target is clamped to the
+  seekable range the way `frameStep` already clamps, and clamped again against the recording's
+  duration so it can never land at or past the end. **The duration is the play session's**, which
+  contract §3 (`:134`) states is the whole recording's even for a session started at an offset —
+  this closes Pass 37 Open Question 2.
+- **`state: "running"` is treated as this playback simply having no segments.** There is no poll
+  and no retry: §10.3 (`:422`) warns that an `"unknown"` may never resolve and says "Do not poll it
+  forever". One call per playback, from `attach()`, and never again — the ranges are absolute
+  recording seconds, so they survive a `restart(at:)`.
+- **A resumed recording starts well past its resume point, and it is not this pass's doing.**
+  Measured with a disclosed, reverted diagnostic: `start=1680` was at 1988 s by the fourth tick.
+  Recordings are an HLS EVENT playlist the server is still writing and AVPlayer joins it near the
+  live edge. Recorded under KNOWN AND UNFIXED in COLD-START.md; **not fixed, and no client-side
+  compensation was built for it.**
+- **Disclosed cost of the evidence:** playing a recording to its end marks it watched and clears
+  its resume, and the harness did that while resetting state between runs. *History's Greatest
+  Mysteries* S4 E14 is now `watched: true` and **the owner's "35 min in" resume position on it is
+  gone**; Storage Wars S4 E19 is watched too. Nothing was deleted, trashed, hidden or scheduled,
+  and no `GET /api/settings` was read.

@@ -443,6 +443,79 @@ owner's browser, and Pass 33 sent no POST/PUT/DELETE before 21:09.
   **these two ids only** for Pass 33's evidence, and both were restored to their original ids and
   paths. The trash is empty and the pass left nothing behind.
 
+Pass 37 (`reports/2026-09-08-pass37-commercial-skip-recon.md`): commercial-skip recon, read-only,
+report only. It answered whether the app as it stood could draw a prompt over running playback
+(yes — `RecordingHUD` already does, auto-hidden by `showHUD(for:)`), which press could answer it
+(none is unowned, but `armArrowOwnership` is a proven claim-and-return machine), how a break would
+be noticed (`tick()`'s `position` already implements §10.4's `edlTime = playerPosition + start`),
+how to jump (the in-item exact seek, not `restart(at:)`), where the duration comes from, and which
+two §10 fields would break a strict decoder. `~/Desktop/marlin-dvr-context/` vanished mid-pass and
+its §2.2 question went unanswered; **Pass 38 closed it** from §3 of the contract.
+
+Pass 38 (`reports/2026-09-08-pass38-commercial-skip.md`, **accepted by the owner on Home Theater
+2026-09-08 and pushed in Pass 39**): **commercial skip.** A recording plays, playback reaches the
+start of a break, a small prompt appears bottom-right for five seconds saying the break can be
+skipped, SELECT jumps to the end of the break, and pressing nothing lets the commercial play.
+
+- **`CommercialSegments.swift`** is the decodable for `GET /api/library/recordings/{id}/commercials`
+  (contract §10) and the one call. Two decodings depart from this app's strict habit **because §10
+  says to**: `edl` is optional (`:397`, `omitempty`, and §10.5 says its absence is the ordinary
+  case), and **`state` is decoded as a `String` and mapped, never as a `Decodable` enum**, because
+  §10.3 (`:410`) says to treat any unrecognised value as `"unknown"` rather than throw.
+- **Only `state: "detected"` arms anything.** A `"none"` from an `m3u` source is a real answer and
+  shows nothing ever; a `"none"` from anything else — and `unknown`, `running`, an unrecognised
+  value, a transport failure or any non-200 — also shows nothing. That is the ordinary outcome for
+  most of the library and it is deliberate.
+- One fetch per playback from `attach()`, never repeated, never polled. Breaks are noticed on the
+  **existing** 1 s periodic observer; no second observer and no boundary observer was added. Each
+  range prompts at most once per playback, including after seeking backwards into it.
+- The skip is the app's **existing in-item exact seek** with `frameStep`'s clamp plus a clamp against
+  the recording's duration. **Not `restart(at:)`** — no session is torn down, no Starting screen,
+  and play/pause is never touched.
+- **`PlayerHost.armSelectOwnership`** is the exact counterpart of Pass 29's `armArrowOwnership`:
+  while and only while the prompt is up, the player's own Select recognizers are disabled — matched
+  on the public `allowedPressTypes`, never by class name — and precisely those are restored, on
+  dismissal, on a skip, on a pause and in `viewWillDisappear`. Measured on the device every single
+  arming: **5 Select recognizers, 0 of them also arrow recognizers.** The prompt itself is **not
+  focusable**; no focusable view has still ever been placed over a running player in this app.
+
+**Proven on Home Theater** on the owner's Philo recording of *History's Greatest Mysteries* S4 E14
+"Who Is D.B. Cooper?" — the recording §10.2's own example is drawn from — which the server reports
+**4 breaks** for (`176.54-206.54, 305.57-371.54, 730.56-925.46, 1271.20-1478.54`): the prompt
+appeared **0.27 s** after a break's own start second; Select landed on `endSeconds` **exactly**
+(`t=206.540000` and `t=925.460000`); pressing nothing timed the prompt out at 5 s and played the
+break; a break already offered was never offered again even after seeking back into it; a pause took
+the prompt down and handed Select back; and frame stepping was unchanged at **0.033367 s a click**.
+Recordings the server answers `"unknown"` or `"none"` for showed nothing at all across twenty
+forward skips.
+
+**Two things the pass found and did not paper over.** comskip's first break on that recording is
+exactly 30.00 s — one advert out of a longer pod — so a skip that lands precisely on `endSeconds`
+lands in the middle of the next advert; that is the server's detection, not the app's arithmetic.
+And the end-of-recording clamp, the `hdhomerun` `"none"` branch and the network-failure branch were
+**never exercised live** — the owner's library holds only m3u recordings and no break came near the
+end of a file.
+
+### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
+
+- **A resumed recording starts well past its resume point.** Measured on Home Theater in Pass 38
+  with a disclosed, reverted diagnostic: a session created with `start=1680` was already at
+  **1988 s at its fourth tick**, about four seconds in — five minutes further on than the resume
+  position asked for. Recordings are an HLS **EVENT** playlist the server is still writing
+  (contract §3), and AVPlayer joins it near its live edge rather than at its beginning; the
+  transport bar says "LIVE" on these items, which is the same fact showing on screen. **Nothing in
+  Pass 38 causes this and nothing in Pass 38 changed it** — `startOffset`, `attach`, session
+  creation and the resume store are untouched by diff. It is pre-existing and unfixed.
+- **Because of that, "a playback that starts inside a break offers it" could not be proved.** Three
+  attempts were made in Pass 38; each time the playhead was already past the break by the first
+  tick. The code path is the same containment test that fires everywhere else and there is no
+  separate branch for it, but that is reasoning, not evidence.
+- **One skip landed 1.01 s past `endSeconds` instead of on it.** Two landings were exact to six
+  decimal places, both from sessions with `startOffset = 0`; the third, from a session with
+  `startOffset = 931.000155`, asked for 547.539845 in item time and landed at 548.548231. It lands
+  past the break, never short, so it never lands inside a commercial. Unexplained.
+- Everything under **KNOWN AND UNFIXED after Pass 29** and **after Pass 33** still stands.
+
 ## What is NOT built
 
 The future screen **Settings**: present as drawn and inert, parked until the owner says otherwise (DECISIONS.md 2026-09-06 sweep 4 + fixes). Weather left this list in Pass 13 and **Radio in Pass 19**.
@@ -480,20 +553,28 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Nothing is unpushed.** The owner accepted Passes 31, 32, 32A and 33 on Home Theater — delete
-refresh, Stop recording from the Guide, the trash list off the new server endpoint, and Restore —
-and **Pass 34 pushed Passes 31, 32, 32A and 33** on 2026-09-07
-(`reports/2026-09-07-pass34-push-notebook.md`). **On 2026-09-08 Pass 35 verified that push:** local
-HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`, and the working tree was
-clean (`reports/2026-09-08-pass35-context-refresh-recon.md`).
+**Nothing is unpushed.** The owner accepted **Pass 38** (commercial skip) on Home Theater on
+2026-09-08 and **Pass 39 pushed it** together with Pass 37's recon report and this notebook work
+(`reports/2026-09-08-pass39-three-defects-recon.md`). Before that, the owner accepted Passes 31, 32,
+32A and 33 on Home Theater and **Pass 34 pushed** them on 2026-09-07
+(`reports/2026-09-07-pass34-push-notebook.md`); **Pass 35 verified that push** on 2026-09-08 — local
+HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`
+(`reports/2026-09-08-pass35-context-refresh-recon.md`).
 
-Waiting to be picked up, in no particular order: **the series-pass sheet chip**, the first thing a
-later pass should take, since it is a wrong control the owner can press today; **stopping a pass's
-airing on the device**, which would settle the same area; frame stepping near the end of the
-prepared range (**KNOWN AND UNFIXED after Pass 29**); and the rest of **KNOWN AND UNFIXED after
-Pass 33**. **Item B of Pass 32 is closed** — the server change it asked for shipped as 1.6.0's
-`GET /api/library/trash` and Pass 33 built on it — as is the Pass 31 entry about a last-episode
-recording being unreachable, which that endpoint fixes.
+**The owner has named three defects**, all reconnoitred read-only in Pass 39 and none of them fixed:
+**audio out of sync with video on recordings**, **a "LIVE" indicator showing while a recording
+plays**, and **having to wait after starting a recording before fast forward works**. Pass 39's
+report carries the file:line answers and the sorting; take that report as the starting point rather
+than re-deriving it.
+
+Waiting to be picked up beyond those, in no particular order: **the resumed-recording overshoot**
+(**KNOWN AND UNFIXED after Pass 38**), which Pass 39 found is the same root as the fast-forward
+wait; **the series-pass sheet chip**, since it is a wrong control the owner can press today;
+**stopping a pass's airing on the device**, which would settle the same area; frame stepping near
+the end of the prepared range (**KNOWN AND UNFIXED after Pass 29**); and the rest of **KNOWN AND
+UNFIXED after Pass 33**. **Item B of Pass 32 is closed** — the server change it asked for shipped as
+1.6.0's `GET /api/library/trash` and Pass 33 built on it — as is the Pass 31 entry about a
+last-episode recording being unreachable, which that endpoint fixes.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
@@ -554,3 +635,23 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
   -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
   -only-testing:"Marlin DVR TVUITests/TrashRestoreUITests"
 ```
+
+`CommercialSkipUITests` (Pass 38) is the same kind of harness and needs the physical Apple TV, plus
+a recording the server has actually detected breaks in — the owner's Philo recordings, not antenna
+ones. **It is the one harness that does not call `launch()`**: XCUITest does not forward the app's
+`print` output, so the app is started separately with the console attached and the harness uses
+`activate()` to join the running process instead of replacing it.
+
+```
+xcrun devicectl device process launch --device <Home Theater> --console --terminate-existing \
+  com.marlin1111.MarlinDVRTV &
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/CommercialSkipUITests"
+```
+
+Two things about that console, learned the hard way in Pass 38: **it drops lines under high output
+volume**, so a missing line is not evidence that an event did not happen; and every test leaves a
+resume position further into the subject recording than the last, so
+`testZResetTheSubjectRecordingsResume` exists to play it out to its end, which is the only thing
+that clears one.
