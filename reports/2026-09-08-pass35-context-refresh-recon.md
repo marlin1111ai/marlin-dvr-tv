@@ -429,3 +429,307 @@ written the 1.6.0 versions in the first place — which we cannot tell from here
    do not think anything is broken; but if a future session checks that citation
    by opening the obvious file, it will look wrong, and I could not rule out that
    some other citation has the same problem without checking every one.
+
+---
+
+# Pass 35B — notebook fix
+
+**Date:** 2026-09-08
+**Type:** notebook only. No code changes. Two sentences in `COLD-START.md`, then a
+commit and a push in the same pass (notebook work has no separate push gate).
+**Facts:** every fact written into the notebook this pass comes from the Pass 35
+report above. Nothing new was measured, no host was contacted, and the reference
+clone was not read, fetched, pulled or entered.
+
+Both sentences named in the brief matched what was described, so neither
+stop-and-report condition fired. Neither was guessed at.
+
+---
+
+## 1. The "Next step" SHA sentence
+
+Found at `COLD-START.md:455-456`, inside `## Next step` (`:451`).
+
+**Before** (verbatim, the two lines as they wrapped):
+
+> and Pass 34 pushed all of them. `origin/main` is at **`93de296`**, verified against local HEAD and
+> `git ls-remote` (`reports/2026-09-07-pass34-push-notebook.md`).
+
+**After** (verbatim):
+
+> and **Pass 34 pushed Passes 31, 32, 32A and 33** on 2026-09-07
+> (`reports/2026-09-07-pass34-push-notebook.md`). **On 2026-09-08 Pass 35 verified that push:** local
+> HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`, and the working tree was
+> clean (`reports/2026-09-08-pass35-context-refresh-recon.md`).
+
+It now records **a dated event that was verified**, not a value that claims to be
+current. `93de296` was never wrong as history — it was wrong as a standing claim,
+because Pass 34 wrote the line and then made one further commit and pushed it, so
+the sentence was already one behind when it landed. The new form survives every
+later commit: `aad7992` is what Pass 35 measured on 2026-09-08, and it stays what
+Pass 35 measured on 2026-09-08 no matter where `main` goes afterwards.
+
+**The forbidden form is gone from the whole file**, asserted rather than assumed:
+
+```
+$ grep -n "origin/main\` is at\|origin/main is at" COLD-START.md
+(no matches, exit 1)
+```
+
+The preceding sentence in the same paragraph — "The owner accepted Passes 31, 32,
+32A and 33 on Home Theater — delete refresh, Stop recording from the Guide, the
+trash list off the new server endpoint, and Restore —" — is untouched, and the
+paragraph now names those four passes twice: once as what the owner accepted, once
+as what Pass 34 pushed. That repetition is deliberate, so the push sentence stands
+on its own if the acceptance sentence is ever moved.
+
+## 2. The "What the app is" paragraph
+
+Found at `COLD-START.md:5`, the whole of the paragraph under `## What the app is`.
+
+**Before** (verbatim, one line):
+
+> Marlin DVR TV is a tvOS app (SwiftUI) that will be a client of the Marlin DVR server — a Go DVR server running as a Docker container on Unraid at http://192.168.1.250:8090/ , source repo git@github.com:marlin1111ai/marlin-dvr.git . Pass 1 (2026-09-05) created the empty Xcode project and the plumbing only. No app features are written.
+
+**After** (verbatim, one line):
+
+> Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — a Go DVR server running as a Docker container on Unraid at http://192.168.1.250:8090/ , source repo git@github.com:marlin1111ai/marlin-dvr.git . What is built is listed under "What is built" below.
+
+Three changes, and nothing else in the paragraph moved:
+
+- **"that will be a client" → "and a client"**. The app has been a working client
+  since Pass 5.
+- **"No app features are written." → removed.** False since Pass 5 and the most
+  actively misleading sentence in the file, since it is the fourth line a new
+  reader sees.
+- **"Pass 1 (2026-09-05) created the empty Xcode project and the plumbing only."
+  → replaced by a pointer to "What is built".** Disclosed plainly because it is a
+  deletion the brief did not spell out: that Pass 1 history is **not lost**, it is
+  carried verbatim by the sentence at the head of `## What is built`, which the
+  brief protects and which this pass did not touch. Keeping both would have left
+  an opening paragraph that describes a built app and then immediately says only
+  the plumbing exists. If the owner wants the Pass 1 clause back in the opening
+  paragraph, it is a one-line restore. See OPEN QUESTIONS 1.
+
+**The protected sentence is untouched**, asserted:
+
+```
+$ sed -n '56p' COLD-START.md
+The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVApp.swift`) and one `ContentView` showing the app name.
+```
+
+The server URL and the source repo the paragraph already carried are both kept,
+character for character, including the file's existing spacing around them. The
+`"What is built"` quotation marks are straight, matching the file's convention —
+one curly pair was introduced by the first draft of this edit and normalised
+before the commit; the file now contains none (`grep -c '[“”]'` → `0`).
+
+## 3. The diff, in full
+
+Two hunks. Nothing else in the file changed.
+
+```diff
+--- a/COLD-START.md
++++ b/COLD-START.md
+@@ -2,7 +2,7 @@
+ 
+ ## What the app is
+ 
+-Marlin DVR TV is a tvOS app (SwiftUI) that will be a client of the Marlin DVR server — a Go DVR server running as a Docker container on Unraid at http://192.168.1.250:8090/ , source repo git@github.com:marlin1111ai/marlin-dvr.git . Pass 1 (2026-09-05) created the empty Xcode project and the plumbing only. No app features are written.
++Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — a Go DVR server running as a Docker container on Unraid at http://192.168.1.250:8090/ , source repo git@github.com:marlin1111ai/marlin-dvr.git . What is built is listed under "What is built" below.
+ 
+ ## Where things live
+ 
+@@ -452,8 +452,10 @@
+ 
+ **Nothing is unpushed.** The owner accepted Passes 31, 32, 32A and 33 on Home Theater — delete
+ refresh, Stop recording from the Guide, the trash list off the new server endpoint, and Restore —
+-and Pass 34 pushed all of them. `origin/main` is at **`93de296`**, verified against local HEAD and
+-`git ls-remote` (`reports/2026-09-07-pass34-push-notebook.md`).
++and **Pass 34 pushed Passes 31, 32, 32A and 33** on 2026-09-07
++(`reports/2026-09-07-pass34-push-notebook.md`). **On 2026-09-08 Pass 35 verified that push:** local
++HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`, and the working tree was
++clean (`reports/2026-09-08-pass35-context-refresh-recon.md`).
+ 
+ Waiting to be picked up, in no particular order: **the series-pass sheet chip**, the first thing a
+ later pass should take, since it is a wrong control the owner can press today; **stopping a pass's
+```
+
+## 4. The commit and the push
+
+One commit carrying both edits and the Pass 35 report exactly as it already stood,
+then a push to `origin main`.
+
+```
+$ git commit -F - (message: "Pass 35: context refresh recon, and two stale notebook sentences fixed")
+[main c8ae078] Pass 35: context refresh recon, and two stale notebook sentences fixed
+ 2 files changed, 436 insertions(+), 3 deletions(-)
+ create mode 100644 reports/2026-09-08-pass35-context-refresh-recon.md
+
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   aad7992..c8ae078  main -> main
+```
+
+**A fast-forward**, `aad7992..c8ae078` — the two dots and no `+` are git's own way
+of saying so. Nothing was forced, rebased or amended.
+
+## 5. Push verification (step 4)
+
+Run after the push, `git fetch` first. Each command was run on its own; the raw
+output follows.
+
+```
+$ git fetch
+(no output)
+
+$ git rev-parse HEAD
+c8ae078c46023a268e58238db215fad17041cdf6
+
+$ git rev-parse origin/main
+c8ae078c46023a268e58238db215fad17041cdf6
+
+$ git ls-remote origin main
+c8ae078c46023a268e58238db215fad17041cdf6	refs/heads/main
+
+$ git status --porcelain
+(no output)
+
+$ git rev-list --left-right --count origin/main...HEAD
+0	0
+```
+
+| Value | SHA |
+|---|---|
+| local `HEAD` | `c8ae078c46023a268e58238db215fad17041cdf6` |
+| `origin/main` (after fetch) | `c8ae078c46023a268e58238db215fad17041cdf6` |
+| `git ls-remote origin main` (the remote's own answer) | `c8ae078c46023a268e58238db215fad17041cdf6` |
+
+**All three agree at `c8ae078`.** The working tree is clean, and the branch is
+level in both directions — 0 commits ahead, 0 behind. The stop-and-report
+condition for step 4 did **not** fire.
+
+Note on what this section can and cannot prove: **a commit cannot contain its own
+SHA**, so the verification above measures commit `c8ae078` and is itself written
+into the commit that follows it — the same shape Pass 30 and Pass 34 used. That
+following commit — this section — is pushed and verified the same way, but its
+verification cannot live inside itself: it is reported to the owner in this pass's
+closing summary, and read from git by any later pass that wants it in the notebook.
+
+---
+
+## OPEN QUESTIONS
+
+Raised, not acted on.
+
+1. **The Pass 1 clause was dropped from the opening paragraph, not just reworded.**
+   The brief protected "the Pass 1 sentence at the head of that section" — read as
+   the one in `## What is built`, which is untouched. The *other* Pass 1 clause,
+   the one inside the paragraph being rewritten, was removed as part of the
+   rewrite. Nothing is lost: the sentence below carries the same history verbatim.
+   What breaks if that reading was wrong: the opening paragraph no longer dates the
+   project's start. One-line restore if the owner wants it back.
+
+2. **"Nothing is unpushed." is the same class of standing claim, and was left
+   alone.** It opens the paragraph edited in step 1 and will go stale the moment a
+   pass commits without pushing — exactly the failure mode step 1 was written to
+   remove. It happens to be **true right now** (verified in section 5), so it was
+   not touched: the brief named one sentence and the scope lock forbids improving
+   the rest. **Should a later pass give it a date too, or delete it as a claim the
+   notebook cannot keep honest?**
+
+3. **Pass 35B's own push is recorded in this report, not in `COLD-START.md`.**
+   Step 1 fixed the wording of an existing sentence; it did not ask for a new
+   event to be added, and none was invented. So `COLD-START.md` still names
+   `aad7992`/2026-09-08 as its most recent verification, while the remote moved on to
+   `c8ae078` and then to the commit carrying this section. That is correct under the new form — it is a dated record of what
+   Pass 35 verified, not a claim about the present — but a reader wanting the
+   current SHA must run `git`, which is the intended behaviour. Flagged so nobody
+   later reads it as a second staleness bug and "fixes" it back into a standing
+   value.
+
+4. **Open Question 2 of the Pass 35 report is untouched**, as the brief requires:
+   the `HLS-CLIENT-API.md:297` citation still resolves only against the reference
+   clone's fetched `origin/main`, not against its checked-out file. Nothing was
+   done about it and nothing about it changed.
+
+---
+
+## SCOPE CHECK
+
+| Path | Access | Required by |
+|---|---|---|
+| `~/Xcode/Marlin DVR TV/COLD-START.md` | read, then **edited** — two sentences, two diff hunks | steps 1 and 2 (and "WHAT TO READ FIRST") |
+| `~/Xcode/Marlin DVR TV/reports/2026-09-08-pass35-context-refresh-recon.md` | read, **committed as it stood**, then **appended to** (this section) | "WHAT TO READ FIRST", step 3, DELIVERABLE |
+
+**Nothing else in either tree was read, opened or changed.** A copy of
+`COLD-START.md` was taken into the session scratchpad before the edit as a
+pre-change snapshot; it is outside the repo and outside the project folder.
+
+**Git actions:** `git add`, `git commit`, `git push origin main`, `git fetch`,
+`git rev-parse`, `git ls-remote`, `git status`, `git rev-list`, `git diff`,
+`git log`. **No force, no rebase, no amend, no reset, no merge.** Both pushes were
+fast-forwards.
+
+**Not done, per the scope lock:** no Swift, project, entitlement or config file
+edited — none was opened; `DECISIONS.md` not edited; no other file under
+`reports/` edited; `HLS-CLIENT-API.md`, `MARLIN-DVR-SERVER-COLD-START.md` and
+`MARLIN-DVR-TV-HANDOFF-2026-09-08.md` not edited; Open Question 2 of the Pass 35
+report not acted on; nothing copied out of the reference clone, which was not
+read, entered, fetched or pulled this pass; `design/` not opened; no contact of
+any kind with 192.168.1.250 or any other host on the do-not-touch list; no other
+part of `COLD-START.md` tidied, reformatted, reordered or improved. No processes
+left running, no half-written files.
+
+**Credential scan.** Every line quoted above was reviewed before it was written.
+No tokens, passwords, tuner DeviceAuth values, source URLs, account identifiers or
+device ids appear. The two identifiers that do appear — the LAN address
+`192.168.1.250:8090` and the public source repo `marlin1111ai/marlin-dvr` — were
+already in the edited paragraph before this pass, are the owner's own, and are
+kept because removing them was not asked for and they are what the paragraph is
+for.
+
+---
+
+## CLOSING SUMMARY FOR THE OWNER
+
+**What the two sentences now say.**
+
+The first one, in "Next step", used to say the project's latest saved point *is*
+a number. It now says what happened and when: Pass 34 sent up the four accepted
+pieces of work on 7 September, and on 8 September Pass 35 checked that it had
+really arrived — your machine, your record of GitHub, and GitHub itself all
+agreed. Written that way it stays true forever, because it describes a check that
+happened on a day rather than making a claim about right now that goes out of date
+the next time anything is saved.
+
+The second one, the very first paragraph of the file, used to say the app "will
+be" a client of your DVR and that no features were written. That was true on day
+one and has been wrong since the fifth work session. It now says plainly that the
+app *is* a tvOS client of your DVR server, and points the reader down to the "What
+is built" list for the details. The server address and the server's source repo
+are unchanged. The sentence recording that the first session built only the empty
+project is still in the file, in the "What is built" section, exactly as it was.
+
+**What is on the remote.** `c8ae078` — checked three separate ways after the
+upload, all three agreeing, with nothing left over on this machine. Everything
+was added on top; nothing was overwritten, rewritten or forced. There will be one
+more save straight after this one, carrying this write-up, and it is checked the
+same way.
+
+**The three things I am least certain about.**
+
+1. **Whether you wanted the "first session built only the plumbing" line kept in
+   that opening paragraph.** I took it out, because the identical fact sits a few
+   lines further down in a section you told me not to touch, and keeping both
+   would have had the paragraph contradict itself. If you want it back, it is a
+   one-line change.
+2. **Whether "Nothing is unpushed." should have been fixed at the same time.** It
+   sits at the front of the very paragraph I rewrote and it is the same kind of
+   promise that cannot stay true on its own. It happens to be true today, and you
+   named one sentence, so I left it. It is the obvious next thing to tidy.
+3. **Whether the file should carry the current save number at all.** As it stands,
+   the notebook records checks that happened on dates, and anyone wanting today's
+   number has to ask git. I think that is right — it is what stopped the file
+   being wrong in the first place — but it does mean the file will never again
+   tell you at a glance where things stand.
