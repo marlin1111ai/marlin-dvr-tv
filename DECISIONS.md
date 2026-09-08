@@ -387,8 +387,12 @@
 ## 2026-09-07 (pass 33)
 
 - The Trash screen reads `GET /api/library/trash` (marlin-dvr 1.6.0). The show-by-show walk it used
-  since Pass 10 is deleted; against 1.6.0 that walk returns nothing at all, because the per-show
-  `?trash=1` read no longer surfaces trashed episodes.
+  since Pass 10 is deleted; against 1.6.0 that walk returns nothing at all — **not** because the
+  per-show `?trash=1` read stopped surfacing trashed episodes, which it still does
+  (`library.go:609`, `:626`, `:659`), but because `GET /api/library` builds its show list with
+  `showSummaries(false)`, which skips a trashed recording before it creates that show's entry
+  (`library.go:409`), so a show whose recordings are all trashed has no discoverable `showId` for
+  the walk to ask about (cause corrected by the marlin-dvr project, 2026-09-08).
 - A trashed recording is its own type, `TrashItem` (eight fields), not `Episode` (28). The listing
   carries no `showId`, `file`, `thumb` or server-made label, and cannot: the show may have left the
   library. Decoding is strict on the item so a shape change fails loudly; the `recordings` array is

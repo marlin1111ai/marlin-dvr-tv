@@ -40,8 +40,11 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
 
 ## What is built
 
-**The server is marlin-dvr 1.6.0** (owner, 2026-09-07; `GET /api/system` → `version 1.6.0`,
-`build 2026.09.05`). Two things about that release this app depends on:
+**The server is marlin-dvr 1.7.0** (marlin-dvr project, 2026-09-08): the owner installed it at
+**00:06 on 2026-09-08 from the app's own Status-page button**, an in-place update rather than an
+Unraid image switch. Not measured from here — the running server is on this project's
+do-not-touch list — so this is the marlin-dvr project's own record, cited the way their other
+corrections are. Two things this app depends on, both landed in 1.6.0 and carried into 1.7.0:
 
 - **`GET /api/library/trash` exists**, and Manage DVR → Trash is built on it (Pass 33).
 - **Automatic pruning is gone server-side: a series pass never trashes anything on its own**
@@ -49,9 +52,13 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
   the web UI, or from the other Apple TV. The keep rule in the Edit series pass screen (Pass 9) no
   longer causes deletions by itself.
 
-Note that the read-only reference clone at `~/Xcode/marlin-dvr-reference` is **stale at 1.2.1**
-(`cmd/marlin-dvr/main.go:38`) and has none of this. Pulling it is the owner's job. Until it moves,
-server facts are measured against the running server's own responses and its `GET /api/logs`.
+Note that the read-only reference clone at `~/Xcode/marlin-dvr-reference` has a **checked-out tree
+still at 1.2.1** (`cmd/marlin-dvr/main.go:38`), which has none of this — checking it out is the
+owner's job and Pass 36 did not do it. **Its `origin/main` was fetched on 2026-09-08 and now reads
+`c417c60`** (Pass 36; it read `fba51f2` before), so their current sources and notebook can be read
+out of the clone with `git show origin/main:<path>` without checking anything out. Server facts are
+still measured against the running server's own responses and its `GET /api/logs`, never against
+the checkout.
 
 The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVApp.swift`) and one `ContentView` showing the app name.
 
@@ -391,6 +398,29 @@ nothing in the trash path deletes it.
 rows gone, Empty Trash disabled, so nothing could take focus and Menu left the app instead of reaching
 `.onExitCommand`. The empty-state sentence is focusable now and holds the `"empty"` focus id. Present
 in the Pass 10 code too; nobody had ever emptied the trash from the Apple TV.
+
+**Corrections from the marlin-dvr project, received 2026-09-08 and recorded here rather than by
+editing the landed report:** Pass 33's finding that **"the per-show `?trash=1` read no longer
+returns trashed episodes at all" is wrong as to cause.** The symptom was real; the explanation was
+not. **The per-show read still returns trashed episodes** — `GET /api/library/shows/{id}` still
+takes `?trash=1` (`library.go:609`), still keeps exactly the episodes whose trash flag matches the
+request (`library.go:626`), and still answers with `showingTrash` (`library.go:659`). What Pass 33
+actually hit is one route earlier: **`GET /api/library` builds its show list with
+`showSummaries(false)`, which skips a trashed recording *before* it creates that show's entry**
+(`library.go:409`), so a show whose recordings are all trashed never appears in the library and
+**its `showId` cannot be learned from anywhere** — and the per-show read needs that id in its
+path. Same symptom, different cause: not a read that stopped answering, but an id that cannot be
+discovered to ask it with.
+
+**Pass 34's decision is unchanged.** Trash is built on `GET /api/library/trash` and stays there. The
+per-show walk was rejected on the undiscoverable-`showId` grounds *as well as* on the cause now
+corrected, and this correction confirms that ground rather than weakening it — the server's own
+source says the same thing at `library.go:689-693`. **Nothing in the app changes.**
+
+**`GET /api/library/trash` landed in their `b98a4a2`** ("Pass 61: GET /api/library/trash — list
+every trashed recording", 2026-09-07), which is **after both refs this project's clone held** —
+its checkout `9325d94` and the `fba51f2` it had already fetched — so no ref available to Passes
+32-35 could have shown the endpoint. Verified in the clone with `git merge-base --is-ancestor`.
 
 ### THE OWNER'S FOUR TRASHED RECORDINGS ARE GONE — do not go looking for them
 
