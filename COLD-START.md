@@ -687,6 +687,15 @@ Unraid), 7.6 (whether to ask the marlin-dvr project to document the route in `HL
 and 7.7 (the two untracked report files). 7.1 was answered by the owner's Status-page reading and
 7.8 was overtaken: the app's own long-wait timeout is built, but no long remux has been observed.
 
+**7.7's files are no longer untracked.** The owner decided on 2026-09-08 that a report the notebook
+cites by name belongs in the repo, and **Pass 44 committed and pushed both of them**, unmodified —
+`reports/2026-09-08-pass39-three-defects-recon.md` (38,079 bytes) and
+`reports/2026-09-08-pass40-session-start-values.md` (24,813 bytes), the two filenames read from
+`git status --porcelain --untracked-files=all` in that pass. Each went in byte-identical, verified
+by `git hash-object` of the working copy matching the staged blob, with `core.autocrlf` unset and no
+`.gitattributes`. Both were scanned for credentials first and none was found
+(`reports/2026-09-08-pass44-push-untracked-reports.md`). <!--PUSH_CHECK-->
+
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
 To run the on-device hold tests again:
