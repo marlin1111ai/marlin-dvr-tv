@@ -66,10 +66,25 @@ struct AiringSheet: View {
     private var program: Program { selection.program }
     private var channel: MergedChannel { selection.channel }
 
-    /// A Record Now booking on this airing: the manual job the server keeps (passes.go:60).
-    private var manualJob: Job? {
-        guard let job, job.passId == "manual", job.status != "Skipped" else { return nil }
-        return job
+    /// Pass 49: **this airing's own state**, which is what the first control reports.
+    ///
+    /// The show's state is not the airing's. A series pass covers a show, not every airing, so a
+    /// pass existing says nothing about whether *this* airing is booked — if the pass is not
+    /// picking an episode up, the airing is unbooked and must stay recordable. Only the airing's
+    /// own job answers the question, and `passId` is deliberately not consulted.
+    ///
+    /// The statuses are the server's own (`Models.swift:170`) and are read exactly as the Guide's
+    /// marks read them (`GuideScreen.swift:173-178`): `"Recording"` is the only one that means a
+    /// file is being written right now, and `"Queued"` and `"Conflict"` are the two that mean
+    /// booked but not started. Everything else — no job at all, or `Skipped`, `COMPLETED`,
+    /// `FAILED`, `STOPPED` — leaves the airing unbooked, and the control stays a real button.
+    private enum AiringState { case recording, scheduled, unbooked }
+
+    private var airingState: AiringState {
+        guard let job else { return .unbooked }
+        if job.status == "Recording" { return .recording }
+        if job.status == "Queued" || job.status == "Conflict" { return .scheduled }
+        return .unbooked
     }
 
     /// Pass 32: the job for this airing while the recorder is actually running on it. Status
@@ -164,8 +179,11 @@ struct AiringSheet: View {
         }
     }
 
+    /// Pass 49: "record" exists as a focusable control only while the airing is unbooked. In the
+    /// other two states it is a `StateChip`, which cannot take focus, so the first stop is the
+    /// series button — which is always present.
     private var firstFocusID: String {
-        manualJob == nil ? "record" : "series"
+        airingState == .unbooked ? "record" : "series"
     }
 
     private var sheetCard: some View {
@@ -225,9 +243,16 @@ struct AiringSheet: View {
     @ViewBuilder
     private var buttons: some View {
         HStack(spacing: 16) {
-            if let manualJob {
-                StateChip(text: "● Scheduled", detail: manualJob.status, color: GuideMark.green)
-            } else {
+            // Pass 49. The first control tells the truth about this airing instead of always
+            // offering to record it: a status label while the airing already has a state, a real
+            // button only when it does not. `StateChip` is a plain view hierarchy with no
+            // `Button`, no `.focusable()` and no `.focused()` (:447-475), so focus skips it.
+            switch airingState {
+            case .recording:
+                StateChip(text: "● Recording", color: GuideMark.green)
+            case .scheduled:
+                StateChip(text: "● Scheduled", detail: job?.status ?? "", color: GuideMark.green)
+            case .unbooked:
                 action("Record this airing", id: "record", primary: true) { await record() }
             }
             // One control, not two branches: swapping the view would drop focus to the rail
