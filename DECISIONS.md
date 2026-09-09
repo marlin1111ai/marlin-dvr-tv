@@ -564,3 +564,41 @@
   Mysteries* S4 E14** (1206 s → past 1484 s, plus 40 forward skips), which is recorded in
   COLD-START. Nothing was deleted, trashed, hidden or scheduled, no `GET /api/settings` was read,
   and no administrative or diagnostic request was made to the server.
+
+
+## 2026-09-08 (Pass 47 — the Recordings shelf focus clipping)
+
+- **Owner acceptance: Pass 47 was tested on Home Theater 2026-09-08 and accepted** — "good to go"
+  (owner, 2026-09-08). Pushed to `origin main` in Pass 48 together with the notebook work recording
+  the acceptance.
+- **Option C was the owner's choice, from the three the Pass 46 recon offered** (owner, 2026-09-08):
+  grow the focused card's **real layout box** — 252×344 to 296×404 with the `-22` lift — the way
+  `design/` specifies at `dc:1273`, so that only the intended lift overhangs upward.
+  **Option A (more padding above the row) and option B (`.scrollClipDisabled()`) were rejected**,
+  and neither was built, stubbed, or added alongside C as a safety net. The recon deliberately
+  presented all three without choosing; the choice was the owner's.
+- **`RecordingsScreen.swift:114`'s ScrollView clipping and the `.padding(.vertical, 44)` at `:127`
+  were left untouched, by owner instruction.** Both were verified byte-identical after the change,
+  and `.scrollClipDisabled()` appears nowhere in the app. The fix had to work without either, and
+  it does.
+- **The `scaleEffect` was removed, not kept alongside the layout change.** A render transform
+  changes no layout, which is the whole cause: it grew the card about its centre and threw ~38 pt
+  upward on top of the 22 pt lift, overflowing a 44 pt budget. Keeping both would have reintroduced
+  the defect.
+- **The row reflowing sideways is an accepted cost, not a defect.** The focused card is 44 pt wider,
+  so cards to its right shift as focus moves. The owner was told this **before** choosing option C
+  and accepted it.
+- **The 60 pt downward shift of the shelves below was not compensated for, and is an open item the
+  owner has seen and accepted — not a decision to leave it forever.** The focused card's box is
+  60 pt taller, so the shelf and everything under it grow while it holds focus. It clips nothing and
+  it is `design/`'s own behaviour (`dc:383`), but **the owner was told about it only after Pass 47**,
+  not before choosing. **Nothing was built to absorb it**, because every way of doing so goes through
+  `:114` or `:127` — the two lines he instructed be left alone. If it turns out to bother him, that
+  is a later decision and it reopens those two lines.
+- **The title and episode count no longer enlarge on focus.** `dc:389-390` fix them at 26 pt and
+  23 pt in both states; the old scale was enlarging them. The app now matches the design. Recorded
+  because it is a visible change nobody asked for in those words — it fell out of removing the scale.
+- **Multi-card focus traversal on the reflowing shelf is untested.** The device run proved shelf
+  navigation survives a card whose layout box changes on focus, but the available non-destructive
+  harness matched the first card it read and sent no rightward presses. Proving it would have needed
+  a new test file or the harness that deletes one of the owner's recordings; **neither was done**.

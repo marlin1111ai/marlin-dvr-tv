@@ -594,6 +594,64 @@ recording to its end clears it. Because of it, `CommercialSkipUITests/testPrompt
 will keep failing until it is cleared: all four of that recording's breaks end at 1478.54 s, so a
 session resuming past that can never reach one. That is a harness precondition, not app behaviour.
 
+Pass 46 (`reports/2026-09-08-pass46-shelf-focus-clipping-recon.md`): read-only recon of a defect the
+owner reported — on the Recordings screen, a focused poster card in the "Recently Watched" shelf had
+its **top edge cut off**, with the bottom and sides intact. Report only; nothing changed.
+
+Pass 47 (`reports/2026-09-08-pass47-shelf-focus-fix.md`, **accepted by the owner on Home Theater
+2026-09-08 — "good to go" — and pushed in Pass 48**): **the focused poster card grows its real
+layout box instead of being scaled, and nothing clips.**
+
+- **What was wrong.** The card was enlarged by `scaleEffect(296.0/252.0, anchor: .center)`, a
+  **render transform that changes no layout**, so it grew about its centre and threw roughly **38 pt
+  upward** on top of the existing 22 pt lift — about **60 pt of overhang into the 44 pt** that
+  `.padding(.vertical, 44)` (`RecordingsScreen.swift:127`) provides. The horizontal
+  `ScrollView` at **`RecordingsScreen.swift:114`** clips its content by default, and
+  `.scrollClipDisabled()` appears nowhere in the app, so the excess was cropped. Only the top
+  suffered because the `-22` offset pulls the card away from the bottom edge and does nothing
+  sideways (Pass 46 §2.5).
+- **What was done.** The card now takes the two sizes `design/` specifies rather than being scaled.
+  Three lines:
+  - **`RecordingsScreen.swift:196`** — `.frame(width: focused ? 296 : 252, height: focused ? 404 : 344)`
+  - **`RecordingsScreen.swift:222`** — `.frame(width: focused ? 296 : 252, alignment: .leading)`
+  - the `scaleEffect` was **deleted**, not left alongside.
+
+  `dc:1273` gives the two states as `w: 296 : 252, h: 404 : 344, lift: -22 : 0`, and `dc:382-383`
+  applies them as the container's `width` and the art's `height`. The 4 pt accent ring (`dc:1275`),
+  the shadow (`dc:1274`) and the `-22` offset already matched the design and are unchanged.
+- **The arithmetic that now holds.** `HStack(alignment: .top)` (`:115`) aligns children by their
+  layout tops, so the bigger box grows **downward** and the only upward displacement is the lift:
+  **22 pt of overhang against the 44 pt budget**, clearing by a factor of two. **The card-height term
+  is gone entirely** — the overhang no longer depends on `H` at all — so Pass 46's threshold, "it
+  clips whenever the card is taller than 252 pt", **no longer applies at any card height**. The
+  bottom gains clearance (66 pt) and the sides cannot overhang at all, because the growth is now
+  inside the layout box.
+
+**Two behaviours that are now true and were accepted — not defects:**
+
+- **The row reflows sideways.** The focused card's box is 44 pt wider (252 → 296), so cards to its
+  right shift right as focus moves along the shelf. **The owner was told this before choosing** the
+  approach and accepted it (owner, 2026-09-08).
+- **The shelves below shift down 60 pt while a card is focused.** The focused card's box is 60 pt
+  taller (344 → 404) and `HStack` takes its tallest child's height, so the shelf, the scroll content
+  and everything under it grow with it. **The owner was told this after Pass 47**, not before
+  choosing, and accepted it (owner, 2026-09-08). Both behaviours are `design/`'s own — `dc:383` makes
+  the focused art `404px` and a flex row grows with it.
+
+**The title and episode count no longer enlarge on focus.** The old `scaleEffect` enlarged the whole
+card including its text; the design does not. `dc:389` fixes the title at 26 px and `dc:390` the
+count at 23 px **in both states**, and the app now matches. This is a deliberate consequence of
+dropping the scale, not an oversight.
+
+**What the device test did and did not establish** (Pass 47 §5). It **did** establish that shelf
+focus navigation survives a card whose layout box changes on focus: on Home Theater, against the
+binary built in that pass, the shelves were reached, the harness delivered eight `.left` presses to
+the shelf, focus read as a poster card, `.select` opened its show, and the whole run passed in 128 s.
+It did **not** establish traversal across several reflowing cards — `openShow` reads focus *before*
+each `.right` and matched on its first read, so **zero `.right` presses were sent**. **Multi-card
+traversal on the reflowing shelf is untested, not known to work.** No claim was made about how any
+of it looks; that was the owner's acceptance to give.
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -649,8 +707,13 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Nothing is unpushed.** The owner accepted **Pass 42** (the single-file MP4 route) on Home Theater
-on 2026-09-08 and **Pass 43 pushed it** together with this notebook work
+**Nothing is unpushed.** The owner accepted **Pass 47** (the Recordings shelf focus fix) on Home
+Theater on 2026-09-08 — "good to go" — and **Pass 48 pushed it** together with this notebook work
+(`reports/2026-09-08-pass48-push-notebook.md`) — <!--PUSH_CHECK-->. Before that, **Pass 46 pushed**
+its own recon report on 2026-09-08, verified at `65ae372`, and **Passes 44 and 45** pushed the two
+formerly-untracked reports and the two notebook corrections that followed them, verified at
+`f167663` and `fd59d35`. Before that, the owner accepted **Pass 42** (the single-file MP4 route) on
+Home Theater on 2026-09-08 and **Pass 43 pushed it** together with that pass's notebook work
 (`reports/2026-09-08-pass43-push-notebook.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `5755db7`, a fast-forward from `b11f4c6` with nothing forced, rebased or amended. Before that, the owner accepted
 **Pass 38** (commercial skip) on Home Theater on 2026-09-08 and **Pass 39 pushed it** with Pass 37's
 recon report; **Pass 41 pushed** its own recon report on 2026-09-08, verified at `b11f4c6`. Before
