@@ -302,7 +302,20 @@ the defect itself.
 
 **Committed locally. NOTHING WAS PUSHED.**
 
-<!--HEAD_SHA-->
+The build commit is **`d90de63`** — in full:
+
+```
+$ git rev-parse HEAD
+d90de63b5ffdaf09d52622deb4c88fa18a1d7d71
+```
+
+**`git push` was not run in this pass, to any remote, at any point.** `origin/main` is still at
+`61257bc`, where Pass 48 left it, so the local branch is two commits ahead of the remote: this build
+commit and the one that records this SHA. The owner tests on Home Theater and the push follows his
+approval.
+
+*(This paragraph is the second commit — the SHA cannot exist inside the commit it names, and the
+build commit is left untouched rather than amended.)*
 
 ---
 
