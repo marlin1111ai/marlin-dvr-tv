@@ -150,7 +150,44 @@ recommendation or next-step suggestion was added.
 
 ## 5. The push, and the three verification readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward. `git push` printed two dots — **not** a `+` and not
+"forced update":
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   aa7f0e8..2fd90cb  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+2fd90cbbde475e527e44be368f725b1dc7b37bab
+```
+
+```
+$ git rev-parse origin/main
+2fd90cbbde475e527e44be368f725b1dc7b37bab
+```
+
+```
+$ git ls-remote origin main
+2fd90cbbde475e527e44be368f725b1dc7b37bab	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state.
+
+**What is now on `origin/main`.** Three commits went up, in order:
+
+| SHA | What |
+|---|---|
+| `6fee5b5` | The two reports, added verbatim — 2 files, 1,114 insertions, 0 deletions |
+| `2fd90cb` | The COLD-START.md "Next step" paragraph and this report |
+| *(a third records the verified SHAs above, since they cannot exist inside the commit they name)* | |
+
+**Nothing was force-pushed. No commit was amended, reworded or rebased**, and the contents of the
+two committed reports were not altered at any point.
 
 ---
 

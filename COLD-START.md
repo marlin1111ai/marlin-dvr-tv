@@ -694,7 +694,7 @@ cites by name belongs in the repo, and **Pass 44 committed and pushed both of th
 `git status --porcelain --untracked-files=all` in that pass. Each went in byte-identical, verified
 by `git hash-object` of the working copy matching the staged blob, with `core.autocrlf` unset and no
 `.gitattributes`. Both were scanned for credentials first and none was found
-(`reports/2026-09-08-pass44-push-untracked-reports.md`). <!--PUSH_CHECK-->
+(`reports/2026-09-08-pass44-push-untracked-reports.md`). The push was verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `2fd90cb`, a fast-forward from `aa7f0e8` with nothing forced, rebased or amended.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
