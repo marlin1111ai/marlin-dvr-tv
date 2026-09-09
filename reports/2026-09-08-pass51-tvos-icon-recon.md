@@ -446,7 +446,38 @@ else.** No credential, token, device id or account identifier appears in this re
 
 ## 10. The push, and the three readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward — two dots, no `+`:
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   3222b61..a3dedd7  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+a3dedd7c6cb2f25faedc70acd6cf7d782be83eaa
+```
+
+```
+$ git rev-parse origin/main
+a3dedd7c6cb2f25faedc70acd6cf7d782be83eaa
+```
+
+```
+$ git ls-remote origin main
+a3dedd7c6cb2f25faedc70acd6cf7d782be83eaa	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state. Nothing was
+forced, rebased or amended.
+
+**Only this report went up.** The commit is 1 file changed, 510 insertions — `git status` after
+staging showed the report staged and **all nine `icon-source/` PNGs still untracked**, and they
+remain so. Whether that artwork enters the repo is the owner's decision. A second commit records
+these SHAs, since they cannot exist inside the commit they name.
 
 ---
 
