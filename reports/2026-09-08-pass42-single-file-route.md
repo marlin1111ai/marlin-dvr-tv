@@ -341,7 +341,25 @@ created, the file route was taken, the probe answered 206, and no error was logg
 
 **Committed locally. NOTHING WAS PUSHED.**
 
-<!--HEAD_SHA-->
+The build commit is **`137f1de`** — in full:
+
+```
+$ git rev-parse HEAD
+137f1de1e4e1fc7ab3392a5a411fca71cf8f113c
+```
+
+```
+$ git log --oneline -1
+137f1de Pass 42: recordings play as one seekable MP4 (steps 1-6; step 7 blocked)
+```
+
+**`git push` was not run in this pass, to any remote, at any point.** `origin/main` is still at
+`b11f4c6`, where Pass 41 left it, so the local branch is two commits ahead of the remote: this
+build commit and the one that records this SHA. The owner tests on Home Theater and the push
+follows his approval.
+
+*(This paragraph is the second commit — the SHA above cannot exist inside the commit it names, and
+the build commit is left untouched rather than amended.)*
 
 `git status --porcelain` after the commit shows only the two pre-existing untracked report files,
 neither of which this pass touched.
