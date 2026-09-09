@@ -648,7 +648,7 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 **Nothing is unpushed.** The owner accepted **Pass 42** (the single-file MP4 route) on Home Theater
 on 2026-09-08 and **Pass 43 pushed it** together with this notebook work
-(`reports/2026-09-08-pass43-push-notebook.md`) — <!--PUSH_CHECK-->. Before that, the owner accepted
+(`reports/2026-09-08-pass43-push-notebook.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `5755db7`, a fast-forward from `b11f4c6` with nothing forced, rebased or amended. Before that, the owner accepted
 **Pass 38** (commercial skip) on Home Theater on 2026-09-08 and **Pass 39 pushed it** with Pass 37's
 recon report; **Pass 41 pushed** its own recon report on 2026-09-08, verified at `b11f4c6`. Before
 that, the owner accepted Passes 31, 32, 32A and 33 on Home Theater and **Pass 34 pushed** them on
