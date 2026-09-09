@@ -153,7 +153,40 @@ owner's call, not mine.
 
 ## 5. The push, and the three verification readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward. `git push` printed two dots — **not** a `+` and not
+"forced update":
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   f167663..fd59d35  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+fd59d3543fbac8a380549e8e7619d05b6780ad56
+```
+
+```
+$ git rev-parse origin/main
+fd59d3543fbac8a380549e8e7619d05b6780ad56
+```
+
+```
+$ git ls-remote origin main
+fd59d3543fbac8a380549e8e7619d05b6780ad56	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state.
+
+**What is now on `origin/main`.** Commit `fd59d35` — "Pass 45: correct the two stale untracked
+claims in COLD-START.md" — carrying the one-hunk correction and this report, 2 files changed, 258
+insertions, 6 deletions. It sits on top of Pass 44's `f167663`, which is where the two report files
+themselves went up.
+
+**Nothing was force-pushed. No commit was amended, reworded or rebased.**
 
 ---
 
