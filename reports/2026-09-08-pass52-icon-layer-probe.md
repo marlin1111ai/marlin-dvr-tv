@@ -341,7 +341,38 @@ e2b5df14d56aec597591494fffd17bd5289d81459f095feb5f227de8e27ed841  icon-source/To
 
 ## 7. The push, and the three readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward — two dots, no `+`:
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   9d633fe..ac704f2  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+ac704f271c1ec1207b59b1bc38820569cce1233e
+```
+
+```
+$ git rev-parse origin/main
+ac704f271c1ec1207b59b1bc38820569cce1233e
+```
+
+```
+$ git ls-remote origin main
+ac704f271c1ec1207b59b1bc38820569cce1233e	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state. Nothing was
+forced, rebased or amended.
+
+**Only this report went up** — 1 file changed. `git status` after staging showed the report staged
+and **all nine `icon-source/` PNGs still untracked**, and they remain so; nothing from the scratch
+directory was committed either. A second commit records these SHAs, since they cannot exist inside
+the commit they name.
 
 ---
 
