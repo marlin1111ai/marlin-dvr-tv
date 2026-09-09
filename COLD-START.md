@@ -519,12 +519,15 @@ And the end-of-recording clamp, the `hdhomerun` `"none"` branch and the network-
 end of a file.
 
 Pass 39 (`reports/2026-09-08-pass39-three-defects-recon.md`) reconnoitred the owner's three named
-defects read-only and fixed none of them; its sorting stands. Note that **the report file itself is
-untracked** — commit `424c584` carried only `COLD-START.md` and `DECISIONS.md`, verified in Pass 41
-by `git ls-files reports/ | grep -c pass39` returning `0`.
+defects read-only and fixed none of them; its sorting stands. Note that **the report file was left
+untracked by Pass 39 itself** — commit `424c584` carried only `COLD-START.md` and `DECISIONS.md`,
+verified in Pass 41 by `git ls-files reports/ | grep -c pass39` returning `0`. **It is committed and
+pushed now**: Pass 44 committed it unmodified in `6fee5b5`, verified on `origin/main` at `f167663`.
 
-Pass 40 (`reports/2026-09-08-pass40-session-start-values.md`) is untracked and no later pass has
-opened it.
+Pass 40 (`reports/2026-09-08-pass40-session-start-values.md`) was left untracked the same way and
+**is committed and pushed now**: Pass 44 committed it unmodified in `6fee5b5`, verified on
+`origin/main` at `f167663`. **Pass 44 opened it**, to run the mandatory credential scan before
+committing it to this public repo; nothing was found and its contents were not edited.
 
 Pass 41 (`reports/2026-09-08-pass41-single-file-route-recon.md`): read-only recon of the server's
 new single-file MP4 route against this app's Player, report only. It established the route from
