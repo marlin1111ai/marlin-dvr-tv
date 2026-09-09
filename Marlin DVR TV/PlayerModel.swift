@@ -131,10 +131,21 @@ final class PlayerModel {
             await fail(status: 0, message: "no playlist URL", sessionID: session?.id)
             return
         }
-        let probe = await sessions.firstPlaylist(url)
-        print("[player] first playlist → \(probe.status) \(probe.text)")
+        // What the server actually started, checked before anything is played.
+        if let refused = Self.routeRefused(asked: request.format, got: created.format) {
+            print("[player] route refused: asked \(request.format), got \(created.format)")
+            await fail(status: 0, message: refused, sessionID: created.id)
+            return
+        }
+        // The file route's first fetch is one byte on a long timeout; HLS keeps the whole-body
+        // playlist fetch it has always used. Both are still the only work between the POST
+        // returning and the first GET, so the server's 15 s idle budget is met as it is today.
+        let probe = request.format == "file"
+            ? await sessions.firstFileByte(url)
+            : await sessions.firstPlaylist(url)
+        print("[player] first fetch (\(request.format)) → \(probe.status) \(probe.text)")
         guard !stopped else { return }
-        guard probe.status == 200 else {
+        guard Self.firstFetchSucceeded(probe.status, format: request.format) else {
             await fail(status: probe.status, message: probe.text, sessionID: created.id)
             return
         }
@@ -148,6 +159,32 @@ final class PlayerModel {
         case .recording: return "Preparing the recording"
         case .camera: return "Connecting to the camera"
         }
+    }
+
+    /// Did the server actually start the route we asked for? — the safety check, and the whole
+    /// reason this app reads `format` at all.
+    ///
+    /// The server's `format` switch has **no `default` arm**. A server that does not know the
+    /// format it was sent answers **200** with `format: "mp4"` and the old fragmented-MP4 pipe
+    /// URL, which is a chunked, length-less stream with no seeking of any kind. Nothing else in
+    /// the response says the request was not honoured — the nine fields, their names and their
+    /// types are identical either way — so this one field is the only signal there is.
+    ///
+    /// Checked **only when the app asked for `"file"`**. An `"hls"` request is left exactly as
+    /// it was, so live channels and cameras can never be failed by a check they never needed.
+    /// Returns the failure text, or nil when the answer is the route that was asked for.
+    private static func routeRefused(asked: String, got: String) -> String? {
+        guard asked == "file", got != "file" else { return nil }
+        return "The server did not start a single-file session — it answered format \"\(got)\". "
+             + "A server older than 1.8.0 answers that way with no error, and what it returns "
+             + "instead cannot be seeked."
+    }
+
+    /// Which first-fetch status counts as success. HLS is unchanged: the playlist is a 200.
+    /// The file route's probe carries a `Range` header, which `http.ServeFile` answers with
+    /// **206 Partial Content**; 200 is accepted there too, in case the range is ever ignored.
+    private static func firstFetchSucceeded(_ status: Int, format: String) -> Bool {
+        format == "file" ? (status == 200 || status == 206) : status == 200
     }
 
     private func attach(_ url: URL) {
@@ -725,9 +762,17 @@ final class PlayerModel {
             duration = created.duration
             print("[player] session \(created.id) restarted start=\(created.start)")
             guard let url = ServerConfig.resolve(created.url) else { return }
-            let probe = await sessions.firstPlaylist(url)
+            if let refused = Self.routeRefused(asked: request.format, got: created.format) {
+                print("[player] route refused: asked \(request.format), got \(created.format)")
+                await fail(status: 0, message: refused, sessionID: created.id)
+                return
+            }
+            let probe = request.format == "file"
+                ? await sessions.firstFileByte(url)
+                : await sessions.firstPlaylist(url)
+            print("[player] first fetch (\(request.format)) → \(probe.status) \(probe.text)")
             guard !stopped else { return }
-            guard probe.status == 200 else {
+            guard Self.firstFetchSucceeded(probe.status, format: request.format) else {
                 await fail(status: probe.status, message: probe.text, sessionID: created.id)
                 return
             }

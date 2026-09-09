@@ -31,6 +31,26 @@ enum PlayRequest: Identifiable {
         }
     }
 
+    /// The `format` of POST /api/play/sessions.
+    ///
+    /// A **recording** takes the single-file MP4 route (server 1.8.0): the server remuxes the
+    /// whole finished recording with `-c copy` into one faststart MP4 and serves it with byte
+    /// ranges, so it is seekable to the end from the first second. A **live channel** and a
+    /// **camera** keep HLS, which is the only thing that can carry a growing stream and the
+    /// time-shift buffer. Radio never reaches this type at all — it plays the station URL
+    /// directly, with no play session (`RadioStation.swift:31`, `RadioPlayer.swift:10`).
+    ///
+    /// This is the one place the route is chosen, so live and camera cannot drift onto the
+    /// file route by accident. The switch is exhaustive with no `default`, so a new kind has
+    /// to decide rather than inherit.
+    var format: String {
+        switch self {
+        case .live: return "hls"
+        case .recording: return "file"
+        case .camera: return "hls"
+        }
+    }
+
     /// The `id` of POST /api/play/sessions (contract §2.1).
     var targetID: String {
         switch self {
