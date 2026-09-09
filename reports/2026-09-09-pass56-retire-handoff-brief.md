@@ -238,7 +238,38 @@ historical record and are never rewritten to match a later decision.
 
 ## 7. The push, and the three verification readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward — two dots, **not** a `+`:
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   48e8f91..10499e5  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+10499e5eca227fef9d31c0fc3b46644dfa61d927
+```
+
+```
+$ git rev-parse origin/main
+10499e5eca227fef9d31c0fc3b46644dfa61d927
+```
+
+```
+$ git ls-remote origin main
+10499e5eca227fef9d31c0fc3b46644dfa61d927	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state.
+
+**What is now on `origin/main`:** commit `10499e5` — 4 files changed, 349 insertions, 204 deletions.
+`COLD-START.md` and `DECISIONS.md` modified, `MARLIN-DVR-TV-HANDOFF-2026-09-09.md` **deleted**, and
+this report added. **Nothing was force-pushed. No commit was amended, reworded or rebased**, and
+nothing under `reports/` was edited or removed. A second commit records these SHAs, since they
+cannot exist inside the commit they name.
 
 ---
 
