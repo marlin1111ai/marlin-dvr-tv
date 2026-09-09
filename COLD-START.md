@@ -355,13 +355,15 @@ Pass 8's live evidence, or read-only probes of the running server.
 Everything in this list survived the owner's Home Theater acceptance of Passes 31–33. None of it is
 a regression; it is what those passes deliberately did not reach.
 
-- **The airing sheet's series-pass chip is wrong for a pass-driven recording.** A recording that a
-  series pass started shows **"Record this airing" alongside "Stop recording"** — pressing it would
-  earn a 409 from the server. The cause is in the sheet's own gating: Stop turns on
-  `Job.status == "Recording"` and correctly ignores `passId`, while the "● Scheduled" chip and the
-  Record button are still gated on `passId == "manual"` (`AiringSheet.swift`, `manualJob` `:71-74`).
-  **Never driven on the device** — Pass 32 proved Stop for a one-off Record Now, not for a pass.
-  Found in Pass 32, scoped out there and in Pass 33. **Unfixed.**
+- **CLOSED by Pass 49 — the airing sheet's series-pass chip being wrong for a pass-driven
+  recording.** A recording a series pass had started showed **"Record this airing" alongside "Stop
+  recording"**, and pressing it would have earned a 409 from the server. **What the defect actually
+  was:** the sheet asked whether a *series pass* existed instead of asking the *airing's own job*
+  what state it was in — Stop turned on `Job.status == "Recording"` and correctly ignored `passId`,
+  while the chip and the Record button were gated on `passId == "manual"`, so a pass-driven job fell
+  through to the Record button while Stop was simultaneously offered. Found in Pass 32, scoped out
+  there and in Pass 33, fixed in Pass 49. **Note that this entry's own citation had drifted:** it
+  read `manualJob :71-74`, and the property was in fact at **`:70-73`** when Pass 49 re-read it.
 - **Stopping a pass's airing has never been exercised on the device.** Only the one-off Record Now
   case was. The code path is identical and deliberately not gated on `passId`, but that is reasoning,
   not evidence.
@@ -652,6 +654,57 @@ each `.right` and matched on its first read, so **zero `.right` presses were sen
 traversal on the reflowing shelf is untested, not known to work.** No claim was made about how any
 of it looks; that was the owner's acceptance to give.
 
+Pass 49 (`reports/2026-09-08-pass49-airing-sheet-record-button.md`, **accepted by the owner on Home
+Theater 2026-09-08 — "all good" — and pushed in Pass 50**): **the Guide airing sheet's first control
+reports the airing's own state instead of always offering to record it.** This closes the first entry
+under **KNOWN AND UNFIXED after Pass 33** above.
+
+- **What the owner decided, and why the control is never hidden.** A series pass covers a **show**,
+  not every airing: if the pass is not picking an episode up, hiding the button would leave no way to
+  record it (owner, 2026-09-08). So the control is always in its slot and becomes a status indicator
+  only when the airing itself has a state:
+  - recording right now → **"● Recording"**, not pressable
+  - booked but not started → **"● Scheduled"**, not pressable
+  - neither → **"Record this airing"**, pressable, behaving exactly as before
+- **Where it is.** `AiringSheet.swift` — `AiringState` and `airingState` at **`:81`, `:83-88`**
+  (replacing the old `manualJob`, which was removed rather than left as dead code), the three-way
+  control at **`:251-256`**, and `firstFocusID` at **`:186`**, which had to follow the state or the
+  sheet would open trying to focus a `"record"` control that no longer exists in two of the three
+  cases. **The two status states are not focusable**: `StateChip` (`:447-475`) is a plain `VStack` of
+  `Text`s with no `Button`, no `.focusable()` and no `.focused()`, so the focus engine never offers
+  it. **"Edit series pass", "Watch live" and "Stop recording" are byte-identical** in label,
+  behaviour, condition and position, as is the amber series-pass line.
+- **The state comes from data the app already held — no new request and no new model field.** It is
+  `Job.status` (`Models.swift:170`), the same field `recordingJob` (`:79-82`) already used for
+  `job.status == "Recording"`, taken from the `GET /api/schedule` read the sheet already performs
+  when it opens (`:154`, for the reason given at `:149-153`). `passId` is deliberately no longer
+  consulted. The statuses are read exactly as the Guide's own marks read them
+  (`GuideScreen.swift:173-178`), and **`GuideScreen.swift` was not changed**.
+
+**The limit of the evidence, recorded as a limit and not as working.** Only the **unbooked** case was
+proven on the device, by the write-free `RemoteHoldUITests` hold, which opened the sheet and found a
+pressable "Record this airing" — a real assertion, since a job would have rendered a chip instead.
+**The "Recording" and "Scheduled" branches were code-traced only.** Reaching them needed either a new
+harness file or `StopRecordingUITests`, which books and stops a real recording on the owner's DVR;
+neither was done, and the airing the owner photographed had stopped recording hours earlier. **The
+owner accepted both branches by eye on Home Theater on 2026-09-08.**
+
+**Two behaviours recorded so nobody later reads them as defects:**
+
+- **A pass-scheduled airing shows a green "● Scheduled" chip where the Guide grid shows gold
+  "◆ SERIES PASS".** Same meaning — it will record — and the amber series-pass line under the buttons
+  still says it is a pass. A gold chip would have been a **fourth** state the owner did not ask for;
+  he specified three. Raised with him and left as built (owner, 2026-09-08).
+- **An airing whose recording has finished, failed or been stopped now offers "Record this airing"
+  again.** Under the old gating a manual job in a terminal state still drew "● Scheduled", which was
+  wrong. It is **correct by the owner's rule** — such an airing is neither recording nor scheduled —
+  and it is beyond the symptom he reported.
+
+**The chip's appearance is carried over, not design-specified.** `design/` frame 5c draws its button
+row at **`dc:568-572`** as three pressable controls — "Record this airing", "Record the series",
+"Watch live" — and **specifies no status label of any kind**. `StateChip` keeps the shape and
+typography it has had since Pass 8, which the owner accepted on Home Theater in Pass 9.
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -707,8 +760,11 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Nothing is unpushed.** The owner accepted **Pass 47** (the Recordings shelf focus fix) on Home
-Theater on 2026-09-08 — "good to go" — and **Pass 48 pushed it** together with this notebook work
+**Nothing is unpushed.** The owner accepted **Pass 49** (the airing sheet's first control) on Home
+Theater on 2026-09-08 — "all good" — and **Pass 50 pushed it** together with this notebook work
+(`reports/2026-09-08-pass50-push-notebook.md`) — <!--PUSH_CHECK-->. Before that, the owner accepted
+**Pass 47** (the Recordings shelf focus fix) on Home Theater on 2026-09-08 — "good to go" — and
+**Pass 48 pushed it** together with that pass's notebook work
 (`reports/2026-09-08-pass48-push-notebook.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `a0097b5`, a fast-forward from `65ae372` with nothing forced, rebased or amended. Before that, **Pass 46 pushed**
 its own recon report on 2026-09-08, verified at `65ae372`, and **Passes 44 and 45** pushed the two
 formerly-untracked reports and the two notebook corrections that followed them, verified at

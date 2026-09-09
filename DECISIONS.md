@@ -602,3 +602,45 @@
   navigation survives a card whose layout box changes on focus, but the available non-destructive
   harness matched the first card it read and sent no rightward presses. Proving it would have needed
   a new test file or the harness that deletes one of the owner's recordings; **neither was done**.
+
+
+## 2026-09-08 (Pass 49 — the airing sheet's first control)
+
+- **Owner acceptance: Pass 49 was tested on Home Theater 2026-09-08 and accepted** — "all good"
+  (owner, 2026-09-08). Pushed to `origin main` in Pass 50 together with the notebook work recording
+  the acceptance. It closes the first entry under **KNOWN AND UNFIXED after Pass 33**.
+- **The owner's rule, in his terms** (owner, 2026-09-08): **the control is never hidden.** It becomes
+  a **status indicator** whenever the airing already has a state, and stays a real button only when
+  it does not — "Recording" while the recorder is running on it, "Scheduled" while it is booked and
+  not started, "Record this airing" otherwise. **"Recording" and "Scheduled" are indicators, not
+  actions**: not focusable, and nothing happens on Select.
+- **Hiding the control was explicitly rejected, and the reason is the whole point.** A series pass
+  covers a **show**, not every airing. The pass existing tells you nothing about the state of the
+  airing in front of you — the airing's own job does. If a pass is not picking an episode up, hiding
+  the button would leave the owner **no way to record it at all**. So the slot is always occupied.
+- **This is a fallback, not the primary signal.** The Guide grid already shows gold for a series pass
+  and green for recording; the point of the change is that the sheet must not say something
+  different from what the Guide already shows.
+- **The other three controls and the amber line are untouched.** "Edit series pass", "Watch live" and
+  "Stop recording" keep their labels, behaviour, conditions and positions byte-for-byte, and so does
+  the amber series-pass line beneath them. The Guide grid and its gold/green marks were read but not
+  changed.
+- **The green-versus-gold difference was raised to the owner and left as built.** A pass-scheduled
+  airing shows a **green** "● Scheduled" chip where the Guide draws a **gold** "◆ SERIES PASS". The
+  meaning is the same and the amber pass line still names the pass. **A gold chip would have been a
+  fourth state the owner did not ask for** — he specified three — so it was reported rather than
+  invented (owner, 2026-09-08).
+- **`manualJob` was removed, not left as dead code.** It was the defective predicate — it required
+  `passId == "manual"`, which is exactly why a pass-driven job fell through to the Record button — and
+  leaving it in place would have invited a later pass to reach for the wrong test. `passId` is no
+  longer consulted anywhere in that decision.
+- **`firstFocusID` had to follow the state.** It is what the sheet assigns to `focused` when it
+  opens; had it kept the old gating, a pass-driven recording would have opened trying to focus
+  `"record"` — an id that no longer exists in two of the three cases — and focus would have landed
+  nowhere. It now resolves to the series button whenever the first slot is a chip.
+- **No new request, no new model field, no new source of truth.** The state is `Job.status`, from the
+  schedule read the sheet already performs on open, read exactly as the Guide's own marks read it.
+- **Disclosed limit of the evidence:** only the **unbooked** case was proven on the device, with a
+  write-free harness. The "Recording" and "Scheduled" renderings were **code-traced only** — reaching
+  them needed a new harness file or one that books and stops a real recording on the owner's DVR, and
+  neither was done. The owner's acceptance by eye is what covers them.
