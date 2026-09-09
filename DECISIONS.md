@@ -644,3 +644,40 @@
   write-free harness. The "Recording" and "Scheduled" renderings were **code-traced only** — reaching
   them needed a new harness file or one that books and stops a real recording on the owner's DVR, and
   neither was done. The owner's acceptance by eye is what covers them.
+
+
+## 2026-09-08 (Passes 51-55 — the app icon and Top Shelf art)
+
+- **Owner acceptance: the icon was looked at on Home Theater 2026-09-08 and accepted** (owner,
+  2026-09-08). Pushed to `origin main` in Pass 55 with the notebook work recording it.
+- **The owner supplied a complete, structured asset catalog rather than regenerating layered
+  artwork.** Pass 52 measured that a tvOS icon stack needs **at least two of its three layers**
+  populated, not three, and Pass 51 had planned for nine images on the assumption that three were
+  required. What arrived was an `AppIcon.brandassets` with a two-layer `App Icon.imagestack` and the
+  400×240 that had been missing — **which needed no repair of any kind** and which `actool` accepted
+  with no error, warning or note. **Nothing of his was edited**: the 19 files went into the project
+  byte-identical (`diff -r`), and the only project change was two lines repointing
+  `ASSETCATALOG_COMPILER_APPICON_NAME` at `AppIcon`, because his folder is named that and the setting
+  still pointed at the empty template.
+- **"MARLIN TV" stays.** The artwork renders "MARLIN TV" while the app's `CFBundleName` is
+  "Marlin DVR TV". Pass 51 §6.1 reported the difference; **the owner decided on 2026-09-08 that it is
+  fine, and it is not to be raised again.**
+- **Both layers of the icon stack point at the same two opaque images**, so the parallax depth effect
+  has nothing behind it to reveal. **This is the owner's choice for now** (owner, 2026-09-08). It
+  compiles clean — Pass 52 established there is no transparency rule — and it was left exactly as
+  supplied. No transparent front layer was generated, suggested or stubbed.
+- **`FocusClick.dataset` was deliberately not added.** It arrived inside the owner's catalog: a
+  4,100-byte `focus_click.caf`. It is not icon artwork, **no Swift source references it**, and no
+  numbered step named it, so importing it would have added an unused asset nobody asked for. **Left
+  in `icon-source/`, untouched.**
+- **The project's empty template `App Icon & Top Shelf Image.brandassets` was left in place.** It is
+  unused now that the setting points at `AppIcon`. Pass 53 §4 proved it produces **byte-identical**
+  `actool` output whether present or absent, so it does no harm; **removing it was not a numbered
+  step and is not this project's call to make unasked.**
+- **The fate of `icon-source/` is the owner's call and has not been decided.** All **32** of its
+  entries remain untracked — the loose PNGs Pass 51 examined, his structured catalog (now duplicated
+  inside the project), `AccentColor.colorset` and `FocusClick.dataset`. **Nothing there has been
+  deleted, moved, renamed or committed by any pass.**
+- **The app was installed on a second Apple TV** — "Master Bedroom ATV" (`AppleTV6,2`, tvOS 26.6) —
+  from the same binary as Home Theater (Pass 54). **It is development-signed and will stop launching
+  when the profile expires; when that is has not been checked.**

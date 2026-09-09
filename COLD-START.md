@@ -705,6 +705,75 @@ row at **`dc:568-572`** as three pressable controls — "Record this airing", "R
 "Watch live" — and **specifies no status label of any kind**. `StateChip` keeps the shape and
 typography it has had since Pass 8, which the owner accepted on Home Theater in Pass 9.
 
+Passes 51–55 (`reports/2026-09-08-pass51-tvos-icon-recon.md`, `…pass52-icon-layer-probe.md`,
+`…pass53-icon-wire-in.md`, `…pass54-bedroom-install.md`, `…pass55-push-and-handoff.md`):
+**the app has a real icon and Top Shelf art**, accepted by the owner on Home Theater 2026-09-08.
+
+**Three independent proofs it is genuinely in the product** (Pass 53 §6). **Pass 51 §5 found the
+bundle had none of this** — no `Assets.car` at all and no icon key of any kind:
+
+- **`Assets.car` is now in the built bundle** — 12,683,304 bytes (simulator), 9,369,752 (device).
+- **The built `Info.plist` declares it**: `CFBundleIcons` → `CFBundlePrimaryIcon = "App Icon"`, plus
+  `TVTopShelfImage` → `TVTopShelfPrimaryImage` and `TVTopShelfPrimaryImageWide`.
+- **`xcrun assetutil --info` over that `Assets.car` shows all four slots** — `App Icon/Front/Content`
+  and `App Icon/Back/Content` at 1x and 2x, `App Icon - App Store` at 1x and 2x, and both Top Shelf
+  images at 1x and 2x — together with the `ZZZZFlattenedImage` and `ZZZZRadiosityImage` entries
+  `actool` only generates from a real layered stack.
+
+**Where the artwork is, and what changed.** The owner supplied it as a **complete
+`AppIcon.brandassets` catalog**, structured, at `icon-source/Assets.xcassets/`. **It needed no
+repair**: every file its manifests named existed, every real dimension matched its declared scale,
+no layer was empty, and `actool` accepted it with no error, warning or note (Pass 53 §3–§4). It was
+copied byte-identical into `Marlin DVR TV/Assets.xcassets/AppIcon.brandassets/` (19 files, verified
+with `diff -r`). **The only project change was two lines** — his folder is named `AppIcon` while the
+setting still pointed at the empty template's longer name, so
+`ASSETCATALOG_COMPILER_APPICON_NAME` became `AppIcon` in both configurations
+(`project.pbxproj:313`, `:345`).
+
+**Measured facts about tvOS icons — do not relearn these** (Pass 52, from `actool`'s own output):
+
+- **A tvOS app icon stack needs at least 2 of its 3 layers populated**, in Apple's words:
+  *"The image stack "App Icon" must have at least 2 layers with applicable content. Although it has
+  3 layers, only 1 has applicable content."* One layer is an error; two and three compile clean.
+- **Zero populated layers is silently accepted** — which is exactly why this app built happily with a
+  wholly empty catalog for fifty passes.
+- **`actool` exits 0 while printing that error** and still writes an `Assets.car`. **The structured
+  `com.apple.actool.document.errors` section is the signal, not the exit status.**
+- **There is no per-layer transparency rule.** All-alpha, all-opaque, opaque-back under alpha fronts
+  and the reverse all compiled with no diagnostic mentioning alpha.
+- **The rule fires only on the small 400×240 `tv`-idiom stack.** The App Store slot was accepted with
+  one layer and with none, isolated in its own run. `CFBundlePrimaryIcon` is emitted only when the
+  small stack has content.
+- **The `tv-marketing` App Store slot does take a 2x at 2560×1536** (Pass 53 §4.3), with no
+  diagnostic. **This corrects Pass 51's "1x only" reading**, which was true of Xcode's `tv`-idiom
+  template slot but not of the owner's `tv-marketing` one.
+
+**Known and deliberate — not defects:**
+
+- **Both icon stack layers point at the same two files** (`AppIcon-400x240.png`,
+  `AppIcon-800x480.png`), and those are opaque, so **the focus depth effect has nothing behind to
+  reveal**. This is the owner's choice for now (owner, 2026-09-08) and was left exactly as supplied.
+- **The artwork says "MARLIN TV" while the app is "Marlin DVR TV".** The owner decided on 2026-09-08
+  that this is fine. **It is not to be raised again.**
+- **`FocusClick.dataset` came with the catalog and was deliberately not added.** It is a 4,100-byte
+  `focus_click.caf` sound asset; **no Swift source references `FocusClick` or `focus_click`**
+  (`grep -rn` over every `.swift` returns nothing) and no pass has asked for it. It stays in
+  `icon-source/`, untouched.
+- **The empty template `App Icon & Top Shelf Image.brandassets` is still in the project catalog**,
+  unused now that the setting points at `AppIcon`. Pass 53 §4 proved it harmless — `actool`'s output
+  is **byte-identical** with and without it — and left it alone.
+
+**`CFBundleIconName` is an iOS key and is correctly absent on tvOS.** Pass 51 checked for it and
+Pass 53 checked again; both found it missing, and that is right. tvOS declares its icon through
+`CFBundleIcons`/`CFBundlePrimaryIcon` and `TVTopShelfImage`. **No later pass should hunt for it.**
+
+**The app is installed on a second Apple TV.** Pass 54 installed HEAD `0b3589d` on
+**"Master Bedroom ATV"** (Apple TV 4K, `AppleTV6,2`, tvOS 26.6) — the only reachable tvOS device
+other than Home Theater. The binary is **byte-identical** to Home Theater's
+(`sha256 acde806…`); only the asset catalog was re-thinned for that model. **It is a
+development-signed build and will stop launching when the provisioning profile expires. When that
+is has not been checked and is unknown.**
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -760,8 +829,13 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Nothing is unpushed.** The owner accepted **Pass 49** (the airing sheet's first control) on Home
-Theater on 2026-09-08 — "all good" — and **Pass 50 pushed it** together with this notebook work
+**Nothing is unpushed.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
+2026-09-08 and **Pass 55 pushed it** together with Pass 54's report and this notebook work
+(`reports/2026-09-08-pass55-push-and-handoff.md`) — <!--PUSH_CHECK-->. The cold-start brief for the
+next session is **`MARLIN-DVR-TV-HANDOFF-2026-09-09.md`** at the repo root; it supersedes
+`MARLIN-DVR-TV-HANDOFF-2026-09-08b.md`, which should be removed from the Context panel. Before that,
+the owner accepted **Pass 49** (the airing sheet's first control) on Home Theater on 2026-09-08 —
+"all good" — and **Pass 50 pushed it** together with that pass's notebook work
 (`reports/2026-09-08-pass50-push-notebook.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `2e03996`, a fast-forward from `61257bc` with nothing forced, rebased or amended. Before that, the owner accepted
 **Pass 47** (the Recordings shelf focus fix) on Home Theater on 2026-09-08 — "good to go" — and
 **Pass 48 pushed it** together with that pass's notebook work
