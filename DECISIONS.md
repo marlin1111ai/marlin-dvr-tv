@@ -503,3 +503,64 @@
   Mysteries* S4 E14 is now `watched: true` and **the owner's "35 min in" resume position on it is
   gone**; Storage Wars S4 E19 is watched too. Nothing was deleted, trashed, hidden or scheduled,
   and no `GET /api/settings` was read.
+
+
+## 2026-09-08 (Pass 42 — the single-file MP4 playback route)
+
+- **Owner acceptance: Pass 42 was tested on Home Theater 2026-09-08 and accepted** — everything
+  works, and **the LIVE badge is no longer there** (owner, 2026-09-08). That closes the one claim
+  only he could settle. Pushed to `origin main` in Pass 43 together with the notebook work
+  recording the acceptance. It also **resolves the ambiguity Pass 42 §4b flagged**: the harness's
+  on-screen text dump contained the string `LIVE` while the player was up, and the builder refused
+  to interpret it. The owner's own eyes settle it — that string was stale text from the screen
+  behind the player, not a badge being drawn.
+- **Recordings play through the single-file MP4 route; live TV, cameras and radio keep HLS.**
+  A recording is remuxed whole by the server with `-c copy` into one faststart MP4 and served with
+  byte ranges, so its full length is seekable from the first second. Live channels and cameras stay
+  on HLS, which is the only thing that can carry a growing stream and the time-shift buffer. The
+  choice is made at **one line, `PlayRequest.swift:49`**, and reaches the wire at
+  **`PlaybackSession.swift:70`**, the app's only `POST /api/play/sessions` site. Radio needs no
+  branch: it never creates a play session at all.
+- **Where the build plan offered a choice and did not make one, the scope lock made it — not the
+  builder.** Pass 41's build-plan step 4 said a response that is not the route asked for "must not
+  be treated as a file: **fall back to today's HLS behaviour, or fail loudly**", and picked neither.
+  Pass 42's own scope lock listed "fallback to the HLS route" as out of scope and said refused
+  recordings are "never silently routed back to HLS unless a step says so"; step 4 offers the
+  fallback as an alternative rather than specifying it. **Fail loudly was therefore the only one of
+  the two the scope lock permitted, and that is what was built** (`PlayerModel.swift:176-181`).
+  It is **a one-branch change if the owner ever wants the other**, and the place for it is that
+  function. **The owner has not been asked**, and this decision was taken on the scope lock's
+  authority rather than on his preference or the builder's.
+- **The long-wait first fetch needed a `URLSession` of its own, and that is why.** Build-plan step 5
+  asked for a first fetch with a timeout well above the longest remux. A `URLSessionConfiguration`'s
+  `timeoutIntervalForRequest` can override a longer per-request `timeoutInterval`, and
+  `PlaybackSessionClient`'s shared session is built with 25 s — which `create`'s POST depends on,
+  because it sets no per-request timeout of its own. **Raising the shared value would have changed
+  the POST for live channels and cameras too**, so the long wait was given its own configuration
+  instead (`PlaybackSession.swift:24`, `:37`, `:50-54`) rather than everyone else's being relaxed.
+  The 11-minute value is derived from the server's own 10-minute remux ceiling, not chosen.
+- **Build-plan step 7 was not built.** It is "resume by seeking, not by `start`", and the plan makes
+  it **conditional on open question 7.2**, which is unanswered. The builder stopped rather than
+  choosing, which is what the pass required; no stub and nothing "prepared but disabled" was left.
+- **A correction to this project's own reporting.** Pass 41 §4.3 claimed that sending `start: N` on
+  the file route "would break `fullyPrepared`, the HUD's 'x of y' and the commercial clamp".
+  **That was wrong.** The server applies `-ss` to trim the file **and** echoes the same `start`
+  back, so `startOffset` compensates exactly: `preparedTo = startOffset + range.end = N + (D − N)
+  = D`. Measured on the device in Pass 42: a commercial skip landed at item time `t=272.538500`
+  with the app reporting `position 1478.54 s`, which is `startOffset + t` and is the break's exact
+  `endSeconds`. **Open question 7.2 is therefore a wait-versus-cleanliness trade, not a correctness
+  bug**, and the app is correct as shipped without step 7. Recorded here rather than by editing the
+  Pass 41 report, the way this project's other corrections are.
+- **The two recordings the server refuses are refused, not worked around.** A recording still being
+  written and a recording that is not H.264/AAC each earn a 502 with the server's own text, which
+  reaches the existing Failure state. Neither is routed back to HLS and no retry was built.
+  **Neither was exercised on the device** — the only subject available was finished and H.264.
+- **No client-side compensation for the audio/video desync was built, and none is to be.** It stays
+  with the marlin-dvr project, as Pass 39 sorted it.
+- **Disclosed cost of the evidence:** capturing the wire traffic needed three `print` statements the
+  app does not otherwise have, added as a disclosed diagnostic and **fully reverted** before the
+  commit; the reverted build was then reinstalled and re-run on the device to confirm the shipped
+  code is the tested code. Two device runs left **a resume position deep inside *History's Greatest
+  Mysteries* S4 E14** (1206 s → past 1484 s, plus 40 forward skips), which is recorded in
+  COLD-START. Nothing was deleted, trashed, hidden or scheduled, no `GET /api/settings` was read,
+  and no administrative or diagnostic request was made to the server.

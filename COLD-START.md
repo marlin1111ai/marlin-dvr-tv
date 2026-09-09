@@ -40,25 +40,43 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
 
 ## What is built
 
-**The server is marlin-dvr 1.7.0** (marlin-dvr project, 2026-09-08): the owner installed it at
-**00:06 on 2026-09-08 from the app's own Status-page button**, an in-place update rather than an
-Unraid image switch. Not measured from here — the running server is on this project's
-do-not-touch list — so this is the marlin-dvr project's own record, cited the way their other
-corrections are. Two things this app depends on, both landed in 1.6.0 and carried into 1.7.0:
+**The server is marlin-dvr 1.8.0** (owner, 2026-09-08): he read his own Status page and it showed
+**VERSION 1.8.0, "up to date · checked 45m ago"**. Not measured from here — the running server is
+on this project's do-not-touch list — so this is the owner's own reading, cited the way this file
+cites the marlin-dvr project's other version facts. Before that it was **1.7.0**, which the owner
+installed at **00:06 on 2026-09-08 from the app's own Status-page button**, an in-place update
+rather than an Unraid image switch (marlin-dvr project, 2026-09-08). Three things this app depends
+on:
 
-- **`GET /api/library/trash` exists**, and Manage DVR → Trash is built on it (Pass 33).
+- **`GET /api/library/trash` exists**, and Manage DVR → Trash is built on it (Pass 33). Landed in
+  1.6.0 and carried forward.
 - **Automatic pruning is gone server-side: a series pass never trashes anything on its own**
   (owner, 2026-09-07). Nothing reaches the trash unless a person put it there — from this app, from
   the web UI, or from the other Apple TV. The keep rule in the Edit series pass screen (Pass 9) no
   longer causes deletions by itself.
+- **The single-file MP4 playback route exists** — `POST /api/play/sessions` with
+  `"format":"file"`, served at `GET /api/play/file/{id}/video.mp4`. New in 1.8.0, and what
+  recordings now play through (Pass 42, below).
+
+**Their contract file is behind their server, and this matters to anyone reading it.**
+`HLS-CLIENT-API.md` in the marlin-dvr repo is **byte-unchanged across the whole 1.8.0 delivery** —
+Pass 41 ran `git diff --stat c417c60 095de81 -- HLS-CLIENT-API.md` in the reference clone and it
+returned nothing. It still declares in its own header that it describes **1.7.0**, and its §2
+request-body table at **line 68** states the opposite of the new behaviour: *"`"hls"` selects HLS.
+Absent, `""` or `"mp4"` gives the old fragmented-MP4 pipe"* — `"file"` is not listed anywhere in
+the file. Their `COLD-START.md` omits the route from its playback-route list too.
+**§2.3 of `reports/2026-09-08-pass41-single-file-route-recon.md` is the only written description of
+this route we have**, read from their Go source (`cmd/marlin-dvr/playfile.go`,
+`cmd/marlin-dvr/stream.go`) at `origin/main`. Anyone building against the contract file alone will
+be wrong about this route.
 
 Note that the read-only reference clone at `~/Xcode/marlin-dvr-reference` has a **checked-out tree
 still at 1.2.1** (`cmd/marlin-dvr/main.go:38`), which has none of this — checking it out is the
-owner's job and Pass 36 did not do it. **Its `origin/main` was fetched on 2026-09-08 and now reads
-`c417c60`** (Pass 36; it read `fba51f2` before), so their current sources and notebook can be read
-out of the clone with `git show origin/main:<path>` without checking anything out. Server facts are
-still measured against the running server's own responses and its `GET /api/logs`, never against
-the checkout.
+owner's job and no pass has done it. **Its `origin/main` was fetched in Pass 41 on 2026-09-08 and
+now reads `095de81`** (it read `c417c60` before, and `fba51f2` before that), so their current
+sources and notebook can be read out of the clone with `git show origin/main:<path>` without
+checking anything out. Server facts are still measured against the running server's own responses
+and its `GET /api/logs`, never against the checkout.
 
 The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVApp.swift`) and one `ContentView` showing the app name.
 
@@ -272,12 +290,16 @@ disappears outright.
 
 ### KNOWN AND UNFIXED after Pass 29 — do not mistake these for proven, and do not re-derive them
 
-- **Stepping is erratic near the end of the prepared range.** Measured at **1:05:27 of a 1:11:10
-  recording**: forward clicking moved the clock *backwards* by 3 s and the per-second counts came out
-  6, 21, 30 instead of a flat 30. **It is not Apple** — the counters read `arrows=134 super=0
-  owns=true supp=2`, so every press was the app's. Suspect is the app's own seek-past-the-prepared-range
-  restart, `PlayerModel.swift:382`. This is Pass 28 Open Question 3, **unfixed**, and wants its own
-  pass. Everywhere else in the same recording, and throughout the 20:45 one, stepping was exact.
+- **Stepping is erratic near the end of the prepared range — VERY LIKELY closed by Pass 42, not
+  proven.** Measured at **1:05:27 of a 1:11:10 recording**: forward clicking moved the clock
+  *backwards* by 3 s and the per-second counts came out 6, 21, 30 instead of a flat 30. **It is not
+  Apple** — the counters read `arrows=134 super=0 owns=true supp=2`, so every press was the app's.
+  The suspect was the app's own seek-past-the-prepared-range restart in `timeJumped()`, and on the
+  file route that restart **cannot fire**: its guard requires `!fullyPrepared`, and a complete file
+  is fully prepared from the first tick. **But the suspect was always a suspect and never a proof,
+  and nobody has watched the same spot in the same recording since**, so this is not recorded as
+  fixed. If the real cause was something else in how exact seeks behave near the end, Pass 42
+  changed nothing about it.
 - **The recognizer-disabling fix depends on `AVPlayerViewController`'s internals.** It matches on a
   public property, but if a future tvOS changes how many arrow recognizers the player has or where
   they live, it quietly stops working. It **fails open** — back to Apple's skip and the old
@@ -496,20 +518,91 @@ And the end-of-recording clamp, the `hdhomerun` `"none"` branch and the network-
 **never exercised live** — the owner's library holds only m3u recordings and no break came near the
 end of a file.
 
+Pass 39 (`reports/2026-09-08-pass39-three-defects-recon.md`) reconnoitred the owner's three named
+defects read-only and fixed none of them; its sorting stands. Note that **the report file itself is
+untracked** — commit `424c584` carried only `COLD-START.md` and `DECISIONS.md`, verified in Pass 41
+by `git ls-files reports/ | grep -c pass39` returning `0`.
+
+Pass 40 (`reports/2026-09-08-pass40-session-start-values.md`) is untracked and no later pass has
+opened it.
+
+Pass 41 (`reports/2026-09-08-pass41-single-file-route-recon.md`): read-only recon of the server's
+new single-file MP4 route against this app's Player, report only. It established the route from
+their Go source because their contract does not document it (above), named ten points where the
+route's real behaviour differs from the summary this project had been given, and wrote the build
+plan Pass 42 was built from.
+
+Pass 42 (`reports/2026-09-08-pass42-single-file-route.md`, **accepted by the owner on Home Theater
+2026-09-08 and pushed in Pass 43**): **a recording plays as one complete, seekable MP4 instead of a
+growing HLS playlist.**
+
+- **What it does.** The app asks the server to remux the whole finished recording with `-c copy`
+  into one faststart MP4 and serve it with byte ranges, instead of joining an HLS EVENT playlist
+  the server is still writing. The file is complete before a byte is served, so its whole length is
+  seekable from the first second.
+- **Recordings take this route; live TV, cameras and radio do not.** The choice is made at exactly
+  one line — **`PlayRequest.swift:49`, `case .recording: return "file"`** — and every other kind
+  returns `"hls"` from `:48` and `:50` of the same switch. That value reaches the wire at
+  **`PlaybackSession.swift:70`**, the app's only `POST /api/play/sessions` construction site.
+  Radio needs no branch at all: it never creates a play session (`RadioStation.swift:31`,
+  `RadioPlayer.swift:10`).
+- **The app now reads the response's `format` field, which nothing read before**
+  (`PlayerModel.swift:176-181`, called at `:135` and `:765`). The server's own `format` switch has
+  no `default` arm, so a server that does not know the format answers **200** with the old
+  unseekable pipe and only that field says so. The check fires only when `"file"` was asked for, so
+  the HLS path is untouched.
+- **The first fetch for a file session is `Range: bytes=0-0` on its own `URLSession`**
+  (`PlaybackSession.swift:114-128`, session at `:24`, built `:50-54`) with an **11-minute** timeout
+  (`:37`), above the server's own 10-minute remux ceiling. It never buffers the file.
+- **Proven on Home Theater**: the request carried `"format":"file"`, the response returned
+  `"format":"file"` with `/api/play/file/<id>/video.mp4`, the first fetch answered **206**, the
+  keep-alive answered 206 throughout and never 410, commercial skip was unchanged and landed
+  **exactly** on the break's `endSeconds`, and the DELETE was accepted. Captured with a
+  disclosed three-line diagnostic that was then fully reverted; the reverted build was reinstalled
+  and re-run and still took the file route.
+- **Steps 1–6 of the Pass 41 build plan were built. Step 7 was not** — it is conditional on that
+  report's open question 7.2, which is unanswered, and the builder stopped rather than choosing.
+
+**What this route costs, as measured or traced facts:**
+
+- **The remux wait moves to the front of playback.** Playback cannot begin until the server has
+  rebuilt the file; in exchange, the whole recording is seekable once it does. The marlin-dvr
+  project measured 2.4 s / 11 s / 26 s for 8-minute / 43-minute / 1 h 42 m shows **on marlinpc**,
+  and states in its own Pass 85 report that this does not hold for Unraid. **It has never been
+  measured on the Unraid box this app talks to.**
+- **A recording still being written is refused outright**, with a 502 and the server's text "this
+  recording is still in progress — it can be played when it finishes". The HLS route used to play
+  whatever had been written so far. **Not exercised on the device** (Pass 42 §4d).
+- **A recording that is not H.264/AAC is refused outright**, with a 502 and "this recording is not
+  H.264/AAC, so it cannot be remuxed without re-encoding — use the HLS route for it". **Not
+  exercised on the device** (Pass 42 §4d). Neither refusal is routed back to HLS.
+- **Nothing on screen distinguishes the wait from a stall.** The Starting screen (frame 6a) shows
+  "Preparing the recording" and an indefinite pulse bar, unchanged by Pass 42.
+
+**The audio/video desync on recordings is untouched by any of this and is still open with the
+marlin-dvr project.** Pass 39 sorted it NOT OURS — every parameter, setting and seek in this app
+was inventoried and none can shift audio against video — and Pass 42 changed nothing about it. No
+client-side compensation has ever been built for it, and none is to be.
+
+**The state of the record after Pass 42's device runs:** two runs left a **resume position deep
+inside the owner's *History's Greatest Mysteries* S4 E14 "Who Is D.B. Cooper?" recording** — from
+1206 s to past 1484 s, plus 40 forward skips on the second run. It is per-Apple-TV and playing the
+recording to its end clears it. Because of it, `CommercialSkipUITests/testPromptAppearsAndSelectSkips`
+will keep failing until it is cleared: all four of that recording's breaks end at 1478.54 s, so a
+session resuming past that can never reach one. That is a harness precondition, not app behaviour.
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
-- **A resumed recording starts well past its resume point.** Measured on Home Theater in Pass 38
-  with a disclosed, reverted diagnostic: a session created with `start=1680` was already at
-  **1988 s at its fourth tick**, about four seconds in — five minutes further on than the resume
-  position asked for. Recordings are an HLS **EVENT** playlist the server is still writing
-  (contract §3), and AVPlayer joins it near its live edge rather than at its beginning; the
-  transport bar says "LIVE" on these items, which is the same fact showing on screen. **Nothing in
-  Pass 38 causes this and nothing in Pass 38 changed it** — `startOffset`, `attach`, session
-  creation and the resume store are untouched by diff. It is pre-existing and unfixed.
-- **Because of that, "a playback that starts inside a break offers it" could not be proved.** Three
-  attempts were made in Pass 38; each time the playhead was already past the break by the first
-  tick. The code path is the same containment test that fires everywhere else and there is no
-  separate branch for it, but that is reasoning, not evidence.
+- **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
+  on Home Theater in Pass 38 with a disclosed, reverted diagnostic: a session created with
+  `start=1680` was already at **1988 s at its fourth tick**, five minutes further on than asked
+  for, because recordings were an HLS **EVENT** playlist the server was still writing and AVPlayer
+  joined it near its live edge. A complete MP4 has no live edge to join. Kept because it records
+  what the HLS route did.
+- **Because of that, "a playback that starts inside a break offers it" could not be proved** in
+  Pass 38 — three attempts, each time the playhead was already past the break by the first tick.
+  **Still unproved:** Pass 42 did not attempt it, so the containment test that would fire is still
+  only reasoning.
 - **One skip landed 1.01 s past `endSeconds` instead of on it.** Two landings were exact to six
   decimal places, both from sessions with `startOffset = 0`; the third, from a session with
   `startOffset = 931.000155`, asked for 547.539845 in item time and landed at 548.548231. It lands
@@ -553,28 +646,46 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
-**Nothing is unpushed.** The owner accepted **Pass 38** (commercial skip) on Home Theater on
-2026-09-08 and **Pass 39 pushed it** together with Pass 37's recon report and this notebook work
-(`reports/2026-09-08-pass39-three-defects-recon.md`). Before that, the owner accepted Passes 31, 32,
-32A and 33 on Home Theater and **Pass 34 pushed** them on 2026-09-07
-(`reports/2026-09-07-pass34-push-notebook.md`); **Pass 35 verified that push** on 2026-09-08 — local
-HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`
+**Nothing is unpushed.** The owner accepted **Pass 42** (the single-file MP4 route) on Home Theater
+on 2026-09-08 and **Pass 43 pushed it** together with this notebook work
+(`reports/2026-09-08-pass43-push-notebook.md`) — <!--PUSH_CHECK-->. Before that, the owner accepted
+**Pass 38** (commercial skip) on Home Theater on 2026-09-08 and **Pass 39 pushed it** with Pass 37's
+recon report; **Pass 41 pushed** its own recon report on 2026-09-08, verified at `b11f4c6`. Before
+that, the owner accepted Passes 31, 32, 32A and 33 on Home Theater and **Pass 34 pushed** them on
+2026-09-07 (`reports/2026-09-07-pass34-push-notebook.md`); **Pass 35 verified that push** on
+2026-09-08 — local HEAD, `origin/main` and `git ls-remote origin main` all read `aad7992`
 (`reports/2026-09-08-pass35-context-refresh-recon.md`).
 
-**The owner has named three defects**, all reconnoitred read-only in Pass 39 and none of them fixed:
-**audio out of sync with video on recordings**, **a "LIVE" indicator showing while a recording
-plays**, and **having to wait after starting a recording before fast forward works**. Pass 39's
-report carries the file:line answers and the sorting; take that report as the starting point rather
-than re-deriving it.
+**Of the owner's three named defects, two are closed and one is not.** All three were reconnoitred
+read-only in Pass 39, whose file:line answers and sorting still stand.
 
-Waiting to be picked up beyond those, in no particular order: **the resumed-recording overshoot**
-(**KNOWN AND UNFIXED after Pass 38**), which Pass 39 found is the same root as the fast-forward
-wait; **the series-pass sheet chip**, since it is a wrong control the owner can press today;
-**stopping a pass's airing on the device**, which would settle the same area; frame stepping near
-the end of the prepared range (**KNOWN AND UNFIXED after Pass 29**); and the rest of **KNOWN AND
-UNFIXED after Pass 33**. **Item B of Pass 32 is closed** — the server change it asked for shipped as
-1.6.0's `GET /api/library/trash` and Pass 33 built on it — as is the Pass 31 entry about a
-last-episode recording being unreachable, which that endpoint fixes.
+- **A "LIVE" indicator showing while a recording plays — CLOSED.** The owner tested Pass 42 on
+  Home Theater on 2026-09-08 and reports **the LIVE badge is no longer there** (owner, 2026-09-08).
+  The badge was never the app's own: Pass 39 §4.1 established that a recording is drawn by
+  `RecordingHUD` and can never reach either of the app's live indicators, so it was
+  `AVPlayerViewController`'s transport reacting to a playlist with no `#EXT-X-ENDLIST`. A complete
+  MP4 gives it nothing to react to.
+- **Having to wait after starting a recording before fast forward works — CLOSED** (owner,
+  2026-09-08: everything works). The seekable range was short because only the written part of the
+  playlist was advertised; a complete file advertises all of it from the first response.
+- **Audio out of sync with video on recordings — STILL OPEN, and not this project's code.** Pass 39
+  sorted it **NOT OURS** and Pass 42 changed nothing about it. It is with the marlin-dvr project.
+
+Waiting to be picked up, in no particular order: **the series-pass sheet chip**, since it is a wrong
+control the owner can press today; **stopping a pass's airing on the device**, which would settle the
+same area; frame stepping near the end of the prepared range (**KNOWN AND UNFIXED after Pass 29**,
+recorded there as very likely closed by Pass 42 but not proven); and the rest of **KNOWN AND UNFIXED
+after Pass 33**. **Item B of Pass 32 is closed** — the server change it asked for shipped as 1.6.0's
+`GET /api/library/trash` and Pass 33 built on it — as is the Pass 31 entry about a last-episode
+recording being unreachable, which that endpoint fixes.
+
+**Six open questions from `reports/2026-09-08-pass41-single-file-route-recon.md` are still
+unanswered** and Pass 42 answered none of them: 7.2 (`start: 0` or `start: N` for resume, which is
+what blocked build-plan step 7), 7.3 (what the Starting screen should say during a long remux),
+7.4 (whether a refused recording should fall back to HLS or show the error), 7.5 (temp space on
+Unraid), 7.6 (whether to ask the marlin-dvr project to document the route in `HLS-CLIENT-API.md`),
+and 7.7 (the two untracked report files). 7.1 was answered by the owner's Status-page reading and
+7.8 was overtaken: the app's own long-wait timeout is built, but no long remux has been observed.
 
 Standing candidates, should the owner want them: the three untested-live paths above; the parked screen (Settings); and the Open Questions of `reports/2026-09-06-pass9-sweep4-fixes.md`, `reports/2026-09-06-pass10-favorites-and-manage.md` and the earlier recon reports.
 
