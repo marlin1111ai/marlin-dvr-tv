@@ -831,7 +831,7 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 **Nothing is unpushed.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
 2026-09-08 and **Pass 55 pushed it** together with Pass 54's report and this notebook work
-(`reports/2026-09-08-pass55-push-and-handoff.md`) — <!--PUSH_CHECK-->. The cold-start brief for the
+(`reports/2026-09-08-pass55-push-and-handoff.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `fd96b1d`, a fast-forward from `0a80a57` with nothing forced, rebased or amended. The cold-start brief for the
 next session is **`MARLIN-DVR-TV-HANDOFF-2026-09-09.md`** at the repo root; it supersedes
 `MARLIN-DVR-TV-HANDOFF-2026-09-08b.md`, which should be removed from the Context panel. Before that,
 the owner accepted **Pass 49** (the airing sheet's first control) on Home Theater on 2026-09-08 —

@@ -173,7 +173,44 @@ the explicit content list in this pass's step 5 rather than guessing at the old 
 
 ## 6. The push, and the three verification readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward — two dots, **not** a `+`:
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   0a80a57..fd96b1d  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+fd96b1dfe16c33029230c4a1f054ce11c69e0b42
+```
+
+```
+$ git rev-parse origin/main
+fd96b1dfe16c33029230c4a1f054ce11c69e0b42
+```
+
+```
+$ git ls-remote origin main
+fd96b1dfe16c33029230c4a1f054ce11c69e0b42	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state.
+
+**What is now on `origin/main`.** Four commits went up together, in order:
+
+| SHA | What |
+|---|---|
+| `c2dcf14` | Pass 53's icon work — the 19 catalog files and the two-line project change, exactly as the owner accepted them |
+| `0b3589d` | Pass 53's report recording that build commit's SHA |
+| `3c7da42` | Pass 54's report, which that pass deliberately left uncommitted |
+| `fd96b1d` | This pass's notebook work, the cold-start brief and this report |
+
+**Nothing was force-pushed. No commit was amended, reworded or rebased**, and neither Pass 53 commit
+was altered between the owner's acceptance and the remote.
 
 ---
 

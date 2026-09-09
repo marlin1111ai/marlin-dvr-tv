@@ -25,7 +25,7 @@ Facts only. Nothing here proposes work. **The owner directs what happens next.**
 
 ## 2. Where the code is
 
-**`origin/main` = <!--SHA-->**
+**`origin/main` = `fd96b1dfe16c33029230c4a1f054ce11c69e0b42`**
 
 **Verify this rather than trusting the number.** Run `git rev-parse HEAD`, `git rev-parse
 origin/main` and `git ls-remote origin main` and check all three agree. This brief was written
