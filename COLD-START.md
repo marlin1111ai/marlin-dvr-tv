@@ -822,6 +822,21 @@ compensated for in the app.
   are-you-sure and no dry run. Both this app and the web UI have to invent their own guard; this app
   arms the button on the first click and sends only on the second. On 2026-09-07 that call removed
   3.80 GB of the owner's recordings in one request (see above).
+- **The audio/video desync on recordings — and their outstanding request.** Pass 39 sorted it
+  **NOT OURS**: every parameter, setting and seek in this app was inventoried and none can shift
+  audio against video. Nothing in Passes 42–56 changed it, and **no client-side compensation has
+  ever been built for it, nor is any to be.** **The marlin-dvr project has asked the owner to match
+  the sessions in which he observed the desync to individual session records.** That request is
+  **outstanding and is the owner's to answer**; nothing has been done about it here.
+- **The 27-session start-values table is still unsettled with the marlin-dvr foreman.** They asked
+  for **the full 27 rows published in this repo with stable labels `S01`–`S27`**, and **explicitly
+  asked us NOT to re-capture and NOT to pursue the send-versus-apply question until they ask.** A
+  prompt to do that work was written and **the owner did not send it** — he is settling the shape
+  with them first. **IT MUST NOT BE RE-ISSUED UNPROMPTED.** The Pass 38 captures the rows would come
+  from live in a **session temp directory, not in this repo**
+  (`reports/2026-09-08-pass40-session-start-values.md` §1 records their path); **if they vanish, only
+  a fresh Apple TV capture could recover the rows — which is exactly what they asked us not to
+  spend.**
 
 ## Open questions
 
@@ -831,9 +846,11 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 **Nothing is unpushed.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
 2026-09-08 and **Pass 55 pushed it** together with Pass 54's report and this notebook work
-(`reports/2026-09-08-pass55-push-and-handoff.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `fd96b1d`, a fast-forward from `0a80a57` with nothing forced, rebased or amended. The cold-start brief for the
-next session is **`MARLIN-DVR-TV-HANDOFF-2026-09-09.md`** at the repo root; it supersedes
-`MARLIN-DVR-TV-HANDOFF-2026-09-08b.md`, which should be removed from the Context panel. Before that,
+(`reports/2026-09-08-pass55-push-and-handoff.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `fd96b1d`, a fast-forward from `0a80a57` with nothing forced, rebased or amended. **This project keeps no
+separate handoff-brief file: `COLD-START.md` and `DECISIONS.md` are the whole record** (owner,
+2026-09-08). Pass 55 wrote `MARLIN-DVR-TV-HANDOFF-2026-09-09.md` before that decision was taken;
+**Pass 56 moved what it carried that this file did not into here and deleted it**
+(`reports/2026-09-09-pass56-retire-handoff-brief.md`). Before that,
 the owner accepted **Pass 49** (the airing sheet's first control) on Home Theater on 2026-09-08 —
 "all good" — and **Pass 50 pushed it** together with that pass's notebook work
 (`reports/2026-09-08-pass50-push-notebook.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `2e03996`, a fast-forward from `61257bc` with nothing forced, rebased or amended. Before that, the owner accepted

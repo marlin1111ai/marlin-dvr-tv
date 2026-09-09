@@ -681,3 +681,25 @@
 - **The app was installed on a second Apple TV** — "Master Bedroom ATV" (`AppleTV6,2`, tvOS 26.6) —
   from the same binary as Home Theater (Pass 54). **It is development-signed and will stop launching
   when the profile expires; when that is has not been checked.**
+
+
+## 2026-09-09 (Pass 56 — no more handoff briefs)
+
+- **This project uses `COLD-START.md` and `DECISIONS.md` only. They are the whole record.** No
+  further handoff-brief file is written by any pass (owner, 2026-09-08). This matches how the
+  owner's other projects run.
+- **`MARLIN-DVR-TV-HANDOFF-2026-09-09.md` was retired into `COLD-START.md` by Pass 56 and deleted.**
+  Pass 55 wrote it because it was written before the decision above was taken. Pass 56 compared it
+  section by section against `COLD-START.md`, found that all but two of its substantive facts were
+  already carried, moved those two in, and then removed the file
+  (`reports/2026-09-09-pass56-retire-handoff-brief.md`).
+- **The two facts that had to move** were **the 27-session start-values table's standing state** and
+  **the marlin-dvr project's outstanding request that the owner match the sessions where he observed
+  the audio/video desync to individual session records.** Both now live under
+  "Raised for the marlin-dvr project" in `COLD-START.md`.
+- **`MARLIN-DVR-TV-HANDOFF-2026-09-08b.md` was not deleted because it is not on disk.** Pass 55
+  reported it exists only in the owner's Context panel; Pass 56 re-checked and it is still nowhere in
+  the repo or the working tree. **Removing it from the Context panel is the owner's to do.**
+- **No report was edited or deleted.** `reports/2026-09-08-pass55-push-and-handoff.md` stays exactly
+  as written, including the brief it describes — reports are the historical record and are never
+  rewritten to match a later decision.
