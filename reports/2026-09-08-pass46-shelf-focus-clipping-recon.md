@@ -430,7 +430,34 @@ file in `design/` (read, never written); the Xcode project, `Info.plist`, the en
 
 ## 9. The push, and the three readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward — two dots, no `+`:
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   04f30fd..1845469  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+1845469c97a80e7ae7eb79af465060c391d0c6f2
+```
+
+```
+$ git rev-parse origin/main
+1845469c97a80e7ae7eb79af465060c391d0c6f2
+```
+
+```
+$ git ls-remote origin main
+1845469c97a80e7ae7eb79af465060c391d0c6f2	refs/heads/main
+```
+
+**All three agree.** The remote was read back rather than trusted from local state. Nothing was
+forced, rebased or amended. A second commit records these SHAs, since they cannot exist inside the
+commit they name.
 
 ---
 
