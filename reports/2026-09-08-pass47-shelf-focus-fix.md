@@ -230,7 +230,20 @@ satisfied again. Nothing in this pass cleared it deliberately.
 
 **Committed locally. NOTHING WAS PUSHED.**
 
-<!--HEAD_SHA-->
+The build commit is **`d285d5b`** — in full:
+
+```
+$ git rev-parse HEAD
+d285d5ba12152d13ddc1a98ec1510ed1b944e1eb
+```
+
+**`git push` was not run in this pass, to any remote, at any point.** `origin/main` is still at
+`65ae372`, where Pass 46 left it, so the local branch is two commits ahead of the remote: this build
+commit and the one that records this SHA. The owner tests on Home Theater and the push follows his
+approval.
+
+*(This paragraph is the second commit — the SHA cannot exist inside the commit it names, and the
+build commit is left untouched rather than amended.)*
 
 ---
 
