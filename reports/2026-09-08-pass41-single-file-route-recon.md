@@ -835,7 +835,38 @@ every value is pasted. No force-push; no history rewritten.
 `reports/2026-09-08-pass40-session-start-values.md` was **not** staged, committed, amended or
 touched, and neither was `reports/2026-09-08-pass39-three-defects-recon.md`.
 
-<!--PUSH_EVIDENCE-->
+The report commit is `3876250` and the push was a fast-forward from `424c584`:
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   424c584..3876250  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each its own command:
+
+```
+$ git rev-parse HEAD
+387625052ca7f877885cac9626568021738d296f
+```
+
+```
+$ git rev-parse origin/main
+387625052ca7f877885cac9626568021738d296f
+```
+
+```
+$ git ls-remote origin main
+387625052ca7f877885cac9626568021738d296f	refs/heads/main
+```
+
+**All three agree.** The remote was read back rather than trusted from local state. Nothing was
+forced, rebased or amended.
+
+*(This paragraph is itself a second commit — the SHAs above cannot exist inside the commit they
+name, and amending a pushed commit would rewrite history. The marlin-dvr project records push
+evidence the same way; see their `fb3e395` "Pass 87: record the push evidence in the report's GIT
+section".)*
 
 ---
 
