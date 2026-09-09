@@ -390,7 +390,21 @@ $ pgrep -fl actool
 
 **Committed locally. NOTHING WAS PUSHED.**
 
-<!--HEAD_SHA-->
+The build commit is **`c2dcf14`** — in full:
+
+```
+$ git rev-parse HEAD
+c2dcf14c909f58a36ce115225c2b91fac5ec1f70
+```
+
+21 files changed, 613 insertions, 2 deletions.
+
+**`git push` was not run in this pass, to any remote, at any point.** `origin/main` is still at
+`0a80a57`, where Pass 52 left it, so the local branch is two commits ahead: this build commit and
+the one that records this SHA. The owner looks at Home Theater and the push follows his approval.
+
+*(This paragraph is the second commit — the SHA cannot exist inside the commit it names, and the
+build commit is left untouched rather than amended.)*
 
 ### Every file added (19), plus one modified
 
