@@ -170,6 +170,20 @@ struct RecordingsScreen: View {
 
 /// The 4a poster card (dc:381-392): 2:3 art, the unwatched badge, title and count below;
 /// focused = larger, lifted 22 pt, 4 pt ring, ambient shadow (dc:1273-1275).
+///
+/// **The focused card grows its real layout box, it does not scale.** `dc:1273` gives the two
+/// states as sizes — `w: 296 : 252, h: 404 : 344, lift: -22 : 0` — and `dc:382-383` applies them
+/// as the container's `width` and the art's `height`, with only `translateY(-22px)` moving it.
+/// A `scaleEffect` was used here until Pass 47 and had to go: it is a render transform, so it
+/// changed nothing about layout and grew the card about its centre, throwing ~38 pt upward on
+/// top of the 22 pt lift. That overflowed the shelf's 44 pt of top padding and the horizontal
+/// `ScrollView` clipped the card's top edge (Pass 46). Growing the box instead means the only
+/// thing above the card is the lift the design asks for.
+///
+/// Two consequences, both deliberate and both the design's own behaviour: the row **reflows** —
+/// cards after the focused one shift right by 44 pt, and the shelf grows 60 pt taller while it
+/// holds focus — and the **title and count do not change size**, because `dc:389-390` fix them
+/// at 26 pt and 23 pt in both states. The scale used to enlarge them too.
 struct PosterCard: View {
     let show: ShowSummary
     let focused: Bool
@@ -179,7 +193,7 @@ struct PosterCard: View {
             ServerImage(path: show.art) {
                 ArtPlaceholder()
             }
-            .frame(width: 252, height: 344)
+            .frame(width: focused ? 296 : 252, height: focused ? 404 : 344)
             .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay(alignment: .topTrailing) {
                 if show.unwatched > 0 {
@@ -205,8 +219,7 @@ struct PosterCard: View {
                 .font(.nocturne(Nocturne.TextSize.floor))
                 .foregroundStyle(Nocturne.neutral500)
         }
-        .frame(width: 252, alignment: .leading)
-        .scaleEffect(focused ? 296.0 / 252.0 : 1, anchor: .center)
+        .frame(width: focused ? 296 : 252, alignment: .leading)
         .offset(y: focused ? -22 : 0)
         .animation(.easeOut(duration: 0.15), value: focused)
     }
