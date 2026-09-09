@@ -140,7 +140,15 @@ count no longer enlarge, and that multi-card traversal is untested.
 
 Two, both this pass's own:
 
-<!--COMMITS-->
+```
+$ git log --oneline -2
+a0097b5 Pass 48: Pass 47 accepted on Home Theater, recorded in the notebook
+<the second>  Pass 48: record the verified push in the notebook and this report
+```
+
+`a0097b5` carries `COLD-START.md`, `DECISIONS.md` and this report — 3 files changed, 351 insertions,
+2 deletions, **no Swift source among them**. The second commit records the SHAs below, which cannot
+exist inside the commit they name.
 
 **Neither Pass 47 commit was amended, reworded or rebased.** `d285d5b` and `405a376` went to the
 remote exactly as the owner tested them.
@@ -149,7 +157,44 @@ remote exactly as the owner tested them.
 
 ## 5. The push, and the three verification readings
 
-<!--PUSH_EVIDENCE-->
+The push was a plain fast-forward. `git push` printed two dots — **not** a `+` and not
+"forced update":
+
+```
+$ git push origin main
+To github.com:marlin1111ai/marlin-dvr-tv.git
+   65ae372..a0097b5  main -> main
+```
+
+Then `git fetch origin` (exit 0), and the three readings, each as its own command:
+
+```
+$ git rev-parse HEAD
+a0097b5371dbeddf6c8d98ad2388cc0e295a6477
+```
+
+```
+$ git rev-parse origin/main
+a0097b5371dbeddf6c8d98ad2388cc0e295a6477
+```
+
+```
+$ git ls-remote origin main
+a0097b5371dbeddf6c8d98ad2388cc0e295a6477	refs/heads/main
+```
+
+**All three agree**, and the remote was read back rather than trusted from local state.
+
+**What is now on `origin/main`.** Three commits went up together, in order:
+
+| SHA | What |
+|---|---|
+| `d285d5b` | Pass 47's fix — `RecordingsScreen.swift`, exactly as the owner tested it |
+| `405a376` | Pass 47's report recording that build commit's SHA |
+| `a0097b5` | This pass's notebook work and this report |
+
+**Nothing was force-pushed. No commit was amended, reworded or rebased**, and neither Pass 47 commit
+was altered in any way between the owner's test and the remote.
 
 ---
 

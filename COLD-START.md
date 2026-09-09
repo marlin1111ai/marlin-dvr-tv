@@ -709,7 +709,7 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 **Nothing is unpushed.** The owner accepted **Pass 47** (the Recordings shelf focus fix) on Home
 Theater on 2026-09-08 — "good to go" — and **Pass 48 pushed it** together with this notebook work
-(`reports/2026-09-08-pass48-push-notebook.md`) — <!--PUSH_CHECK-->. Before that, **Pass 46 pushed**
+(`reports/2026-09-08-pass48-push-notebook.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `a0097b5`, a fast-forward from `65ae372` with nothing forced, rebased or amended. Before that, **Pass 46 pushed**
 its own recon report on 2026-09-08, verified at `65ae372`, and **Passes 44 and 45** pushed the two
 formerly-untracked reports and the two notebook corrections that followed them, verified at
 `f167663` and `fd59d35`. Before that, the owner accepted **Pass 42** (the single-file MP4 route) on
