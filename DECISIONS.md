@@ -769,3 +769,35 @@
   scoped "as of Pass 58", the older one written when `fd96b1d` was head. The older text was left
   exactly as written because the pass forbade rewriting it. **Whether the section should be
   consolidated is the owner's call and is not decided.**
+
+
+## 2026-09-09 (Pass 60 — one source of truth for the rules)
+
+Both entries below are **standing rules**, not observations about this pass.
+
+- **(a) `CLAUDE.md` is the single source of truth for the standing builder rules.** `COLD-START.md`'s
+  "The rules" section keeps its heading and now holds one line pointing at `CLAUDE.md`; **its eight
+  bullets are deleted and this file no longer carries its own copy.** **A rule change is made in
+  `CLAUDE.md` only** — never by editing a second copy, and never by adding rules back here. The two
+  lists had already drifted in three places, which is why there is now one.
+- **No rule was lost in the deletion.** Verified bullet by bullet before deleting: all eight had a
+  counterpart in `CLAUDE.md` — **five byte-identical**, and three carried in wording that is the same
+  or stronger ("Nothing force-pushed, ever" → "Never force-push and never rewrite history"; the
+  no-secrets rule, whose original sentence survives as an **exact prefix** with a redaction clause
+  added; and scope lock). The table is in
+  `reports/2026-09-09-pass60-rules-source-of-truth.md` §3.
+- **(b) A pass records its own verified push in its report and in its response to the owner, not in a
+  second commit.** Passes 55 and 56 each used a follow-up commit for this. **That is not the pattern
+  going forward.** Passes 57, 58 and 59 each raised the inconsistency as an open question; it is now
+  settled, and **no later pass should re-raise it.** A pass makes one commit, pushes it, verifies the
+  push live with `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main`, and reports the result. The post-push SHA lives in the pass response
+  and in the next pass's notebook update, not in the commit it describes.
+- **`COLD-START.md`'s older "Next step" paragraph is now dated to its own moment.** Its opening
+  "**Nothing is unpushed.**" became "**Nothing was unpushed as of Pass 55.**" — one sentence, nothing
+  else in that paragraph touched. This closes the double-claim Pass 59 raised.
+- **Known dangling reference, deliberately not fixed:** the Pass 58 paragraph in "Next step" still
+  reads "the server-repo rule from the rules list above" and "this file's rules list holds **eight**
+  rules". **That list no longer exists in this file.** The sentences are true of the moment they
+  describe, and Pass 60's steps forbade changing anything else in the file, so they stand. **Whether
+  to reword them is the owner's call.**

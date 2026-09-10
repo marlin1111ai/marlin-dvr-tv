@@ -15,14 +15,7 @@ Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — 
 
 ## The rules
 
-- Recon before build.
-- Scope lock: nothing not named in a pass's steps gets built or changed; anything extra goes in the report as a question.
-- No installs without owner authorization.
-- Separate push gate for code the owner tests.
-- Nothing force-pushed, ever.
-- No secrets in the repo, logs, or reports.
-- The server repo is read-only reference; server changes, if ever needed, are raised as decisions for the marlin-dvr project.
-- Do not touch: the other folders under `~/Xcode`, the Marlin DVR server and its data, the Unraid host 192.168.1.250, marlinpc 192.168.1.245, the HDHomeRun 192.168.1.105, the UNAS4Pro share.
+The standing builder rules live in `CLAUDE.md` at the project root. Read it. This file no longer keeps its own copy of them; a rule change is made in `CLAUDE.md` only (DECISIONS.md, 2026-09-09 (Pass 60)).
 
 ## How to build
 
@@ -863,7 +856,7 @@ report called that rule "COLD-START.md's ninth", but this file's rules list hold
 the server-repo rule is its seventh; `CLAUDE.md` has nine bullets because one of them — "If anything
 blocks, stop and report" — has no counterpart here (DECISIONS.md, 2026-09-09 (Pass 58)).
 
-**Nothing is unpushed.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
+**Nothing was unpushed as of Pass 55.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
 2026-09-08 and **Pass 55 pushed it** together with Pass 54's report and this notebook work
 (`reports/2026-09-08-pass55-push-and-handoff.md`) — verified on 2026-09-08 by fetch, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading `fd96b1d`, a fast-forward from `0a80a57` with nothing forced, rebased or amended. **This project keeps no
 separate handoff-brief file: `COLD-START.md` and `DECISIONS.md` are the whole record** (owner,
