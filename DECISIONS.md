@@ -703,3 +703,22 @@
 - **No report was edited or deleted.** `reports/2026-09-08-pass55-push-and-handoff.md` stays exactly
   as written, including the brief it describes — reports are the historical record and are never
   rewritten to match a later decision.
+
+
+## 2026-09-09 (Pass 57 — the project has a CLAUDE.md)
+
+- **The project has a `CLAUDE.md` at its root.** Pass 57 created it. It is the standing brief the
+  builder reads automatically at the start of every session, so the rules that were only ever stated
+  in a pass prompt now travel with the repo.
+- **It holds the standing builder rules and a pointer to the notebook, and nothing else.** The eight
+  rules — recon before build, scope lock, no installs without owner authorization, the separate push
+  gate, never force-push or rewrite history, no secrets, stop and report when blocked, and the
+  do-not-touch list copied word for word from `COLD-START.md` — plus one line saying where the record
+  lives.
+- **No project state ever goes in `CLAUDE.md`** — not what is built, not what is broken, not open
+  questions, not pass history. **`COLD-START.md` and `DECISIONS.md` remain the whole record**, as
+  decided for Pass 56 above, and `CLAUDE.md` only points at them. A fact that would go stale belongs
+  in the notebook, never in the standing rules.
+- **`CLAUDE.md` is committed, not ignored.** It was deliberately kept out of `.gitignore` so every
+  session on any machine gets the same rules. **No `.claude/` directory and no `CLAUDE.local.md` were
+  created**; all four memory locations were checked and were absent before this pass.
