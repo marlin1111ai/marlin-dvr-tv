@@ -722,3 +722,29 @@
 - **`CLAUDE.md` is committed, not ignored.** It was deliberately kept out of `.gitignore` so every
   session on any machine gets the same rules. **No `.claude/` directory and no `CLAUDE.local.md` were
   created**; all four memory locations were checked and were absent before this pass.
+
+
+## 2026-09-09 (Pass 58 — CLAUDE.md's ninth rule)
+
+- **The server-repo rule is now in `CLAUDE.md`**, as its ninth and last bullet, after the
+  do-not-touch line: *"The server repo is read-only reference; server changes, if ever needed, are
+  raised as decisions for the marlin-dvr project."* It was extracted from `COLD-START.md` line 23 by
+  `grep` rather than retyped, and then string-compared and `cmp`-compared against it: **byte-identical**.
+  Pass 57 left it out because step 3 fixed that file's contents exactly; Pass 58 was the numbered step
+  that put it in. **One insertion, zero deletions — nothing else in `CLAUDE.md` changed.**
+- **`CLAUDE.md` now carries every rule in `COLD-START.md`'s rules list.** Measured, not assumed:
+  `COLD-START.md` has **eight** rules; **five** now appear in `CLAUDE.md` byte-identical (recon, no
+  installs, push gate, do-not-touch, server repo) and **three** in reworded or strengthened form
+  (scope lock; "Nothing force-pushed, ever" became "Never force-push and never rewrite history"; the
+  no-secrets rule gained the redaction clause). **No rule is missing in substance.**
+- **`CLAUDE.md` has nine bullets, not eight, because one is its own:** *"If anything blocks, stop and
+  report. Do not work around it."* has **no counterpart in `COLD-START.md`'s rules list.** It came
+  from Pass 57's step 3 text.
+- **"The ninth rule" means the ninth bullet of `CLAUDE.md`, not a ninth rule of `COLD-START.md`.**
+  `reports/2026-09-09-pass57-claude-md.md` §3.2 and §8 called it "COLD-START.md's ninth rule", which
+  is wrong — it is that file's **seventh** of eight. **The Pass 57 report is not edited**; reports are
+  the historical record. The correction is recorded here, and here is what governs.
+- **The two lists are still maintained by hand and can drift.** Pass 57 raised this and it is still
+  open: `CLAUDE.md` duplicates the rules rather than pointing at them, and three of them are already
+  worded differently in the two files. **Not changed** — deciding which file is the source of truth
+  is the owner's call.
