@@ -748,3 +748,24 @@
   open: `CLAUDE.md` duplicates the rules rather than pointing at them, and three of them are already
   worded differently in the two files. **Not changed** — deciding which file is the source of truth
   is the owner's call.
+
+
+## 2026-09-09 (Pass 59 — COLD-START.md brought current through Pass 58)
+
+- **`COLD-START.md`'s "Next step" section is current through Pass 58.** Its running push history had
+  stopped at Pass 55's `fd96b1d`. A new paragraph at the head of the section — the section runs
+  most-recent-first — records the commits since, with **every SHA read from `git log` and
+  `git ls-remote origin main`, none from memory**: `48e8f91` (Pass 55's own follow-up commit, which
+  the older paragraph never named), `10499e5` and `8f371a6` (Pass 56), `be0cae9` (Pass 57) and
+  `67ec874` (Pass 58). **Nothing is unpushed as of Pass 58.**
+- **The chain was checked, not assumed.** All six commits are ancestors of `origin/main`,
+  `git log --merges` over the range is empty, and each commit's parent is the one before it —
+  linear, nothing forced, rebased or amended.
+- **`COLD-START.md`'s "Where things live" now lists `CLAUDE.md`**: at the project root, the standing
+  builder rules and a pointer to this notebook, never project state, per the Pass 57 entry above.
+- **Additions only.** `git diff` on `COLD-START.md` is **19 insertions, 0 deletions** — no existing
+  line was rewritten, reworded, moved or removed, as the pass required.
+- **"Next step" now opens with two paragraphs that each say nothing is unpushed** — the new one
+  scoped "as of Pass 58", the older one written when `fd96b1d` was head. The older text was left
+  exactly as written because the pass forbade rewriting it. **Whether the section should be
+  consolidated is the owner's call and is not decided.**

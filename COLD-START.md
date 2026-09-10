@@ -7,6 +7,7 @@ Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — 
 ## Where things live
 
 - This folder: `~/Xcode/Marlin DVR TV` — the Xcode project, the notebook (this file, DECISIONS.md, reports/), and the git repo. The only writable tree.
+- Standing rules: `CLAUDE.md` at the project root — the builder's standing rules and a pointer to this notebook. Never project state; the notebook stays the record (DECISIONS.md, 2026-09-09 (Pass 57)).
 - Repo: `git@github.com:marlin1111ai/marlin-dvr-tv.git` (branch `main`).
 - Server reference clone: `~/Xcode/marlin-dvr-reference` — a read-only clone of marlin-dvr. Never edited, never pushed, never run from.
 - Server URL: http://192.168.1.250:8090/ (Marlin DVR on Unraid). Not touched by this project's tooling.
@@ -843,6 +844,24 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 58.** On 2026-09-09 local `main`, `origin/main` and
+`git ls-remote origin main` all read `67ec874`. Every commit since Pass 55's push is an ancestor of
+`origin/main` and the chain is linear — no merge commit, nothing forced, rebased or amended.
+**Pass 55 pushed a second commit** that the paragraph below does not name: `48e8f91`, recording that
+pass's verified push in the notebook, the brief and its report. **Pass 56 retired the handoff brief**
+— `MARLIN-DVR-TV-HANDOFF-2026-09-09.md` folded into this file and deleted
+(`reports/2026-09-09-pass56-retire-handoff-brief.md`) — pushed as `10499e5`, verified there by fetch,
+`git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all reading
+`10499e5`; that pass's own verified-push record followed as `8f371a6`. **Pass 57 created `CLAUDE.md`**
+at the project root — the standing builder rules and a pointer to this notebook, never project state
+(`reports/2026-09-09-pass57-claude-md.md`) — pushed as `be0cae9`, a fast-forward from `8f371a6`.
+**Pass 58 added that file's ninth bullet**, the server-repo rule from the rules list above, copied
+word for word and proved byte-identical (`reports/2026-09-09-pass58-claude-md-ninth-rule.md`) —
+pushed as `67ec874`, a fast-forward from `be0cae9`. **Pass 58 also corrected a miscount:** the Pass 57
+report called that rule "COLD-START.md's ninth", but this file's rules list holds **eight** rules and
+the server-repo rule is its seventh; `CLAUDE.md` has nine bullets because one of them — "If anything
+blocks, stop and report" — has no counterpart here (DECISIONS.md, 2026-09-09 (Pass 58)).
 
 **Nothing is unpushed.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
 2026-09-08 and **Pass 55 pushed it** together with Pass 54's report and this notebook work
