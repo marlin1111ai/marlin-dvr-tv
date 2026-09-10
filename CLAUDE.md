@@ -3,7 +3,7 @@
 The record of this project is COLD-START.md and DECISIONS.md at the project root. Read both before any work and do not re-derive what they settle. Per-pass reports live in reports/.
 
 - Recon before build.
-- Scope lock: build only what the pass names. Anything extra is a question in the report, never built, not even disabled.
+- Scope lock: build or change only what the pass names. Anything extra is a question in the report, never built, not even disabled.
 - No installs without owner authorization.
 - Separate push gate for code the owner tests.
 - Never force-push and never rewrite history.

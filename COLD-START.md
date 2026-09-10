@@ -849,12 +849,15 @@ pass's verified push in the notebook, the brief and its report. **Pass 56 retire
 `10499e5`; that pass's own verified-push record followed as `8f371a6`. **Pass 57 created `CLAUDE.md`**
 at the project root — the standing builder rules and a pointer to this notebook, never project state
 (`reports/2026-09-09-pass57-claude-md.md`) — pushed as `be0cae9`, a fast-forward from `8f371a6`.
-**Pass 58 added that file's ninth bullet**, the server-repo rule from the rules list above, copied
-word for word and proved byte-identical (`reports/2026-09-09-pass58-claude-md-ninth-rule.md`) —
-pushed as `67ec874`, a fast-forward from `be0cae9`. **Pass 58 also corrected a miscount:** the Pass 57
-report called that rule "COLD-START.md's ninth", but this file's rules list holds **eight** rules and
-the server-repo rule is its seventh; `CLAUDE.md` has nine bullets because one of them — "If anything
-blocks, stop and report" — has no counterpart here (DECISIONS.md, 2026-09-09 (Pass 58)).
+**Pass 58 added that file's ninth bullet**, the server-repo rule, copied word for word from this
+file's rules list as it then stood and proved byte-identical
+(`reports/2026-09-09-pass58-claude-md-ninth-rule.md`) — pushed as `67ec874`, a fast-forward from
+`be0cae9`. That rule is now the last of `CLAUDE.md`'s nine bullets. **Pass 58 also corrected a
+miscount:** the Pass 57 report called it "COLD-START.md's ninth", but this file's rules list then held
+**eight** rules and the server-repo rule was its seventh; `CLAUDE.md` has nine bullets because one of
+them — "If anything blocks, stop and report" — had no counterpart in that list. **Pass 60 has since
+removed this file's rules list**, so `CLAUDE.md`'s bullets are now the only copy (DECISIONS.md,
+2026-09-09 (Pass 58) and 2026-09-09 (Pass 60)).
 
 **Nothing was unpushed as of Pass 55.** The owner accepted **the app icon and Top Shelf art** on Home Theater on
 2026-09-08 and **Pass 55 pushed it** together with Pass 54's report and this notebook work

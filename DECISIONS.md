@@ -801,3 +801,28 @@ Both entries below are **standing rules**, not observations about this pass.
   rules". **That list no longer exists in this file.** The sentences are true of the moment they
   describe, and Pass 60's steps forbade changing anything else in the file, so they stand. **Whether
   to reword them is the owner's call.**
+
+
+## 2026-09-09 (Pass 61 — two corrections)
+
+- **The scope-lock rule binds what gets built *or changed* again.** `CLAUDE.md`'s bullet read "Scope
+  lock: build only what the pass names"; it now reads **"Scope lock: build or change only what the
+  pass names."** The rest of the bullet is unchanged, including "never built, not even disabled".
+  `COLD-START.md`'s original said "gets built **or changed**", and Pass 60 §3.1 flagged that the
+  surviving wording had quietly narrowed to builds alone — which mattered, because most passes edit
+  documentation rather than build anything. **The breadth is restored and the tail is still stronger
+  than the original.**
+- **The change was made in `CLAUDE.md` and nowhere else**, which is Pass 60 rule (a) working as
+  intended: there is one copy, so a rule correction is one edit with nothing to keep in step.
+- **The Pass 58 paragraph in "Next step" no longer points at a list that does not exist.** It said
+  the server-repo rule came "from the rules list above" and that "this file's rules list holds
+  **eight** rules" — both dangling once Pass 60 removed that list. The references now read as history
+  ("copied word for word from this file's rules list **as it then stood**", "**then held** eight
+  rules", "the server-repo rule **was** its seventh") and cite where the rules live now: that rule is
+  the last of `CLAUDE.md`'s nine bullets, and **Pass 60 removed this file's list, so `CLAUDE.md`'s
+  bullets are the only copy.**
+- **What the paragraph records is unchanged.** Every fact it carried survives — the bullet added, the
+  word-for-word copy proved byte-identical, the report citation, `67ec874` as a fast-forward from
+  `be0cae9`, the miscount the Pass 57 report made, the count of eight and the seventh position, and
+  the one `CLAUDE.md` bullet with no counterpart. **Only the tense and the pointers changed.**
+- **This closes both open questions Pass 60 left.** Neither should be re-raised.
