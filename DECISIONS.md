@@ -916,3 +916,29 @@ Both entries below are **standing rules**, not observations about this pass.
   untracked for the same reason and is the next pass's to pick up.**
 - **The record that a pass's `reports/` file belongs in the repo is unchanged** (owner,
   2026-09-08). Nothing above weakens it; it only names when the committing happens.
+
+
+## 2026-09-11 (Pass 68 — a pass's report goes in its own commit)
+
+This entry is a **standing rule**, not an observation about this pass.
+
+- **A pass writes its report and commits it BEFORE pushing.** The report goes inside the commit
+  it belongs to. **No pass leaves an untracked report for the next one to sweep up.** The order
+  is: do the work, write the report, commit everything together, push, verify the push.
+- **The verified push SHA is not in the report.** It cannot be — a commit cannot contain its own
+  SHA — and it does not need to be: **Pass 60 rule (b) already says where it lives**, which is
+  the pass response and the next pass's notebook entry. Nothing is lost by leaving it out of the
+  report, and the report stops being a reason to delay the commit.
+- **This closes a cycle that ran three times.** Under the old ordering the report was written
+  after the push so that it could carry the verified SHA, which meant it could not be in the
+  commit: **Pass 62's report was left untracked and committed by Pass 63, Pass 66's by Pass 67,
+  and Pass 67's by this pass.** Each sweep-up was correct under the ordering it inherited; the
+  ordering was the defect.
+- **The reports themselves were never at risk** — every one of them reached the repo, unmodified
+  and byte-identical, one pass later than it should have. What the old ordering cost was a
+  working tree that was never clean at the end of a pass, and a standing task handed forward.
+- **`reports/2026-09-11-pass67-notebook-current.md` and
+  `reports/2026-09-11-pass68-report-ordering.md` are both in this pass's single commit**, which
+  is the rule working the first time it is applied.
+- **This is settled. No later pass should re-raise it**, and none should re-derive why the old
+  ordering existed. Pass 67 §7.1 named the fix; this is it.
