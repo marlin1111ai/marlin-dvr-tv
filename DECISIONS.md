@@ -826,3 +826,68 @@ Both entries below are **standing rules**, not observations about this pass.
   `be0cae9`, the miscount the Pass 57 report made, the count of eight and the seventh position, and
   the one `CLAUDE.md` bullet with no counterpart. **Only the tense and the pointers changed.**
 - **This closes both open questions Pass 60 left.** Neither should be re-raised.
+
+
+## 2026-09-11 (Passes 62-65 — the Search screen)
+
+- **Owner acceptance: the Search screen was tested on Home Theater 2026-09-11 and accepted** —
+  "all good" (owner, 2026-09-11). Pushed to `origin main` in Pass 66 with this notebook work.
+- **Search is a rail entry, directly under Radio and above the Manage DVR bottom slot, and it has
+  no Home tile** (owner, 2026-09-11). It is the eleventh rail entry. The design draws no search
+  of any kind — its own header says "No search" (`dc:38`) — so the screen is **built to the app's
+  look**, the sixth to take that route after Manage DVR, Favorites, the radar, Radio and the
+  commercial-skip prompt. The 3 × 3 Home grid is untouched. An eleventh rail entry fits: Pass 62
+  worked it out from Pass 24's measured frames and **Pass 63 photographed it**, expanded rail,
+  eleven entries and the two-line footer all inside the frame.
+- **Results come from `GET /api/guide/find?q=`; clicking one reconstitutes the airing from
+  `GET /api/guide/search?title=`, never from `GET /api/guide`** (owner, 2026-09-11). `find`
+  answers with twenty thin display rows and the true total in `count`, and carries neither a
+  `Program` nor a `MergedChannel`, so a second read is unavoidable. **`/api/guide` was rejected
+  for cause**: its block builder rounds the cursor up to whole half hours and skips listings that
+  end inside a slot already consumed (`guide.go:679`, `:699`, `:705`), dropping **about 3 %** of
+  them — the marlin-dvr project's own measurement, recorded by them as known and not being fixed.
+  An airing it drops is one the Guide screen cannot show either, so search would have been the
+  only route to it and the one route that failed. `/api/guide/search` walks the stored guide
+  directly and has no such hole; it is whole-title equality, which is exactly right when the
+  title being asked with is the row's own. A new decoder for it is Pass 63's, strict on every
+  field, decoding the embedded `Program` from the same container the way `GuideNowItem` and
+  `GuideRow` already decode `MergedChannel`.
+- **DRM results are filtered out**, matching the standing rule that DRM channels never appear in
+  any list (`ChannelFilter.swift:5-8`, DECISIONS.md 2026-09-05 (design)). Both routes walk
+  `a.channels(false)`, which carries DRM channels rather than hiding them, so the rule is applied
+  client-side like every other shape in that file. **Silently**: nothing on screen says a result
+  was hidden. The one exception is honesty rather than disclosure — when the server reports
+  matches and every returned row was filtered, the screen says "No airings match “x” on a channel
+  this app can play" instead of a flat "no matches".
+- **When `count` exceeds the twenty rows returned, the screen says so and names both numbers**
+  (owner, 2026-09-11): "Showing the first 20 of 704 matches · type more of the title to narrow
+  it". **Neither number is this app's arithmetic** — both are the server's own, taken before the
+  DRM filter, so the line describes the search and never the list. The cap is not pageable: there
+  is no offset, cursor or page parameter, so the twenty-first match is reachable only by typing
+  more, which is what the line tells the user to do.
+- **A query and its results survive a trip to the rail and back** (owner, 2026-09-11).
+  `ScreenShell.swift:51` puts `.id(current)` on the content and destroys the screen on every
+  visit, so the model is owned above the shell like `HomeModel` and `WeatherModel`. Proven on the
+  device: the count line is string-identical and the rows element-for-element identical across a
+  round trip through Radio.
+- **The search input is tvOS's own `.searchable`, not a hand-built `TextField`** (owner,
+  2026-09-11, after the Pass 64 probe). **A plain `TextField` was measured as a full-screen
+  takeover**: Select summons a keyboard that blurs the whole app out of sight, and Pass 64 proved
+  the field's own frame makes no difference by pinning it to the top of the screen and
+  photographing the identical takeover. `.searchable` instead draws a field and a one-row
+  alphabet strip about 66 pt tall at the top, with everything below still on screen and still
+  reachable — the remote goes down into the results and back up to the strip without the keyboard
+  ever being dismissed. **No `NavigationStack` is needed**; Pass 64 ran one as a control and it
+  drew pixel-for-pixel the same. UIKit's `UISearchController` in a `UISearchContainerViewController`
+  was the third candidate: contained directly it draws but **cannot be focused at all**, and
+  inside a `UINavigationController` it works but **dismisses the keyboard the moment focus enters
+  the results**, which is why `.searchable` was chosen over it.
+- **The sheet-close focus rebuild stays, and it was removed and measured before that was
+  decided.** Writing the row's id into `@FocusState` after the airing sheet closes does not move
+  the focus engine — Pass 63 measured the screen ending with nothing at all focused. The fix is a
+  `generation` counter that rebuilds the content subtree, the one mechanism in this app that
+  re-focuses reliably (`ScreenShell.swift:51` does the same with `.id(current)`). **Pass 65 took
+  it out rather than assume `.searchable` had changed things**, put the plain assignment back
+  properly, and the device answered `focused=[]` again — the identical failure. It went back in
+  and focus returned to the exact row. **Not to be removed a third time without the device saying
+  so.**

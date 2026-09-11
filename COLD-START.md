@@ -768,6 +768,67 @@ other than Home Theater. The binary is **byte-identical** to Home Theater's
 development-signed build and will stop launching when the provisioning profile expires. When that
 is has not been checked and is unknown.**
 
+Passes 62-65 (`reports/2026-09-11-pass62-guide-search-recon.md`,
+`reports/2026-09-11-pass63-guide-search.md`,
+`reports/2026-09-11-pass64-keyboard-layout-probe.md`,
+`reports/2026-09-11-pass65-searchable.md`, **accepted by the owner on Home Theater 2026-09-11 —
+"all good" — and pushed in Pass 66**): **the Search screen.** Type a programme title on the Siri
+Remote and the guide is searched as you type, with the results on screen the whole time; click one
+and the airing sheet opens on it with every control live.
+
+- **It is the eleventh rail entry, directly under Radio and above the Manage DVR bottom slot, and
+  it has no Home tile** (owner, 2026-09-11). The design draws no search at all — its own header
+  says "No search" (`dc:38`) — so the screen is built to the app's look, the sixth to take that
+  route. The 3 × 3 Home grid is unchanged. Pass 62 worked out from Pass 24's measured frames that
+  an eleventh rail entry *ought* to fit and asked for a photograph before anyone relied on it;
+  **Pass 63 took it** — eleven entries and the two-line footer all inside the frame.
+- **Two reads, and the second one is the point.** `GET /api/guide/find?q=` answers the typing:
+  case-insensitive substring on the **title only**, over every airing whose end is still in the
+  future, at most **20** rows with the true total in `count`. Its rows are thin display rows and
+  cannot rebuild either type the sheet needs, so clicking one reconstitutes the airing from
+  **`GET /api/guide/search?title=`** — **never from `GET /api/guide`**, whose block builder rounds
+  to whole half hours and silently drops about **3 %** of listings (the marlin-dvr project's own
+  measurement, recorded by them as known and not being fixed). An airing `/api/guide` drops is one
+  the Guide screen cannot show either, so search would have been the only route to it and the one
+  route that failed. `/api/channels` supplies the `MergedChannel` and `/api/schedule` the job.
+  **`GuideSearchMatch` is the new decoder**, strict on every field, taking the embedded `Program`
+  from the same container the way `GuideNowItem` and `GuideRow` already take `MergedChannel`.
+- **DRM results are filtered out silently**, per the standing rule. Both routes walk
+  `a.channels(false)`, which carries DRM channels, so the rule is applied client-side like every
+  other shape in `ChannelFilter.swift`.
+- **"Showing the first 20 of 704 matches · type more of the title to narrow it"** — both numbers
+  the server's own, taken before the DRM filter, so the line describes the search and not the
+  list. The cap is not pageable; typing more is the only way past it.
+- **A query and its results survive a trip to the rail**, which needed the model to be owned above
+  `ScreenShell` like `HomeModel` and `WeatherModel`, because `ScreenShell.swift:51` destroys the
+  screen on every visit.
+- **The input is tvOS's `.searchable`, not a hand-built `TextField`** (owner, 2026-09-11, after
+  the Pass 64 probe). A plain `TextField` was **measured** as a full-screen takeover that blurs
+  the app out of sight — and pinning it to the top of the screen changes nothing, which Pass 64
+  photographed. `.searchable` draws a field and a one-row alphabet strip about 66 pt tall at the
+  top and leaves everything below on screen and reachable. No `NavigationStack` is needed.
+  UIKit's `UISearchController` was the third candidate and lost on behaviour: contained directly
+  it draws but cannot be focused at all, and inside a `UINavigationController` it works but
+  dismisses the keyboard the moment focus enters the results.
+- **The sheet-close focus rebuild is load-bearing and has been measured twice.** Writing the row's
+  id into `@FocusState` after the sheet closes does not move the focus engine; a `generation`
+  counter that rebuilds the content subtree does. **Pass 65 removed it rather than assume
+  `.searchable` had changed anything, and the device answered `focused=[]` — the identical Pass 63
+  failure — so it went back in.** Do not remove it a third time without the device saying so.
+
+**Two behaviours the owner accepted on Home Theater — known, and not defects:**
+
+- **The screen's own header sits below tvOS's search field.** `.searchable`'s field lands at the
+  very top (y 60-130) with its keyboard strip under it (y 164-231), and the app's
+  `ScreenHeader` — "Search · Programme titles in the guide" — draws below both, at y 306-368,
+  clearing the strip by 75 pt. Nothing is obscured, but the screen does carry two headings, tvOS's
+  and the app's. `.automatic` is the only placement tvOS offers, so where the chrome lands is not
+  this app's to choose. Accepted as built (owner, 2026-09-11).
+- **The keyboard strip scrolls off the top, and coming back to it is a walk.** It is not a pinned
+  header: eight rows down a 20-row result it sits at **y = -141**, off screen, and **one Up press
+  goes to the previous row, not to the strip** — it took **eight Up presses** to get back.
+  Measured twice, the same both times. Accepted as built (owner, 2026-09-11).
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
