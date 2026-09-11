@@ -26,16 +26,21 @@
 //     `onScheduleChanged` — without the re-read plus the re-join the sheet's writes would
 //     leave it holding a stale job (AiringSheet.swift:417-420).
 //
-//  Two things Pass 63 step 1 measured on the Apple TV and which the screen is shaped by:
+//  What the input is, and why (Pass 63 step 1 and Pass 64, both measured on the Apple TV):
 //
-//   · **The tvOS keyboard is a full-screen takeover, not a pane.** While it is up the screen
-//     behind it is blurred out of sight, so there is nothing to be gained by drawing results
-//     under it — and no layout here can move for it (every keyboard notification and
-//     `UIKeyboardLayoutGuide` is unavailable on tvOS).
-//   · **The binding updates live while the keyboard is up**, letter by letter. So the search
-//     is debounced off the binding rather than waiting for a submit, and the results are
-//     already drawn by the time the keyboard is dismissed. `.onSubmit` is deliberately not
-//     relied on: it was not observed firing, and nothing needs it.
+//   · **The keyboard a plain `TextField` summons is a full-screen takeover.** The screen
+//     behind it is blurred out of sight, so the results cannot be seen while typing, and
+//     pinning the field to the top of the screen changes nothing — Pass 64 tried exactly that
+//     and photographed the same takeover. No layout here could move for it either: every
+//     keyboard notification and `UIKeyboardLayoutGuide` is unavailable on tvOS.
+//   · **`.searchable` is a different mechanism, and it is the one this screen uses** (owner,
+//     2026-09-11, after the Pass 64 probe). tvOS draws a field and a one-row alphabet strip
+//     at the top of the screen, ~66 pt tall, and everything below stays visible and
+//     reachable: the remote goes down into the results and back up to the strip without the
+//     keyboard ever being dismissed.
+//   · **The binding updates letter by letter.** So the search is debounced off the binding
+//     rather than waiting for a submit. `.onSubmit` is deliberately not relied on: it was not
+//     observed firing, and nothing needs it.
 //
 //  The model is owned above `ScreenShell`, like `HomeModel` and `WeatherModel`, because
 //  `ScreenShell.swift:51` puts `.id(current)` on the content and rebuilds the screen from
@@ -201,10 +206,16 @@ final class GuideSearchModel {
 
     /// Where focus should land when the screen is (re)built. The rows survive a rail round
     /// trip, so the remote comes back to the row it left rather than to the top of the list.
-    var restoreFocusID: String {
+    ///
+    /// **Nil when there is no row to land on.** Pass 65: the search field is `.searchable`'s
+    /// now, drawn and owned by tvOS, so this app has no `@FocusState` binding for it and
+    /// cannot send the remote there. With no results the only focusable things on the screen
+    /// are the system's own search field and keyboard strip, and the focus engine picks
+    /// between them.
+    var restoreFocusID: String? {
         if let lastFocus, rows.contains(where: { GuideSearchScreen.rowFocusID($0) == lastFocus }) { return lastFocus }
         if let first = rows.first { return GuideSearchScreen.rowFocusID(first) }
-        return GuideSearchScreen.fieldFocusID
+        return nil
     }
 }
 
@@ -217,21 +228,31 @@ struct GuideSearchScreen: View {
     /// `restoreFocusAfterSheet`.
     @State private var generation = 0
 
-    static let fieldFocusID = "field"
     static func rowFocusID(_ row: FindRow) -> String { "row:\(row.id)" }
 
     var body: some View {
         ZStack {
             VStack(alignment: .leading, spacing: 26) {
                 ScreenHeader("Search", subtitle: "Programme titles in the guide")
-                field
                 status
                 results
                 Spacer(minLength: 0)
             }
+            // Pass 65, the owner's decision after the Pass 64 probe: the input is tvOS's own
+            // inline search — a field and a one-row alphabet strip pinned to the top of the
+            // screen, with everything below it still on screen and still reachable. The
+            // keyboard a plain `TextField` summons is a full-screen takeover that hides the
+            // results (Pass 63 step 1, re-measured in Pass 64 with the field pinned to the
+            // top: the container's frame makes no difference).
+            //
+            // `.automatic` is the only placement tvOS has — `.toolbar`, `.sidebar` and the
+            // rest are all `@available(tvOS, unavailable)` — so where the chrome lands is
+            // SwiftUI's decision and not this app's. No `NavigationStack` is needed: Pass 64
+            // ran that as a control and it drew pixel-for-pixel the same.
+            .searchable(text: $model.query, placement: .automatic, prompt: "Type a title")
             .id(generation)
             .task(id: generation) {
-                focusSoon { focused = model.restoreFocusID }
+                focusSoon { if let id = model.restoreFocusID { focused = id } }
             }
 
             if let selection = model.sheet {
@@ -280,35 +301,17 @@ struct GuideSearchScreen: View {
     /// why a rail round trip comes back on the right row, `ScreenShell.swift:51` doing the same
     /// thing with `.id(current)`. The `.task(id: generation)` on that subtree then asks
     /// `model.restoreFocusID` where to land, exactly as a fresh visit does.
+    ///
+    /// **Pass 65 re-measured this rather than assuming it, because `.searchable` changed the
+    /// focus topology — the keyboard strip is now a sibling above the list.** It changed
+    /// nothing here: with the rebuild taken out and the plain assignment put back (clearing
+    /// to nil first, then setting the row id behind `focusSoon`), closing the sheet on the
+    /// Apple TV left `focused=[]` again — nothing on the screen focused at all. The rebuild
+    /// went back in and focus returned to the exact row. Do not remove it a third time
+    /// without the device saying so.
     private func restoreFocusAfterSheet() {
-        print("[search] closing the sheet, restoring focus to \(model.restoreFocusID)")
+        print("[search] closing the sheet, restoring focus to \(model.restoreFocusID ?? "nothing")")
         generation += 1
-    }
-
-    /// The text field. Its capsule is tvOS's own and is not restyleable from SwiftUI — what
-    /// this app contributes is the surrounding frame, the label and the one focus treatment
-    /// every other control on every other screen uses.
-    private var field: some View {
-        HStack(spacing: 20) {
-            Image(systemName: "magnifyingglass")
-                .font(.nocturne(Nocturne.TextSize.body))
-                .foregroundStyle(focused == Self.fieldFocusID ? Nocturne.accent200 : Nocturne.neutral500)
-            TextField("Type a title", text: $model.query)
-                .font(.nocturne(Nocturne.TextSize.body))
-                .textFieldStyle(.plain)
-                .autocorrectionDisabled(true)
-                // tvOS paints the field's own capsule **light** while it has focus and dark
-                // while it does not, and neither is this app's to change. The app's ink is
-                // `Nocturne.text`, which is all but invisible on the light one (photographed
-                // on the Apple TV this pass), so the ink follows the capsule instead.
-                .foregroundStyle(focused == Self.fieldFocusID ? Nocturne.bg : Nocturne.text)
-                .focused($focused, equals: Self.fieldFocusID)
-        }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 22)
-        .frame(width: 1000, alignment: .leading)
-        .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
-        .focusTreatment(focused == Self.fieldFocusID, restingRing: Nocturne.neutral800)
     }
 
     @ViewBuilder
