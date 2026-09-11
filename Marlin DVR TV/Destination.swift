@@ -18,12 +18,13 @@
 import SwiftUI
 
 enum Destination: String, CaseIterable, Identifiable, Hashable {
-    case home, favorites, onNow, guide, onLater, recordings, cameras, weather, radio, settings, manage
+    case home, favorites, onNow, guide, onLater, recordings, cameras, weather, radio, search, settings, manage
 
     var id: String { rawValue }
 
-    /// Rail order: frame 1b's nine, then Manage DVR at the bottom (Pass 10B).
-    static let railOrder: [Destination] = [.home, .favorites, .onNow, .guide, .onLater, .recordings, .cameras, .weather, .radio, .manage]
+    /// Rail order: frame 1b's nine, then Search (Pass 63, directly under Radio) and
+    /// Manage DVR at the bottom (Pass 10B).
+    static let railOrder: [Destination] = [.home, .favorites, .onNow, .guide, .onLater, .recordings, .cameras, .weather, .radio, .search, .manage]
 
     /// Home tile order, frame 2a (three rows of three). Manage DVR is not among them.
     static let homeTiles: [Destination] = [.guide, .onNow, .onLater, .recordings, .cameras, .favorites, .weather, .radio, .settings]
@@ -39,6 +40,7 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         case .cameras: return "Cameras"
         case .weather: return "Weather"
         case .radio: return "Radio"
+        case .search: return "Search"
         case .settings: return "Settings"
         case .manage: return "Manage DVR"
         }
@@ -57,6 +59,8 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         case .cameras: return "video"
         case .weather: return "cloud.sun"
         case .radio: return "radio"
+        // Pass 63: the design names no icon for Search — it draws no Search at all (dc:38).
+        case .search: return "magnifyingglass"
         case .settings: return "slider.horizontal.3"
         // The settings-area icon, and the one the Pass 10 Recordings row used.
         case .manage: return "slider.horizontal.3"
@@ -83,8 +87,9 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         case .weather: return Color(hex: 0x245C66)
         case .radio: return Color(hex: 0x2F5F36)
         case .settings: return Color(hex: 0x3A3F4A)
-        // Neither is a Home tile; the tint is never drawn for them.
-        case .home, .manage: return Nocturne.surface
+        // None of the three is a Home tile; the tint is never drawn for them. Search is a
+        // rail entry only and has no Home tile (owner, 2026-09-11).
+        case .home, .manage, .search: return Nocturne.surface
         }
     }
 
@@ -93,7 +98,7 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
     /// present as drawn and inert (DECISIONS.md).
     var isBuiltNow: Bool {
         switch self {
-        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather, .radio: return true
+        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather, .radio, .search: return true
         case .home, .settings: return false
         }
     }

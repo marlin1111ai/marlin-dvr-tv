@@ -153,6 +153,109 @@ struct LaterResponse: Decodable {
     let sections: [LaterSection]
 }
 
+// MARK: Guide search (GET /api/guide/find, GET /api/guide/search) — Pass 63
+
+/// One row of `GET /api/guide/find?q=` (guide.go:862-871).
+///
+/// A deliberately thin **display** row, shaped by the server for its own top-bar dropdown: it
+/// carries what a result line shows plus the airing's identity (`channelId` + `start`), and
+/// nothing that could rebuild a `Program` or a `MergedChannel`. That is why clicking one costs
+/// a second read (Pass 62 §2.2).
+///
+/// Strict on all eight, because all eight are always there: **no field carries `omitempty`**
+/// (guide.go:863-870), so the server answers `""`, `0` or `false` rather than omitting a key.
+struct FindRow: Decodable, Identifiable {
+    let channelId: String   // "<sourceId>:<guid>" (sources.go:319)
+    let start: Int          // the programme's true unix start, unrounded
+    let title: String
+    let subtitle: String    // the raw episode title, "" when the listing has none
+    let when: String        // "Mon 3:04 PM", server-local, no date
+    let duration: String    // "30m" / "1h 0m", rounded to the minute
+    let channelLabel: String // "<number> <name>" — one space, and the reverse of /api/guide/search's
+    let drm: Bool
+
+    /// The same identity `AiringSelection.id` uses, so a row and the sheet it opens agree.
+    var id: String { "\(channelId)@\(start)" }
+}
+
+/// `{"matches": [...], "count": N}`. **`count` is the total before the 20-row cap**
+/// (guide.go:899-903), not the length of `matches`.
+struct FindResponse: Decodable {
+    let count: Int
+    let matches: [FindRow]
+
+    /// Lenient on the array only, the way `TrashResponse` is: the handler initialises `out` to
+    /// `[]row{}` at guide.go:872 so it should never be `null`, but an absent or null array is
+    /// "no matches" rather than a screen-wide failure. Every row inside it decodes strictly.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        matches = try container.decodeIfPresent([FindRow].self, forKey: .matches) ?? []
+        count = try container.decodeIfPresent(Int.self, forKey: .count) ?? matches.count
+    }
+
+    private enum CodingKeys: String, CodingKey { case count, matches }
+}
+
+/// One match of `GET /api/guide/search?title=` (guide.go:818-829) — the read that reconstitutes
+/// a clicked search result into something `AiringSheet` can be given (owner, 2026-09-11).
+///
+/// The Go type **embeds `Program`**, so the programme's whole field set is flattened into the
+/// same JSON object as the nine display fields beside it. That is the shape `GuideNowItem` and
+/// `GuideRow` already decode, and this follows them: `Program` is decoded from the *same*
+/// container, then the nine siblings from a keyed one.
+///
+/// Strict throughout, which is this app's habit and is what the shape supports:
+/// `Program.channel/start/end/title` have no `omitempty` (guide.go:19-22) and neither does any
+/// of the nine (guide.go:820-828), so every key below is always present. Everything optional in
+/// `Program` is optional here for the same reason it is there.
+struct GuideSearchMatch: Decodable, Identifiable {
+    let program: Program
+    let channelId: String
+    let channelLabel: String    // "<name> <number>" — the reverse of `find`'s (guide.go:837)
+    let initials: String
+    let logoBg: String
+    let when: String
+    let duration: String
+    let scheduled: Bool
+    let drm: Bool
+    let art: String
+
+    var id: String { "\(channelId)@\(program.start)" }
+
+    private enum CodingKeys: String, CodingKey {
+        case channelId, channelLabel, initials, logoBg, when, duration, scheduled, drm, art
+    }
+
+    init(from decoder: Decoder) throws {
+        program = try Program(from: decoder)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        channelId = try c.decode(String.self, forKey: .channelId)
+        channelLabel = try c.decode(String.self, forKey: .channelLabel)
+        initials = try c.decode(String.self, forKey: .initials)
+        logoBg = try c.decode(String.self, forKey: .logoBg)
+        when = try c.decode(String.self, forKey: .when)
+        duration = try c.decode(String.self, forKey: .duration)
+        scheduled = try c.decode(Bool.self, forKey: .scheduled)
+        drm = try c.decode(Bool.self, forKey: .drm)
+        art = try c.decode(String.self, forKey: .art)
+    }
+}
+
+/// `{"matches": [...], "count": N}` again, and here `count` **is** the array's own length —
+/// this route has no cap (guide.go:843).
+struct GuideSearchResponse: Decodable {
+    let count: Int
+    let matches: [GuideSearchMatch]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        matches = try container.decodeIfPresent([GuideSearchMatch].self, forKey: .matches) ?? []
+        count = try container.decodeIfPresent(Int.self, forKey: .count) ?? matches.count
+    }
+
+    private enum CodingKeys: String, CodingKey { case count, matches }
+}
+
 // MARK: Schedule (passes.go:53-77, 855-879; GET /api/schedule)
 
 struct Job: Decodable, Identifiable {

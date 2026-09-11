@@ -24,6 +24,10 @@ struct ScreenShell: View {
     let api: APIClient
     /// Pass 13: the one WeatherKit read, shared with Home so the location prompt happens once.
     let weather: WeatherModel
+    /// Pass 63: Search's model is owned above the shell, because `.id(current)` below rebuilds
+    /// the content on every visit and the owner's decision is that a query and its results
+    /// survive a trip to the rail and back.
+    let search: GuideSearchModel
     let onPlay: (PlayRequest) -> Void
     @FocusState private var focus: ShellFocus?
     /// True while the remote is inside the rail; the guard on the restore, so it fires on the
@@ -81,7 +85,8 @@ struct ScreenShell: View {
     }
 
     /// The screens that exist: sweep 2's five, Favorites (Pass 10), Manage DVR (Pass 10B),
-    /// Weather (Pass 13) and Radio (Pass 19). Anything else keeps the placeholder.
+    /// Weather (Pass 13), Radio (Pass 19) and Search (Pass 63). Anything else keeps the
+    /// placeholder.
     @ViewBuilder
     private var content: some View {
         let leave = { screen = nil }
@@ -95,6 +100,7 @@ struct ScreenShell: View {
         case .manage: ManageDVRScreen(api: api, onLeave: leave)
         case .weather: WeatherScreen(model: weather, onLeave: leave)
         case .radio: RadioScreen(api: api, onLeave: leave)
+        case .search: GuideSearchScreen(model: search, api: api, onLeave: leave)
         default: PlaceholderScreen(destination: current)
         }
     }

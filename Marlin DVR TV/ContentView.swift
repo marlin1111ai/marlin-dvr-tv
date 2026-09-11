@@ -16,6 +16,9 @@ struct ContentView: View {
     let home: HomeModel
     /// Pass 13: one WeatherKit read behind both the Home glance and the Weather screen.
     let weather: WeatherModel
+    /// Pass 63: Search's query and results outlive its screen, which `ScreenShell` rebuilds
+    /// on every visit.
+    let search: GuideSearchModel
     @State private var screen: Destination? = nil
     @State private var playRequest: PlayRequest? = nil
     @State private var hold = RemoteHold()
@@ -24,7 +27,7 @@ struct ContentView: View {
         ZStack {
             Nocturne.bg
             if screen != nil {
-                ScreenShell(screen: $screen, clientName: session.displayName, api: api, weather: weather) { request in
+                ScreenShell(screen: $screen, clientName: session.displayName, api: api, weather: weather, search: search) { request in
                     playRequest = request
                 }
             } else {
@@ -58,5 +61,5 @@ struct ContentView: View {
 
 #Preview {
     let api = APIClient()
-    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api), weather: WeatherModel())
+    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api), weather: WeatherModel(), search: GuideSearchModel(api: api))
 }

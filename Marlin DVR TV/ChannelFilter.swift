@@ -26,6 +26,17 @@ extension Array where Element == Job {
     var playable: [Job] { filter { !$0.drm } }
 }
 
+// Pass 63. `GET /api/guide/find` and `GET /api/guide/search` both walk `a.channels(false)`
+// (guide.go:834, :875), which carries DRM channels rather than filtering them
+// (sources.go:321), so both need the rule applied here like every other shape above.
+extension Array where Element == FindRow {
+    var playable: [FindRow] { filter { !$0.drm } }
+}
+
+extension Array where Element == GuideSearchMatch {
+    var playable: [GuideSearchMatch] { filter { !$0.drm } }
+}
+
 /// The endpoints Home and sweep 2 read, with the DRM rule applied.
 extension APIClient {
     /// GET /api/channels?source=&filter= (sources.go:1006-1022). Playable channels only.
@@ -60,6 +71,26 @@ extension APIClient {
     /// GET /api/guide/later (guide.go:695-754).
     func later() async throws -> LaterResponse {
         try await get("/api/guide/later")
+    }
+
+    /// GET /api/guide/find?q= (guide.go:860-904) — Pass 63. Case-insensitive substring on the
+    /// **title only**, over every airing whose end is still in the future, capped at 20 rows
+    /// with the true total in `count`. `q` is the only parameter the handler reads
+    /// (guide.go:861): there is no limit, offset, source or filter, so the 21st match cannot be
+    /// reached except by typing more. Playable rows only; the cap is the server's and is
+    /// applied *before* this filter, so `count` and `returned` stay the server's own numbers.
+    func guideFind(q: String) async throws -> (rows: [FindRow], returned: Int, count: Int) {
+        let response: FindResponse = try await get("/api/guide/find", query: [URLQueryItem(name: "q", value: q)])
+        return (response.matches.playable, response.matches.count, response.count)
+    }
+
+    /// GET /api/guide/search?title= (guide.go:816-844) — Pass 63, and new to this app. **Whole
+    /// title equality**, not a substring, which is exactly right here: the caller hands back a
+    /// `FindRow`'s own `title`. Uncapped, so a common title can answer with a large body.
+    /// Playable matches only.
+    func guideSearch(title: String) async throws -> [GuideSearchMatch] {
+        let response: GuideSearchResponse = try await get("/api/guide/search", query: [URLQueryItem(name: "title", value: title)])
+        return response.matches.playable
     }
 
     /// GET /api/schedule (passes.go:855-879). Jobs on playable channels only.
