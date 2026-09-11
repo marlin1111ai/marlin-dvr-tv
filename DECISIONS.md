@@ -891,3 +891,28 @@ Both entries below are **standing rules**, not observations about this pass.
   properly, and the device answered `focused=[]` again — the identical failure. It went back in
   and focus returned to the exact row. **Not to be removed a third time without the device saying
   so.**
+
+
+## 2026-09-11 (Pass 67 — the notebook brought current)
+
+- **`COLD-START.md`'s "Next step" is current through Pass 66.** Its newest paragraph had stopped
+  at Pass 58's `67ec874`, leaving six landed commits unnamed. A new paragraph at the head of the
+  section — which runs most-recent-first — records them: `77bf616` (Pass 59), `4f78906`
+  (Pass 60), `49a5672` (Pass 61), `1107b12` (Pass 63), `d0ff593` (Pass 65) and `b028650`
+  (Pass 66). **Nothing is unpushed as of Pass 66.**
+- **Every SHA was read from `git log` and `git ls-remote`, none from memory, and the chain was
+  checked rather than assumed:** all six are ancestors of `origin/main`,
+  `git log --merges 67ec874..b028650` is empty, each commit's parent is the one before it, and
+  `67ec874` is still an ancestor of the current head.
+- **Additions only.** `git diff --numstat` on `COLD-START.md` reported **22 insertions, 0
+  deletions**; no existing line was rewritten, reworded, moved or removed.
+- **The Pass 66 report is committed**, unmodified —
+  `reports/2026-09-11-pass66-search-accepted-and-pushed.md`, scanned for credentials, tokens and
+  device ids first and none found. Pass 66 necessarily left it untracked: its own steps put the
+  report after the push, and a push SHA cannot be written into a commit that precedes it.
+- **That is now a recognised pattern, not an oversight.** A pass whose report records its own
+  verified push leaves that report untracked, and the next pass commits it — as Pass 63 did for
+  Pass 62's, Pass 65 for Pass 64's, and this pass for Pass 66's. **This pass's own report is
+  untracked for the same reason and is the next pass's to pick up.**
+- **The record that a pass's `reports/` file belongs in the repo is unchanged** (owner,
+  2026-09-08). Nothing above weakens it; it only names when the committing happens.

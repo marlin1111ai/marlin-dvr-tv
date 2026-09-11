@@ -899,6 +899,28 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 66.** On 2026-09-11 local `main`, `origin/main` and
+`git ls-remote origin main` all read `b028650`. **Six commits have landed since Pass 58's
+`67ec874`**, and every SHA below was read from `git log` and `git ls-remote`, none from memory:
+`77bf616` (Pass 59, this section brought current through Pass 58),
+`4f78906` (Pass 60, `CLAUDE.md` made the single source of truth for the rules),
+`49a5672` (Pass 61, two corrections to it),
+`1107b12` (Pass 63, the Search screen),
+`d0ff593` (Pass 65, that screen moved onto `.searchable`), and
+`b028650` (Pass 66, the owner's acceptance and this notebook). **The chain was checked rather
+than assumed:** all six are ancestors of `origin/main`, `git log --merges 67ec874..b028650` is
+empty, each commit's parent is the one before it, and `67ec874` is still an ancestor of the
+current head — nothing forced, rebased or amended. **Pass 66 pushed the last three together** as
+a fast-forward from `49a5672`, verified live that day by fetch, `git rev-parse main`,
+`git rev-parse origin/main` and `git ls-remote origin main` all reading `b028650`
+(`reports/2026-09-11-pass66-search-accepted-and-pushed.md`). **Passes 62 and 64 have no commit of
+their own, and that is correct**: both were read-only — Pass 62 wrote a report only, and Pass 64
+deleted every probe file and restored `ScreenShell.swift` with `git checkout` before reporting —
+so their reports ride in `1107b12` and `d0ff593` respectively, each committed by the pass that
+followed. **Pass 67 committed the Pass 66 report**, which that pass necessarily left untracked
+because its own steps put the report after the push and a push SHA cannot be written into a
+commit that precedes it (`reports/2026-09-11-pass67-notebook-current.md`).
+
 **Nothing is unpushed as of Pass 58.** On 2026-09-09 local `main`, `origin/main` and
 `git ls-remote origin main` all read `67ec874`. Every commit since Pass 55's push is an ancestor of
 `origin/main` and the chain is linear — no merge commit, nothing forced, rebased or amended.
