@@ -955,6 +955,39 @@ pass leaves behind is the test harness**, `Marlin DVR TVUITests/GuideRightEdgeUI
 - **No alternative capture mechanism was tried**, per the pass's own stop rule. `UIFocusGuide`, a
   window-level press recognizer and a focusable edge affordance stay unmeasured.
 
+Pass 77 (`reports/2026-09-12-pass77-guide-scroll-right.md`): **the Guide scrolls right.** One Right
+press on the last visible cell of a row moves the window forward one slot (30 min); the time strip,
+every row and the header move together, because all three are derived from `GuideModel.windowStart`
+and nothing else. Forward only. `Left`, `Menu`, `↩ Now`, `+12h` and a rail trip are unchanged.
+**The diff is `GuideScreen.swift` alone** — 129 insertions, 1 deletion — plus the harness, the notebook
+and the report. **Committed locally and NOT pushed: the owner tests it on Home Theater first.**
+
+- **Where the press comes from.** `.onMoveCommand` on the grid's own `ScrollView`, the site Pass 76
+  measured as the only one that receives it. The edge is read from the **settled** focus 150 ms later,
+  because the `@FocusState` write and the command delivery race; a press the focus engine consumed is
+  recognised by the rightward step it made, not by comparing `focused` before and after.
+- **The limit.** `lastListedSlot` reads the same `block.program` that `endOfListings` reads, so the two
+  cannot disagree. The refetch is `pageForward()`'s existing rule: **one refetch every 45 slots**,
+  measured, with the strip, rows and focus intact across it.
+- **Focus after a nudge** stays on the same programme while it is in the window and goes to the
+  leftmost cell of its row when it is not — both proven on the device. A **third** case the rule does
+  not name is real: a row can have no cell at all in the new window (the owner's 2.1 has a gap at
+  11:30 AM), and focus then falls back to `firstCellID` on another row.
+- **A held Right does not auto-repeat** — a 2-second and a 4-second hold each advanced the window one
+  slot. Nothing was built for it, per the pass's own instruction.
+- **Roughly three presses in five move the window, not five in five**, and that is the owner's two
+  rules combining rather than a defect: because focus stays on the same programme, the revealed slot
+  often puts a new cell to its right, and the next press is taken by the focus engine to move on to it.
+  Measured 48 slots in 78 presses, 46 in 80, 3 in 5, 4 in 5. **Whether he wants that is his call** — the
+  alternative contradicts his focus rule.
+- **Nothing else changed, and each was proven at a 30-minute offset**: the footer's two sentences, the
+  strip's "· now" marker, `↩ Now`, `+12h`, the midnight column ("Sun · 12:00 AM") and the "Local"
+  collection's five rows in the server's order.
+- **A pre-existing limit found while testing and deliberately not touched:** Up from a grid cell whose
+  x falls between the collections button and the right-hand pills moves focus nowhere, because the
+  header has no focusable item above that span — the same thing `WeatherScreen.swift:109-113` records.
+  It matters more now, since reaching `↩ Now` from the right-hand edge needs a Left press first.
+
 ### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
 
 The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
@@ -1061,6 +1094,13 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Pass 77 is committed locally and NOT pushed.** The Guide's scroll-right
+(`reports/2026-09-12-pass77-guide-scroll-right.md`) was built and proven on Home Theater and committed
+in one commit with the harness, the notebook and the report — **the owner tests it on Home Theater
+before anything is pushed**, which is the standing separate push gate. Local `main` is one commit ahead
+of `origin/main`; nothing forced, rebased or amended. The paragraph below, written by Pass 76, still
+describes its own state correctly.
 
 **Nothing is unpushed as of Pass 76.** Pass 75 (`fce20c2`, the Guide scroll-right recon) and Pass 76
 (this pass's own commit, the right-edge device probe) are both on `origin/main`; Pass 76's own SHA is

@@ -19,6 +19,12 @@
 //  server returns that collection's members in the owner's own order (sources.go:389-401).
 //  The selection itself lives in `GuideCollectionsModel`, above the shell, because this
 //  screen is rebuilt on every rail visit (ScreenShell.swift:55).
+//  Pass 77: Right on the last visible cell of a row moves the window forward one slot (30 min) —
+//  the time strip, every row and the header move together because all three are derived from
+//  `GuideModel.windowStart` and nothing else. Forward only; Left, Menu, "↩ Now" and "+12h" are
+//  untouched. The press is received through `.onMoveCommand` on the grid's own `ScrollView`, which
+//  is where Pass 76 measured it arriving, and the edge is read from the settled focus because the
+//  focus write and the command delivery race (see `gridMoved`).
 //
 
 import SwiftUI
@@ -107,6 +113,36 @@ final class GuideModel {
         guard !endOfListings else { return }
         windowStart += Self.pageSeconds
         if windowEnd > fetchEnd { await fetch(from: windowStart) }
+    }
+
+    /// Pass 77: the start of the last slot in the fetched range that has a listing in it — the point
+    /// the window may not advance past. It reads the same thing `endOfListings` reads, a block's
+    /// `program`, so the two can never disagree: nil here is exactly `endOfListings == true`.
+    var lastListedSlot: Int? {
+        var latest = 0
+        for row in rows {
+            for block in row.blocks {
+                if let end = block.program?.end, end > latest { latest = end }
+            }
+        }
+        guard latest > 0 else { return nil }
+        return (latest - 1) / Self.slotSeconds * Self.slotSeconds
+    }
+
+    /// Pass 77: one Right press at a row's right-hand edge moves the window forward **one slot**
+    /// (owner, 2026-09-12). Forward only, never past `lastListedSlot`, and it refetches by the same
+    /// rule `pageForward()` uses — so the time strip, every row and the header all move together,
+    /// because all three are derived from `windowStart` and nothing else.
+    ///
+    /// Returns true when the window actually moved, which is the caller's signal to settle focus.
+    @discardableResult
+    func nudgeForward() async -> Bool {
+        guard let limit = lastListedSlot else { return false }
+        let next = windowStart + Self.slotSeconds
+        guard next <= limit else { return false }
+        windowStart = next
+        if windowEnd > fetchEnd { await fetch(from: windowStart) }
+        return true
     }
 
     /// Pass 72: a collection was chosen or cleared. Re-run the fetch at the window the Guide
@@ -219,6 +255,9 @@ struct GuideScreen: View {
     @State private var lastCell: String?
     @State private var channelMenu: MergedChannel?
     @State private var collectionsOpen = false
+    /// Pass 77: when the focus engine last stepped focus rightward inside a row. `gridMoved` reads
+    /// it to tell a Right press the engine consumed from one it refused.
+    @State private var engineSteppedRightAt = Date.distantPast
 
     /// The focus id of a channel cell in the left column.
     static func channelFocusID(_ channel: MergedChannel) -> String { "ch:\(channel.id)" }
@@ -304,6 +343,11 @@ struct GuideScreen: View {
                     .padding(.vertical, 6)
                 }
                 .disabled(model.sheet != nil || channelMenu != nil || collectionsOpen)
+                // Pass 77: the grid's own `ScrollView` is the attachment point, and that is
+                // measured rather than chosen — Pass 76 put one instance here and one on this
+                // screen's root `ZStack` and found all 22 move commands arrived at this one and
+                // none at the root. A handler on the root sees nothing.
+                .onMoveCommand { direction in gridMoved(direction) }
                 legend
                     .padding(.top, 16)
             }
@@ -346,8 +390,11 @@ struct GuideScreen: View {
             await model.loadNow()
             focusSoon { focused = firstCellID ?? "collections" }
         }
-        .onChange(of: focused) { _, new in
+        .onChange(of: focused) { old, new in
             if let new, new.contains("@") { lastCell = new }
+            // Pass 77: a step rightward inside one row is how a Right press the focus engine
+            // consumed is told apart from one it refused. See `gridMoved`.
+            if Self.isRightwardStep(from: old, to: new) { engineSteppedRightAt = Date() }
         }
         .onChange(of: hold.holds) { _, _ in handleHold() }
         .onExitCommand {
@@ -370,6 +417,87 @@ struct GuideScreen: View {
             } else {
                 onLeave()
             }
+        }
+    }
+
+    // MARK: Pass 77 — Right at a row's right-hand edge moves the window forward one slot
+
+    /// How long the focus engine is given to settle before the edge is read. Pass 76 measured that
+    /// the `@FocusState` write and the `.onMoveCommand` delivery race and arrive in either order, so
+    /// the edge cannot be read at receipt; it is read here instead.
+    private static let nudgeSettle: Duration = .milliseconds(150)
+    /// How close to a press a rightward step has to be to count as that press's own work. Pass 76
+    /// measured the gap between the focus write and the command at a few milliseconds in either
+    /// direction, so this is generous by an order of magnitude.
+    private static let nudgeGrace: TimeInterval = 0.15
+
+    /// `"<channel id>@<program start>"` split back into its halves. A channel id is
+    /// `"<sourceId>:<guid>"` (sources.go:319) and never contains `"@"`, so the last `"@"` is the
+    /// separator. Nil for anything that is not a programme cell id — a channel cell, `"collections"`,
+    /// `"loading"`, `"now"`, `"page"`.
+    static func cellKey(_ id: String) -> (channel: String, start: Int)? {
+        guard let at = id.lastIndex(of: "@"), let start = Int(id[id.index(after: at)...]) else { return nil }
+        return (String(id[..<at]), start)
+    }
+
+    /// True when a focus change is the engine walking **right inside one row**: either on to a later
+    /// programme on the same channel, or that row's channel cell handing over to its first programme
+    /// cell. Nothing else on this screen produces one — a Left step goes to an earlier start, Up and
+    /// Down change channel, and a nudge's own landing is the leftmost cell, which is earlier than the
+    /// cell it came from. That is what makes this a safe test for "the engine took this press".
+    static func isRightwardStep(from old: String?, to new: String?) -> Bool {
+        guard let old, let new, let n = cellKey(new) else { return false }
+        if let o = cellKey(old) { return o.channel == n.channel && n.start > o.start }
+        return old == "ch:\(n.channel)"
+    }
+
+    /// The grid received a directional command. **Only `.right` does anything**, and only when the
+    /// focused cell is the last one its own row has inside the window.
+    ///
+    /// **Why the edge is read after a delay and not at receipt.** Pass 76 measured on Home Theater
+    /// that the `@FocusState` write and the `.onMoveCommand` delivery race: of seven presses the
+    /// engine acted on, **six delivered the command after the focus write** and one before it. So at
+    /// receipt `focused` is sometimes the cell the engine has just arrived at — and reading the edge
+    /// there would make the press that walks *on to* the last cell nudge the window as well. One
+    /// press, two actions, which is Pass 29's defect in another costume. The edge is therefore read
+    /// from the settled value, and a press the engine consumed is recognised by the rightward step
+    /// it made rather than by any before/after comparison of `focused`.
+    private func gridMoved(_ direction: MoveCommandDirection) {
+        guard direction == .right, model.sheet == nil, channelMenu == nil, !collectionsOpen else { return }
+        let pressedAt = Date()
+        Task {
+            try? await Task.sleep(for: Self.nudgeSettle)
+            guard engineSteppedRightAt < pressedAt.addingTimeInterval(-Self.nudgeGrace) else { return }
+            guard let id = focused, id == lastCellID(inRowOf: id) else { return }
+            await nudge(from: id)
+        }
+    }
+
+    /// The id of the last cell the focused cell's own row has in the window, or nil when the focused
+    /// view is not a programme cell at all.
+    private func lastCellID(inRowOf id: String) -> String? {
+        guard let key = Self.cellKey(id),
+              let row = model.rows.first(where: { $0.channel.id == key.channel }) else { return nil }
+        return model.cells(for: row).last?.id
+    }
+
+    /// Step the window, then settle focus by the owner's rule: it stays on the same programme while
+    /// that programme is still in the window, and goes to the leftmost cell its row still has when
+    /// the programme has left it.
+    private func nudge(from id: String) async {
+        guard await model.nudgeForward() else {
+            print("[guide] nudge refused at \(model.windowLabel) — no later slot has a listing")
+            return
+        }
+        let cells = model.rows
+            .first { $0.channel.id == Self.cellKey(id)?.channel }
+            .map { model.cells(for: $0) } ?? []
+        if cells.contains(where: { $0.id == id }) {
+            print("[guide] nudge -> \(model.windowLabel) · fetch=\(model.fetchStart) · focus stays on \(id)")
+        } else {
+            let landing = cells.first?.id ?? firstCellID ?? "collections"
+            print("[guide] nudge -> \(model.windowLabel) · fetch=\(model.fetchStart) · \(id) left the window, focus to \(landing)")
+            focusSoon { focused = landing }
         }
     }
 

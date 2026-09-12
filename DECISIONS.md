@@ -1198,3 +1198,66 @@ Remote, with a disclosed `[probe]` diagnostic in `GuideScreen.swift` that was **
 - **No alternative capture mechanism was tried**, because the step said to stop once
   `.onMoveCommand` was shown to deliver, and it does. `UIFocusGuide`, a window-level press
   recognizer and a focusable edge affordance (Pass 75 §5.3) all remain untouched and unmeasured.
+
+## 2026-09-12 (Pass 77 — the Guide scrolls right)
+
+**The owner's decisions of 2026-09-12, built.** One Right press on the last visible cell of a row
+moves the window forward one slot (30 min); forward only; Left, Menu, `↩ Now`, `+12h` and a rail trip
+all behave exactly as they did. Nothing else in the app changed — the diff is **`GuideScreen.swift`
+alone**, 129 insertions and 1 deletion, and that one deletion is a closure signature
+(`{ _, new in` → `{ old, new in`). Build warnings unchanged from HEAD's two.
+
+- **The press arrives through `.onMoveCommand` on the grid's own `ScrollView`**
+  (`GuideScreen.swift:347`), which is not a choice: Pass 76 attached one instance there and one on the
+  screen's root `ZStack` and measured all 22 move commands arriving at the grid instance and **none**
+  at the root.
+- **The edge is read from the settled focus 150 ms after the press, never at receipt, and a press the
+  focus engine consumed is recognised by the *kind* of focus change it made.** Pass 76 measured the
+  `@FocusState` write and the command delivery racing in either order, so the value at receipt is
+  sometimes the cell the engine has just arrived at — and nudging on that would make the press that
+  walks *on to* the last cell move the window as well. One press, two actions, which is Pass 29's
+  defect in another costume. `isRightwardStep` (`:448`) is the test: a later programme on the same
+  channel, or that row's channel cell handing over to its first cell. Nothing else on this screen
+  produces one — a Left step goes to an earlier start, Up and Down change channel, and a nudge's own
+  landing is the leftmost cell, which is earlier than the cell it came from.
+- **The window never advances past the last slot that has a listing.** `lastListedSlot` (`:118`) reads
+  the same `block.program` that `endOfListings` reads, so the two cannot disagree: nil there is
+  exactly `endOfListings == true`. `nudgeForward` (`:132`) refuses when the next slot would pass it.
+- **The refetch is the existing rule, `pageForward()`'s, and nothing new.** Measured on the device:
+  **one refetch every 45 slots, the first on nudge 45** — `fetch=` in the console moved once across 48
+  slots and twice across 90, each step exactly 81,000 s. The strip, the rows and focus all survive it.
+- **Focus after a nudge is the owner's rule and both halves are proven on the device.** It stays on the
+  same programme while that programme is still in the window (measured: the cell's frame moving
+  1524 → 1203 with the label unchanged), and goes to the leftmost cell its row still has when the
+  programme has left it.
+- **There is a third case the owner's rule does not name, and it is real rather than theoretical: the
+  same row may have no cell at all in the new window.** The owner's channel 2.1 has a listings gap
+  around 11:30 AM, and when "Hearts of Heroes" left the window its row was empty, so focus fell back
+  to `firstCellID` — a cell on another row — which is the app's existing convention at `:347`, `:368`,
+  `:395` and `:435`. Recorded because it is a visible jump to another row, not a defect.
+- **A held Right does NOT auto-repeat the move command, so nothing was built for it.** Measured twice
+  on Home Theater: a 2-second hold advanced the window **one** slot and a 4-second hold advanced it
+  **one** slot. Step 4 said to report that and build nothing, and no timer, no synthetic repeat and no
+  custom repeat handling exists anywhere in the change.
+- **The combined effect of the owner's two rules is that roughly three presses in five move the
+  window, not five in five, and this is a consequence of the spec rather than a defect.** Because focus
+  stays on the *same programme* after a nudge, the slot the nudge reveals often puts a **new** cell to
+  the right of it — and the next Right press is then taken by the focus engine to move on to that new
+  cell instead of moving the window. Measured ratios of slots to presses: **48 in 78**, 46 in 80,
+  3 in 5, 4 in 5, 4 in 7. On a row carrying one long programme every press moves the window; on a row
+  of half-hour programmes it alternates. **The owner should decide whether he wants this**, because the
+  alternative — focus tracking the right-hand edge — contradicts his step 2 and was therefore not
+  built.
+- **The footer, `↩ Now`, `+12h`, the strip's "· now" marker, the midnight accent and the collection
+  filter were not touched, and each was proven correct at a 30-minute-offset window.** All of them
+  already derive from `windowStart`. Measured: the footer flips to "Menu snaps back to now · forward
+  only, 24 hours per request" and the at-now sentence goes; the strip's first column loses "· now";
+  `↩ Now` and `+12h` are both drawn; the midnight column reads **"Sun · 12:00 AM"** at
+  `(1527, 157)` once the window crosses midnight; and the "Local" collection's five rows stay in the
+  server's order with no non-member drawn after four slots of scrolling.
+- **A pre-existing header-geometry limit, found while testing and NOT introduced here.** Up from a
+  grid cell whose x falls between the collections button and the right-hand pills moves focus nowhere:
+  the header has no focusable item above that span, so the focus engine refuses. It is the same thing
+  `WeatherScreen.swift:109-113` records for its Radar button. It matters more now, because the owner
+  will sit at the right-hand edge of a row often and reaching `↩ Now` from there needs a Left press
+  first. **Nothing was changed for it** — it is outside what this pass names.
