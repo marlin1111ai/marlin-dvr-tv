@@ -1378,3 +1378,55 @@ measured by a clean build of each.
   two can never straddle a boundary between two `Date()` reads. Removing it is a `Formatting.swift`
   edit, which this pass's scope lock does not allow; it is left in place and raised as a question.
 - **Committed locally and NOT pushed** — the owner tests it on Home Theater first.
+
+## 2026-09-12 (Pass 80 — the Guide's clock accepted and pushed)
+
+- **Owner acceptance: the Guide's clock was tested on Home Theater on 2026-09-12 and accepted** —
+  **"all good"** (owner, 2026-09-12). Pushed to `origin main` in this pass together with the notebook
+  work recording the acceptance.
+- **What was accepted, named so a later pass does not have to infer it from the commit:** the Guide
+  left open **moves with the time** — at each half-hour boundary a window sitting at now advances to
+  the new current half hour, with the time strip, every row, the header's date range and the "· now"
+  marker moving together, and programmes that have ended leaving the grid; **within a half hour the
+  `↩ Now · 2:04 PM` pill tracks the clock**; focus after a roll follows Pass 77's rule; the collection
+  filter holds across the roll; and the beat stops with the screen, leaving no orphan after a rail
+  trip.
+- **The two cases Pass 79 could not finish on the device are accepted on the owner's own test**
+  (owner, 2026-09-12), and this closes them:
+  - **A window scrolled ahead does not roll.** Pass 79 measured ten minutes of it holding still with
+    the pill ticking, but its run was killed about eighteen minutes short of the boundary, so the
+    boundary itself was code-traced (`windowStart < nowHalfHour`). **The owner watched it across a
+    real boundary and it holds.**
+  - **The app backgrounded across a boundary.** Pass 79 never ran this at all — its harness test
+    `testTheGuideIsAtTheTrueHalfHourAfterBackgrounding` was written and never executed — and the
+    reasoning rested on `Task.sleep(for:)` defaulting to `ContinuousClock`. **The owner reopened the
+    Guide after a background across a boundary and it was on the true current half hour.**
+  Both entries in the Pass 79 report's §4.4 "traced, not run" list are therefore settled by his test
+  rather than by a device run of ours. **The harness test is still unexecuted and is still labelled
+  so in the file header**; that label is not to be removed on the strength of this acceptance.
+- **Standing rule, taken on 2026-09-12 and not an observation about this pass: one real device run
+  per pass for the main behaviour, the rest code-traced, and the owner tests before every push.**
+  A pass drives Home Theater once, for the single most representative case of the behaviour it
+  built, and reasons about the remainder from the code. **Every claim is then labelled run or
+  traced** — in the report, and in the header of any harness file that carries a test which was
+  written but not executed, so an unrun test is never mistaken for a green one. The owner exercises
+  the rest himself on Home Theater, which is what the standing separate push gate is for.
+  **Why:** he repeats the checks by eye before accepting anyway, and a pass that spends hours of
+  device time waiting out real-world events buys nothing he does not already do. This was settled
+  after Pass 79's original brief listed five checks that each needed a real half-hour boundary —
+  about two hours of Home Theater time — and he interrupted it partway to cut the list to one.
+- **`02f3764` (Pass 79) was pushed in this pass**, with this pass's own commit carrying this entry,
+  the `COLD-START.md` update and its report. **A fast-forward from `fda3992`**, verified before the
+  push (`origin/main` an ancestor of `main`, no merges in the range, `02f3764`'s parent `fda3992`)
+  and again after it by fetch, `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main`. **Nothing forced, nothing rebased, nothing amended, and no branch
+  other than `main`.**
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68), rule (b) of 2026-09-09 (Pass 60)).
+- **No app-target code changed in this pass.** The binary the owner tested carries Pass 79's
+  behaviour exactly; this pass adds the notebook entries and its report.
+- **The open questions Pass 79 raised are not closed by this acceptance** and are not re-raised here:
+  `TimeFormat.currentHalfHour` having no caller, the `↩ Now` pill vanishing under focus when the
+  clock catches a one-slot-ahead window, the beat pausing entirely while one of the Guide's own
+  overlays is up, the beat continuing behind the Player, and the roll's refetch being unexercised.

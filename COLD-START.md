@@ -1048,6 +1048,31 @@ pushed: the owner tests it on Home Theater first.**
   where Pass 77 recorded `:528`. The earlier text is left exactly as written, as this project's rule
   requires (DECISIONS.md, 2026-09-09 (Pass 56)).
 
+Pass 80 (`reports/2026-09-12-pass80-clock-accepted-and-pushed.md`): **the owner tested the Guide's
+clock on Home Theater on 2026-09-12 and accepted it — "all good"** (owner, 2026-09-12) — and
+**Pass 79 was pushed**, `02f3764`, a fast-forward from `fda3992`, with this pass's own commit
+carrying the notebook and its report. **This supersedes the "committed locally and NOT pushed"
+clause in the Pass 79 entry above**, which is kept as history.
+
+- **The acceptance covers** the Guide left open moving with the time — at each half-hour boundary a
+  window sitting at now advances to the new current half hour, strip, rows, header date range and
+  the "· now" marker together, with ended programmes leaving the grid; the `↩ Now · 2:04 PM` pill
+  tracking the clock within a half hour; Pass 77's focus rule after a roll; the collection filter
+  holding across it; and the beat stopping with the screen.
+- **It also settles the two things Pass 79 could not finish on the device**, and they are closed on
+  the owner's own test rather than on a device run of ours: **a window scrolled ahead does not roll**
+  across a boundary (Pass 79 measured ten minutes of it holding still but was killed short of the
+  boundary), and **the Guide reopened after the app sat backgrounded across a boundary is on the
+  true current half hour** (Pass 79 never ran that at all). **The harness test for the backgrounded
+  case is still unexecuted and its file header still says so** — that label stays.
+- **A standing rule was taken the same day: one real device run per pass for the main behaviour, the
+  rest code-traced, and the owner tests before every push.** Every claim is labelled run or traced,
+  in the report and in the header of any harness file carrying a written-but-unrun test. It was
+  settled after Pass 79's original brief listed five checks that each needed a real half-hour
+  boundary and the owner interrupted it partway to cut the list to one (DECISIONS.md, 2026-09-12
+  (Pass 80)).
+- **No app-target code changed in Pass 80** — the binary the owner tested is Pass 79's.
+
 ### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
 
 The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
@@ -1154,6 +1179,17 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 80.** The owner accepted the Guide's clock on Home Theater on
+2026-09-12 ("all good"), and the commit that had been waiting on that test was pushed: **`02f3764`
+(Pass 79, the clock itself)**, together with **this pass's own commit**, which carries this
+paragraph, the `DECISIONS.md` acceptance entry, the standing one-device-run rule and
+`reports/2026-09-12-pass80-clock-accepted-and-pushed.md`. **A fast-forward from `fda3992`**, which is
+still an ancestor; no merges in the range, and `02f3764`'s parent is `fda3992`; nothing forced,
+rebased or amended. **This pass's own SHA is not written here and cannot be** — a commit cannot
+contain its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 80 response and belongs
+in the next pass's entry. The paragraph below, written by Pass 79, described the unpushed state
+correctly when written and is kept as history.
 
 **Pass 79 is committed locally and NOT pushed.** The Guide's clock
 (`reports/2026-09-12-pass79-guide-clock.md`) was built, run against a real half-hour boundary on
