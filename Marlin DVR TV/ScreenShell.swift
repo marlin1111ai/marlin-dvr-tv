@@ -96,7 +96,9 @@ struct ScreenShell: View {
         case .favorites: FavoritesScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .onNow: OnNowScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .guide: GuideScreen(api: api, collections: collections, onLeave: leave, onPlay: onPlay)
-        case .onLater: OnLaterScreen(api: api, onLeave: leave)
+        // Pass 82: On Later's cards open the airing sheet, whose "Watch live" needs a Player to
+        // hand the channel to — every other screen that shows the sheet already gets `onPlay`.
+        case .onLater: OnLaterScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .recordings: RecordingsScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .cameras: CamerasScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .manage: ManageDVRScreen(api: api, onLeave: leave)

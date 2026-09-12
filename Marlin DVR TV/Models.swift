@@ -42,11 +42,18 @@ struct ChannelsResponse: Decodable {
 
 /// One of the owner's channel collections: a named, ordered list of channel ids curated on
 /// the server's admin page. The response also carries `icon`, the resolved `channels` and a
-/// `count`; the Guide reads neither — it asks the server to filter and draws the rows that
-/// come back — so only the two fields this app uses are decoded.
+/// `count`; neither screen reads those — the Guide asks the server to filter and draws the rows
+/// that come back — so only the three fields this app uses are decoded.
+///
+/// Pass 82 added `channelIds`, which On Later needs for two things the Guide never did: the union
+/// across every collection, which is what "No collection channels" turns on, and skipping a
+/// collection with no members rather than spending seven guide requests on it. It is **always
+/// present and never null** — `collections.go:74-77` replaces a nil slice with `[]` before
+/// writing — so it is decoded strictly like everything beside it.
 struct ChannelCollection: Decodable, Identifiable, Hashable {
     let id: String          // "col-<unix milliseconds>"
     let name: String
+    let channelIds: [String]
 }
 
 struct CollectionsResponse: Decodable {

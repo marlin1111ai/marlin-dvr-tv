@@ -1430,3 +1430,122 @@ measured by a clean build of each.
   `TimeFormat.currentHalfHour` having no caller, the `↩ Now` pill vanishing under focus when the
   clock catches a one-slot-ahead window, the beat pausing entirely while one of the Guide's own
   overlays is up, the beat continuing behind the Player, and the roll's refetch being unexercised.
+
+## 2026-09-12 (Pass 81 — the server never sets `premiere`, and what "Premieres" means instead)
+
+**This is a measurement and an owner decision that follows from it, not an observation about one
+pass.** Pass 81 reconnoitred On Later read-only
+(`reports/2026-09-12-pass81-on-later-pills-recon.md`) and found that the premiere flag this app has
+drawn since sweep 2 is never set on the owner's server.
+
+- **`program.premiere` is true on 0 of 16,121 airings**, measured live on 2026-09-12 across eight
+  24-hour `GET /api/guide` fetches, and zero again in `/api/guide/later`, `/api/guide/now`, an
+  uncapped `/api/guide/search` and `/api/schedule`. `finale` is zero everywhere too. Over the same
+  set `new` is set 1,325 times and `live` 589, so the flags arrive and decode — `premiere` is simply
+  never assigned. The string `"premiere":true` appears zero times in every raw body, and the key
+  never appears at all, because all four marks carry `omitempty` (`guide.go:30-33`).
+- **The cause is in the server and is structural, not a data gap.** XMLTV's `<premiere>` is declared
+  as a presence-only `*struct{}` (`guide.go:147`) and mapped at `guide.go:240`, so **the element's
+  own text is discarded** — `<premiere>Season premiere</premiere>` and `<premiere/>` are the same
+  value. **Neither Philo nor Verizon emits the element at all**, which is why the flag is never
+  true. And the HDHomeRun cloud-guide path never assigns `Premiere`, `Live` or `Finale` under any
+  circumstance (`guide.go:435-451`); it sets only `New`, heuristically, from
+  `StartTime - OriginalAirdate < 7 days`.
+- **So the server cannot tell a season premiere from a series premiere, and could not even if the
+  providers sent one.** It has one boolean and no text.
+- **The owner's decision (2026-09-12): "Premieres" is a derived rule, run client-side.** An airing
+  counts as a premiere when it **has the premiere flag**, **or** is marked `new` **and** is
+  episode 1, **or** is season 1 episode 1, **or** its title, subtitle or description contains
+  "premiere" case-insensitively. **The flag is kept as the first clause deliberately**, so the pill
+  starts answering by itself if marlin-dvr ever sets it; the other three are what answer today.
+- **Nothing was asked of the marlin-dvr project.** Preserving XMLTV's `<premiere>` text, or
+  computing a premiere server-side, is a server change and would be raised there as a decision; it
+  has not been raised.
+- **The rule is measured to select nothing at all on the owner's data today** — 0 airings on his
+  collection channels over the next seven days (Pass 82, proven on Home Theater). That is the
+  guide's content, not a defect in the rule.
+
+
+## 2026-09-12 (Pass 82 — On Later's three pills)
+
+**The owner's decisions of 2026-09-12, built.** On Later takes On Now's page layout — the header, a
+pill row beneath it built the same way, a three-column card grid — and lists **every** upcoming
+airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later-pills.md`.
+
+- **Exactly three pills — "On Today" · "On This Week" · "Premieres" — and no channel-filter pills**
+  (owner, 2026-09-12). The screen **opens on On Today on every visit and the selection does not
+  persist**, which is the absence of code rather than a branch: `ScreenShell.swift:57` puts
+  `.id(current)` on the content and destroys this screen and its model on every rail visit, so
+  `pill` returns to `.today` by construction. **Nothing was stored and no `UserDefaults` key was
+  added** — the app still writes the same four it has since Pass 72.
+- **`GET /api/guide/later` is no longer read by this app.** The route it used since sweep 2 takes
+  **no parameters at all** (proven live in Pass 81: seven different query strings, byte-identical
+  bodies), caps each section at **24 items** (`guide.go:806-811`), keeps only airings it judges
+  notable (`:779-784`), and de-duplicates by `seriesId` across **both** sections with one shared map
+  (`:770`, `:785-788`). None of that is switchable off, and all of it contradicts "no notable
+  narrowing — every airing".
+- **The route is `GET /api/guide?filter=<collection id>&slots=48`, seven requests per non-empty
+  collection — seven in total on the owner's data.** `slots` is clamped to 48 (`guide.go:652-655`),
+  so 24 hours is the most one request can carry and seven is the floor for a week whatever else
+  changes. A collection with no members is skipped outright rather than spending seven requests on
+  an empty envelope.
+- **`/export/guide.xml` was measured and rejected, and the reason is the owner's own rule.** It is
+  the one genuinely complete route for a range — one request, the whole stored guide, no block
+  builder — but it **drops the premiere flag, `seriesId`, `rating` and `originalAirDate` on the way
+  out** (`export.go:95-111` emits only `<new/>` and `<live/>`), which would make the first clause of
+  the premiere rule permanently unevaluable. It is also 16.5 MB for the whole lineup, measured.
+- **The cost of `/api/guide` is known and measured rather than assumed: 2 airings of 140 over seven
+  days, 1.4 %.** Compared directly against `/export/*/guide.xml` for the same five channels and the
+  same window on 2026-09-12, the block builder dropped *Monday Night Postgame* (Mon 23:15, 15 min)
+  and a three-hour *College Football* (Sat 19:00) — both on ESPN, both listings the half-hour block
+  layout cannot place (`guide.go:679`, `:699`, `:705`). The four antenna channels lost nothing.
+  **Raised as this pass's first open question rather than decided.**
+- **The week is fetched once per visit and the three pills filter what is already in hand.** A pill
+  press makes no request.
+- **On Today is from now to local midnight**, where midnight is the start of tomorrow as the
+  calendar computes it rather than `now + 86400`, so the boundary survives a DST change.
+  **On This Week is from now through the next seven days** — measured from the current half hour at
+  the far edge, because that is where the seven fetch windows tile to, so it can fall up to 30
+  minutes short seven days out. The near edge is exact.
+- **Sorted by start time, then channel number**, and the number is compared as a number the way the
+  server compares it (`numberKey`, a `ParseFloat`, `sources.go:296-302`) — so 2.1, 8.1, 11.1 rather
+  than 11.1, 2.1, 8.1. Proven on the device.
+- **The DRM rule needed nothing new and is already in force**: every guide response goes through
+  `.playable` at `ChannelFilter.swift:67`, so a DRM collection member simply yields no rows. This
+  closes the gap Pass 81 §6.2 recorded — On Later was the one list in the app with no DRM filter,
+  because `GET /api/guide/later` carries no `drm` field to filter on.
+- **Select on a card opens the airing sheet, reconstituted the way Search does it** — the programme
+  is re-read from `GET /api/guide/search?title=`, **never taken from the `/api/guide` row the card
+  was built from**, and the schedule is re-read for the job. **The channel is not re-read**: Search
+  needs `GET /api/channels` because a `FindRow` carries no channel at all, while a guide row embeds
+  the server's own `MergedChannel` (`Models.swift:119-132`). So it is two reads where Search makes
+  three, and that is the one place this pass read the instruction for its substance rather than
+  literally. Raised as an open question.
+- **`ScreenShell.swift:99` gained `onPlay`**, one line, and it is the only app file besides
+  `OnLaterScreen.swift` and one field in `Models.swift` that this pass touched. Without it the
+  sheet's "Watch live" would close the sheet and do nothing, and the owner's decision says the sheet
+  opens "with every control live". Raised as an open question.
+- **`ChannelCollection` gained `channelIds`** (`Models.swift`), which is what the union — and
+  therefore "No collection channels" — turns on, and what lets an empty collection be skipped. It is
+  always present and never null (`collections.go:74-77`), so it decodes strictly like everything
+  beside it.
+- **The empty states are the owner's two sentences and neither is focusable**: "No collection
+  channels" when the union is empty, "Nothing on <pill> for your collections" when the list is. The
+  pill row is always drawn and always focusable, so focus stays there and Menu always reaches
+  `.onExitCommand` — the stranded-remote failure `TrashManageView.swift:58-62` records from the
+  device.
+- **`GET /api/guide/later` is now uncalled, and `api.later()`, `LaterResponse`, `LaterSection` and
+  `LaterItem` are left in place unused.** Removing them is a change to two files this pass does not
+  name. Raised as an open question.
+- **The Home On Later tile is untouched**, as instructed. It still reads `GET /api/schedule` and
+  says "N upcoming" — bookings, not airings — while the screen reads the guide.
+- **Proven on Home Theater 2026-09-12**, one run, `OnLaterPillsUITests`, **TEST SUCCEEDED in 37.6 s**:
+  On Today **10 airings · 5 collection channels**, On This Week **138**, Premieres **0** with its own
+  line, focus staying on the pill row across both presses, Select opening the sheet on *College
+  Football · Ohio State at Texas* with "Record this airing" focused, and Menu returning focus to the
+  byte-identical card. Every count was re-checked by hand against the same seven requests made from
+  the Mac at the same sitting and matched exactly.
+- **The plain `@FocusState` re-focus after the sheet closes was tried first and works here**, like
+  the Guide (Pass 72 step 7) and unlike the Search screen, which needed a subtree rebuild measured
+  twice (`GuideSearchScreen.swift:295-311`). **No generation counter was added to On Later.**
+- **Committed locally and NOT pushed** — the owner tests it on Home Theater first.

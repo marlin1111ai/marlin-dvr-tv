@@ -1073,6 +1073,67 @@ clause in the Pass 79 entry above**, which is kept as history.
   (Pass 80)).
 - **No app-target code changed in Pass 80** — the binary the owner tested is Pass 79's.
 
+Passes 81-82 (`reports/2026-09-12-pass81-on-later-pills-recon.md`,
+`reports/2026-09-12-pass82-on-later-pills.md`, **built and proven on Home Theater 2026-09-12,
+committed locally and NOT pushed — the owner tests it first**): **On Later is three pills and a card
+grid.** It takes On Now's page layout — the header, a pill row beneath it, a three-column grid — and
+lists **every** upcoming airing on the channels the owner's collections hold, under **"On Today" ·
+"On This Week" · "Premieres"**. It opens on On Today every visit and the pick does not persist.
+
+- **`GET /api/guide/later` is no longer read by this app at all.** Pass 81 measured why: the route
+  takes **no parameters** (seven different query strings, byte-identical bodies), caps each of its
+  two sections at **24 items**, keeps only airings it judges "notable", and de-duplicates by
+  `seriesId` across **both** sections with one shared map — so an airing tonight can be suppressed
+  by a later-in-the-week showing of the same series. None of it is switchable off.
+- **`api.later()`, `LaterResponse`, `LaterSection` and `LaterItem` are now uncalled and are left in
+  place.** Nothing reads `/api/guide/later`. Removing them was not in Pass 82's scope.
+- **THE SERVER NEVER SETS `premiere`. Do not re-derive this.** `program.premiere` is true on
+  **0 of 16,121** airings measured live on 2026-09-12, and zero again in `/api/guide/later`,
+  `/api/guide/now`, an uncapped `/api/guide/search` and `/api/schedule`. `finale` is zero too, while
+  `new` is 1,325 and `live` 589 over the same set. XMLTV's `<premiere>` is parsed as a presence-only
+  element whose text is discarded (`guide.go:147`, `:240`) and **neither Philo nor Verizon emits
+  it**; the HDHomeRun cloud path never assigns `Premiere`, `Live` or `Finale` at all
+  (`guide.go:435-451`). **The server therefore cannot tell a season premiere from a series
+  premiere.** The Premieres pill runs the owner's derived rule instead (DECISIONS.md, 2026-09-12
+  (Pass 81)), with the flag kept as its first clause so it starts working by itself if that ever
+  changes.
+- **The Premieres pill selects nothing on the owner's data today** — 0 airings over the next seven
+  days, seen on the television, with "Nothing on Premieres for your collections" in its place. That
+  is the guide's content, not a defect.
+- **The route is `GET /api/guide?filter=<collection id>&slots=48` — seven requests per non-empty
+  collection, seven in total on the owner's data.** `slots` is clamped to 48, so 24 hours is the
+  most one request carries and seven is the floor for a week. The week is fetched once per visit and
+  the three pills filter what is in hand; a pill press makes no request.
+- **Its cost is measured, not assumed: the block builder drops 2 airings of 140 over seven days
+  (1.4 %)**, compared directly against `/export/*/guide.xml` for the same five channels — a 15-minute
+  *Monday Night Postgame* at 23:15 and a three-hour *College Football*, both on ESPN, both listings
+  the half-hour block layout cannot place. **`/export/guide.xml` is complete and was rejected for
+  cause**: it drops the premiere flag, `seriesId`, `rating` and `originalAirDate` (`export.go:95-111`)
+  and is 16.5 MB for the whole lineup.
+- **On Later has a DRM filter for the first time.** Pass 81 recorded it as the one list in the app
+  without one, because `/api/guide/later` carries no `drm` field. Reading `/api/guide` instead means
+  `ChannelFilter.swift:67`'s existing `.playable` applies, and nothing new was written for it.
+- **Select on a card opens the airing sheet**, reconstituted the way Search does it — the programme
+  re-read from `GET /api/guide/search?title=`, never taken from the `/api/guide` row — and the
+  channel reused from the guide row rather than re-read, because a guide row already embeds the
+  server's own `MergedChannel`. Two reads where Search makes three.
+- **The plain `@FocusState` re-focus after the sheet closes works here**, like the Guide and unlike
+  the Search screen. **No generation counter was added.**
+- **Three app files changed and no more**: `OnLaterScreen.swift` (rewritten),
+  `Models.swift` (`ChannelCollection` gained `channelIds`) and `ScreenShell.swift` (one line, so the
+  sheet's "Watch live" has a Player to hand the channel to). **The Home On Later tile is untouched**
+  and still counts scheduled bookings from `GET /api/schedule`.
+
+`OnLaterPillsUITests` (Pass 82) is an evidence harness needing the physical Apple TV, the real
+remote and at least one non-empty collection. **It makes no server write.** Its one test is
+`testOnLaterOpensOnTodayThePillsSwitchAndACardOpensTheSheet`.
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/OnLaterPillsUITests"
+```
+
 ### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
 
 The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
@@ -1179,6 +1240,16 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Pass 82 is committed locally and NOT pushed.** On Later's three pills
+(`reports/2026-09-12-pass82-on-later-pills.md`) were built, proven on Home Theater on 2026-09-12 and
+committed in one commit with the harness, the screenshots, the notebook and the report — **the owner
+tests it on Home Theater before anything is pushed**, which is the standing separate push gate.
+Local `main` is one commit ahead of `origin/main`; nothing forced, rebased or amended. This pass's
+own SHA is not written here and cannot be — a commit cannot contain its own SHA (DECISIONS.md,
+2026-09-11 (Pass 68)); it is in the Pass 82 response and belongs in the next pass's entry.
+**Pass 81's recon report was pushed already**, in `54b2335`. The paragraph below, written by
+Pass 80, described the state correctly when written and is kept as history.
 
 **Nothing is unpushed as of Pass 80.** The owner accepted the Guide's clock on Home Theater on
 2026-09-12 ("all good"), and the commit that had been waiting on that test was pushed: **`02f3764`
