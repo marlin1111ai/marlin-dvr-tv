@@ -927,6 +927,52 @@ scroll, "Collections unavailable" is still unproven, the **stale-id revert is st
 needs a collection deleted, and whether the collection should reach `GET /api/guide/now` and
 `GET /api/channels` is still the owner's call.
 
+Pass 76 (`reports/2026-09-12-pass76-right-edge-probe.md`): **what a Right press does at the right-hand
+edge of a Guide row, measured on Home Theater — Pass 75's first open question, answered.** Read-only
+as to the app: the `[probe]` diagnostic in `GuideScreen.swift` was **reverted with `git checkout --`
+before the commit**, and `git diff HEAD --stat` over the app target is empty. **The only source this
+pass leaves behind is the test harness**, `Marlin DVR TVUITests/GuideRightEdgeUITests.swift`.
+
+- **Right walks a Guide row cell by cell** — three rows, two runs, focus moving x=554 → x=1203 on
+  row 2.1 and channel cell → first cell → next cell on row 8.1. Pass 75 §2.3 recorded that no device
+  run had ever pressed Right inside a Guide row; it has now.
+- **At the last visible cell, Right moves focus nowhere** — 12 edge presses across three rows, focus
+  unchanged every time, not to `+12h`, not to another row, not to the rail, not to nothing. Left
+  moved immediately afterwards each time, which is the control.
+- **A cell filling the whole window (1286 pt, the full programme area) behaves the same** — three
+  presses, no movement.
+- **tvOS delivers every one of those presses to the app through `.onMoveCommand`: 14 presses,
+  14 move commands, including all 7 that could not move and all 7 that could.** The modifier is an
+  observer, not a consumer — the arm with it attached reproduced the arm without it frame for frame.
+- **Three things a build must know, all measured here.** (1) `.onMoveCommand` fires identically
+  whether or not focus moved, so **edge-ness is the app's to determine** from `focused` against the
+  last id of `cells(for:)`. (2) It is delivered to the **innermost** registered handler only — 22 of
+  22 commands came from the instance on the grid's `ScrollView` and **none** from the one on the
+  screen's root, so a handler in the wrong place sees nothing and reads as "tvOS never delivered it".
+  (3) The `@FocusState` write and the command delivery **race** — 6 of 7 moving presses delivered the
+  command after the write — so only the settled value (+250 ms was enough in all 14 cases) may be
+  trusted, never the value at receipt.
+- **No alternative capture mechanism was tried**, per the pass's own stop rule. `UIFocusGuide`, a
+  window-level press recognizer and a focusable edge affordance stay unmeasured.
+
+### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
+
+The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
+reverted. **The comments themselves are left exactly as written** — reports and in-code history are
+not rewritten to match a later reading (DECISIONS.md, 2026-09-09 (Pass 56)); this list is where the
+true numbers live.
+
+- `GuideScreen.swift:21` cites `ScreenShell.swift:55` for `.id(current)` — it is **`ScreenShell.swift:57`**.
+- `GuideSearchScreen.swift:46` cites `ScreenShell.swift:51` for `.id(current)` — it is **`ScreenShell.swift:57`**.
+- `GuideSearchScreen.swift:301` cites `ScreenShell.swift:51` for the same line — it is **`ScreenShell.swift:57`**.
+- `AiringSheet.swift:76` cites `Models.swift:170` for `Job.status` — it is **`Models.swift:288`**.
+- `AiringSheet.swift:77` cites `GuideScreen.swift:173-178` for `mark(for:)` — it is **`GuideScreen.swift:193-198`**.
+- `GuideSearchScreen.swift:170` cites `GuideScreen.swift:145-147` and `:162-168` for the schedule pair — they are **`GuideScreen.swift:182-188`** (`refreshSchedule()`) and **`:165-167`** (`job(channelId:programStart:)`).
+- `GuideSearchScreen.swift:282` cites `GuideScreen.swift:318-323` for the sheet-close focus restore — it is **`GuideScreen.swift:359-364`**.
+
+**`COLD-START.md:855` and `reports/2026-09-12-pass72-guide-collections.md` §1 step 6 also cite
+`ScreenShell.swift:55`; the line is `:57`.** Both are left as written for the same reason.
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -1015,6 +1061,15 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 76.** Pass 75 (`fce20c2`, the Guide scroll-right recon) and Pass 76
+(this pass's own commit, the right-edge device probe) are both on `origin/main`; Pass 76's own SHA is
+not written here and cannot be — a commit cannot contain its own SHA (DECISIONS.md, 2026-09-11
+(Pass 68)) — so it is in the Pass 76 response and belongs in the next pass's entry. **Pass 76 left no
+app-target change at all**: its diagnostic was reverted before the commit, and what it added is the
+harness `Marlin DVR TVUITests/GuideRightEdgeUITests.swift`, the notebook and its report. **The Guide
+scroll-right itself is not built** — Passes 75 and 76 are recon and measurement only, and the owner
+has not chosen a mechanism.
 
 **Nothing is unpushed as of Pass 74.** The owner accepted the Guide's channel collections on Home
 Theater on 2026-09-12 ("all good"), and the two commits that had been waiting on that test were

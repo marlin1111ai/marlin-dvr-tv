@@ -1151,3 +1151,50 @@ does matched Pass 72's spec, so nothing was corrected.
   re-raised here: the overlay does not scroll, "Collections unavailable" is unproven, the **stale-id
   revert is unproven** and needs a collection deleted, and whether the collection should reach
   `GET /api/guide/now` and `GET /api/channels` is still the owner's call (Pass 71 open question 8).
+
+## 2026-09-12 (Pass 76 — Right at the Guide's right-hand edge, measured on the device)
+
+**Pass 75's first open question is answered, and the answer changes what a scroll-right has to be
+built on.** All three readings below are from Home Theater on 2026-09-12, driven by the real Siri
+Remote, with a disclosed `[probe]` diagnostic in `GuideScreen.swift` that was **reverted with
+`git checkout --` before the commit** (`git diff HEAD --stat` over the app target empty; no `[probe]`,
+`probeMove` or `onMoveCommand` left in any app source). No server write; no build warning added.
+
+- **Right DOES walk a Guide row cell by cell.** Measured on three different rows, two runs each:
+  focus moved from the cell at x=554 to the cell at x=1203 on row 2.1
+  (`hdhr-10a75953:2.1@1789214400` → `…@1789218000`), and from the channel cell to the first
+  programme cell and on to the next on row 8.1. **Pass 75 §2.3 recorded that no device run had ever
+  pressed Right inside a Guide row; it has now, and the baseline holds.**
+- **At the last visible cell of a row, Right moves focus nowhere at all.** Twelve edge presses across
+  three rows: focus stayed on the same element, same frame, every time — **not** to the `+12h` pill,
+  **not** to another row, **not** to the rail, **not** to nothing. A Left press immediately after each
+  run moved focus, which proves the remote and the focus engine were both alive for the presses that
+  did nothing.
+- **A cell that already fills the whole window behaves identically.** Row 45.1's single
+  `Fox 45 Morning News` cell measured **1286 pt** — the full programme area — and three Right presses
+  on it moved nothing.
+- **tvOS DOES deliver the press to the app, through `.onMoveCommand`, and this is the finding that
+  matters.** **14 presses, 14 move commands — one per press, with no exceptions**, in the run where
+  the modifier was attached. That includes all 7 presses where focus could not move **and** all 7
+  where it could.
+- **`.onMoveCommand` does not suppress the focus move, and it changed nothing.** The arm with the
+  modifier attached reproduced the arm without it element for element and frame for frame — same
+  cells, same x positions, same edge, same control. So it is an observer, not a consumer.
+- **Therefore `.onMoveCommand` alone cannot tell the app that a press hit the edge.** It fires the
+  same way whether focus moved or not, so **edge-ness is the app's to determine** — which it can,
+  from `focused` against the last id of `cells(for:)` for that row. Recorded because the obvious
+  reading of "the app sees the press" is that the app also learns the press was refused, and it
+  does not.
+- **The move command is delivered to the INNERMOST registered handler only.** Two instances were
+  attached, one on the grid's `ScrollView` and one on the screen's root `ZStack`; **every one of the
+  22 move commands across both runs came from the grid instance and not one from the root.** A build
+  that attaches it in the wrong place will see nothing and will read as "tvOS never delivered it".
+- **The app-side "did focus move?" reading is a race and must not be trusted.** The `@FocusState`
+  write and the `.onMoveCommand` delivery arrive in either order — measured: 6 of 7 moving presses
+  delivered the command *after* the focus write (so the handler's own before/after comparison said
+  `moved=false` when focus had in fact moved), and 1 arrived before it. The value at +250 ms was
+  correct in all 14 cases; the value at receipt was not. **Anything built on this must read the
+  settled value, never the value at receipt.**
+- **No alternative capture mechanism was tried**, because the step said to stop once
+  `.onMoveCommand` was shown to deliver, and it does. `UIFocusGuide`, a window-level press
+  recognizer and a focusable edge affordance (Pass 75 §5.3) all remain untouched and unmeasured.
