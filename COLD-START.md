@@ -1278,6 +1278,12 @@ pass**, and its install evidence sits in the same place and for the same structu
 install is of the head this commit becomes. The paragraph below, written by Pass 82, described the
 unpushed state correctly when written and is kept as history.
 
+**Pass 83's verified push SHA is `070c9a5`** — `main`, `origin/main` and `git ls-remote origin main`
+all read it after the fetch, a fast-forward from `54b2335` — and the bedroom Apple TV
+(**"Master Bedroom ATV"**, `AppleTV6,2`, tvOS 26.6) runs the build made from that same `070c9a5` by
+Pass 54's method, its screenshot committed by Pass 84 at `reports/assets/pass83/`. (Pass 84's own
+SHA is in its response, for the same reason as ever.)
+
 **Pass 82 is committed locally and NOT pushed.** On Later's three pills
 (`reports/2026-09-12-pass82-on-later-pills.md`) were built, proven on Home Theater on 2026-09-12 and
 committed in one commit with the harness, the screenshots, the notebook and the report — **the owner

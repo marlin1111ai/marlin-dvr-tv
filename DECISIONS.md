@@ -1598,3 +1598,12 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   (DECISIONS.md, 2026-09-11 (Pass 68), rule (b) of 2026-09-09 (Pass 60)). **The bedroom install's
   evidence is in the same position and for the same structural reason**: the install is of the head
   this commit becomes, so its result cannot be inside it. See the Pass 83 report §5.
+- **Pass 84 closes both of those, and this is the line the entry above says belongs here: Pass 83's
+  own commit is `070c9a5`**, verified on `origin/main` by fetch, `git rev-parse main`,
+  `git rev-parse origin/main` and `git ls-remote origin main` all reading it, a fast-forward from
+  `54b2335`; and the bedroom Apple TV — **"Master Bedroom ATV"**, Apple TV 4K `AppleTV6,2`,
+  tvOS 26.6 — runs the build made from that same `070c9a5` by **Pass 54's method**
+  (`xcodebuild -destination 'platform=tvOS,name=Master Bedroom ATV' -allowProvisioningUpdates
+  build`, then `xcrun devicectl device install app`), the television itself reporting
+  `Marlin DVR TV · com.marlin1111.MarlinDVRTV · Version 1.0 · Bundle Version 1`, with its screenshot
+  committed by this pass at `reports/assets/pass83/83a-on-later-on-the-bedroom-apple-tv.jpg`.
