@@ -885,6 +885,35 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
   -only-testing:"Marlin DVR TVUITests/GuideCollectionsUITests"
 ```
 
+Pass 73 (`reports/2026-09-12-pass73-empty-collection-proof.md`, **proven on Home Theater
+2026-09-12, committed locally and NOT pushed**): **the empty-collection state is no longer
+unproven.** This supersedes the Passes 71-72 bullet above that says it "is built and unproven";
+that bullet was true when written and is kept as history. **No app-target code changed in this
+pass** — the built behaviour matched Pass 72's spec in every particular, so nothing was corrected.
+
+- **The owner made a collection with no channels in it: "Test", `col-1789211011169`.** That is what
+  Pass 72 could not produce for itself without a write. `GET /api/guide?filter=col-1789211011169`
+  answers **`channelCount: 0`, `channels: []`**.
+- **A known-but-empty collection and an unknown id are different server behaviours.** Empty returns
+  an empty envelope; **unknown still returns the whole 91-channel lineup**. So `reconcile()` still
+  earns its place, and the **stale-id revert is still unproven** — that one needs a collection
+  deleted, which is a write this project does not make.
+- **On the device:** the single line "Nothing in Test right now" at `(236.0, 222.5)`, **twelve
+  buttons on the whole screen** — eleven rail icons and the collections button — **no `+12h` and no
+  `↩ Now`**, and focus on the collections button. **A cold launch reproduces it element-for-element**,
+  every label and frame identical, with **zero presses** needed to reach the button. Select from
+  there opens the overlay; choosing Local brings all five rows back in the server's order.
+- **This answers the first of the three things Pass 72 said it was least sure of** — that the
+  Guide's plain `@FocusState` re-focus had never been watched with an **empty** grid, the one path
+  where a stranded remote would matter most. It holds.
+
+`GuideCollectionsUITests` now has **six** tests: Pass 73 added
+`testAnEmptyCollectionDrawsItsOwnLineAndKeepsTheRemote`, which needs the empty collection to exist
+on the server as well as "Local". **All six passed together in 454.8 s.** The predicate-not-
+enumeration rule above has exactly one documented exception, in that test: with an empty grid the
+tree holds tens of elements, and only a full listing can prove that the one line is the *only*
+thing drawn.
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -973,6 +1002,14 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Two commits are now local and unpushed, and both wait on the same test.** Pass 73
+(`reports/2026-09-12-pass73-empty-collection-proof.md`) proved the empty-collection state on Home
+Theater and is committed on top of Pass 72's `9f5505e`; local `main` is **two commits ahead of
+`origin/main`**, nothing forced, rebased or amended. **Pass 73 changed no app-target code** — its
+only source edit is `GuideCollectionsUITests` — so the binary the owner tests is Pass 72's
+behaviour, and one Home Theater acceptance covers both commits. The paragraph below, written by
+Pass 72, still describes its own commit correctly; only the count of unpushed commits has moved.
 
 **Pass 72 is committed locally and NOT pushed.** The Guide's channel collections
 (`reports/2026-09-12-pass72-guide-collections.md`) were built, proven on Home Theater on

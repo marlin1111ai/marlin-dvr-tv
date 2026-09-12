@@ -1061,3 +1061,61 @@ untouched.**
 - **`GET /api/guide/now` and `GET /api/channels` are NOT filtered by the collection.** Both honour
   `filter` and both are already called by this app, but the approved design is the Guide only
   (Pass 71 open question 8). Home, On Now, Favorites and Search are untouched.
+
+## 2026-09-12 (Pass 73 — the empty collection, proven on the device)
+
+**Pass 72's step 5 stopped on its own condition and is now finished.** The owner created a
+collection with no channels in it; Pass 73 chose it on Home Theater and photographed the state
+Pass 72 could only code-trace (`reports/2026-09-12-pass73-empty-collection-proof.md`). **No
+app-target code changed** — the only source edit is the test harness. Everything the built code
+does matched Pass 72's spec, so nothing was corrected.
+
+- **The collection is "Test", `col-1789211011169`.** `GET /api/collections` on 2026-09-12 returns
+  exactly two, and exactly one has `channelIds: []`, which is what step 1 required before anything
+  else could run. The other is "Local", unchanged, still the same five member ids.
+- **A known-but-empty collection and an unknown id are two different server behaviours, and this
+  pass measured both.** `GET /api/guide?filter=col-1789211011169&slots=1` answers **`channelCount: 0`
+  with `channels: []`** — a genuinely empty envelope. An id the server does not know still answers
+  with the **whole 91-channel lineup** (Pass 72, `sources.go:362-364`). **So `reconcile()` is not made
+  redundant by this pass**: it guards the unknown-id case, which is the one that fails silently, and
+  that case is still unproven on the device because producing it needs a collection to be deleted.
+- **The line is drawn, and it is the only thing drawn.** "Nothing in Test right now" at
+  `(236.0, 222.5, 277.0, 31.5)`. A full enumeration of the screen — permitted here because an empty
+  grid holds tens of elements rather than the 585+ a loaded Guide realises — lists the title, the
+  date range, the four column-header slots, that one line, the three legend items, the eleven rail
+  icons and the collections button. **Twelve buttons on screen, eleven of them the rail.**
+- **Neither header pill is drawn, which is why the focus fallback had to change in Pass 72.**
+  `+12h` is absent because `endOfListings` is true with no rows, and `↩ Now` is absent because the
+  window is at now. **The collections button is the only focusable thing in the content area**, and
+  the enumeration marks it `FOCUSED`.
+- **The remote is not stranded, measured twice.** After picking the empty collection,
+  `focused=["9:Test"]` — the button at `(397.0, 79.5, 81.5, 43.5)`. **This answers the first of the
+  three things Pass 72 said it was least sure of**: that the Guide's plain `@FocusState` assignment
+  behind `focusSoon` had never been watched with an empty grid, the one path where a stranded remote
+  would matter most. It lands on `firstCellID ?? "collections"`'s fallback correctly.
+- **Select from there still opens the drop-down**, and focus inside it lands on the current
+  selection — `["9:Test, Showing"]`. The overlay lists **All Channels, Local, Test** in the server's
+  order; an empty collection is listed like any other, which is the absence of code rather than a
+  branch. One Up then Select brought **all five Local rows back in the server's order**, buttons 12
+  → 28, and the line was gone.
+- **A cold launch reproduces the state exactly.** After `terminate()` and a fresh `launch()`, the
+  Guide opened on Test with the line drawn and the button focused — **zero presses** were needed to
+  reach the button. The second enumeration is **element-for-element identical to the first, every
+  label and every frame**, and the four screenshots of the state (before the overlay, with focus
+  read, before the relaunch, after the relaunch) are **byte-identical, sha256 `a6657243…`**. Nothing
+  on this screen animates or shows a clock, so identical pictures are the expected result and not a
+  capture error.
+- **This supersedes the COLD-START bullet "The empty-collection state is built and unproven" and
+  Pass 72's open question 3 in part.** The empty state is proven; the **stale-id revert is still
+  unproven** and still needs the owner to delete a collection. **Pass 72's report is not edited** —
+  reports are the historical record (DECISIONS.md, 2026-09-09 (Pass 56)).
+- **The harness gained one test and three small helpers, and nothing else.**
+  `testAnEmptyCollectionDrawsItsOwnLineAndKeepsTheRemote` in `GuideCollectionsUITests`. The helpers
+  that identify the collections button learned the third label; `chooseRow` gained an optional
+  `direction`, because the overlay opens on the **current selection** and walking from the last row
+  back up to Local is an Up, where the old rule would have pressed Down into the bottom of the list
+  eight times. **Left unset it behaves exactly as before, and Pass 72's four tests pass nothing.**
+- **All six tests passed on Home Theater, 454.8 s, `TEST SUCCEEDED`** — the new one and Pass 72's
+  four run again as a regression on the helper edits, with a second collection now present on the
+  server. **The harness still writes nothing**: its only non-GET traffic is the app's own launch
+  ping, and it leaves the device on All Channels.

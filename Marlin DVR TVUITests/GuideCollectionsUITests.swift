@@ -2,8 +2,9 @@
 //  GuideCollectionsUITests.swift
 //  Marlin DVR TVUITests
 //
-//  Pass 72's evidence harness. Not a standing test: it needs the physical Apple TV, the real
-//  Siri Remote, and the owner's live server with its "Local" collection.
+//  Pass 72's evidence harness, extended by Pass 73. Not a standing test: it needs the physical
+//  Apple TV, the real Siri Remote, and the owner's live server with its "Local" collection and,
+//  for Pass 73's test, the empty collection "Test".
 //
 //  **It creates, changes or deletes nothing on the server.** The reads it drives are all GETs —
 //  the guide, the schedule, and GET /api/collections. Nothing is recorded, no pass is created, no
@@ -32,8 +33,16 @@ final class GuideCollectionsUITests: XCTestCase {
     private let guideLegend = "Recording or set to record"
     /// Only on the On Later screen.
     private let onLaterSubtitle = "New, premiere, live, finale and movie airings"
-    /// The name of the owner's one collection today.
+    /// The name of the owner's populated collection today.
     private let localName = "Local"
+    /// Pass 73: the owner's empty collection. `GET /api/collections` read live on 2026-09-12
+    /// returns exactly two collections, and this is the one whose `channelIds` is `[]`
+    /// (`col-1789211011169`, `count: 0`). `GET /api/guide?filter=col-1789211011169&slots=1`
+    /// answers `channelCount: 0` with `channels: []` — a genuinely empty envelope, which is
+    /// what Pass 72 could not produce and why its step 5 stopped.
+    private let emptyName = "Test"
+    /// The one line the Guide draws in place of the grid (`GuideScreen.swift:279-287`).
+    private var emptyLine: String { "Nothing in \(emptyName) right now" }
 
     override func setUp() {
         continueAfterFailure = true
@@ -85,7 +94,7 @@ final class GuideCollectionsUITests: XCTestCase {
 
     /// The header's collections button, whatever it currently reads.
     private func collectionsButton() -> XCUIElement? {
-        for label in ["All Channels", localName] {
+        for label in ["All Channels", localName, emptyName] {
             let element = app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
             if element.exists && element.frame.minY < Self.headerBottom { return element }
         }
@@ -122,7 +131,8 @@ final class GuideCollectionsUITests: XCTestCase {
 
     private func focusIsOnTheCollectionsButton() -> Bool {
         focusedElements().contains {
-            ($0.label == "All Channels" || $0.label == localName) && $0.frame.minY < Self.headerBottom
+            ($0.label == "All Channels" || $0.label == localName || $0.label == emptyName)
+                && $0.frame.minY < Self.headerBottom
         }
     }
 
@@ -187,7 +197,13 @@ final class GuideCollectionsUITests: XCTestCase {
     }
 
     /// Choose a row of the open overlay by walking to it and pressing Select.
-    private func chooseRow(_ title: String, _ tag: String, maxSteps: Int = 8) {
+    ///
+    /// `direction` is Pass 73's one addition. The overlay opens with focus on the **current
+    /// selection**, so the way to a row depends on which row is showing: from "Test" (the last
+    /// row) back to "Local" is one Up, and the old rule — Down for anything but All Channels —
+    /// would press against the bottom of the list eight times and fail. Left nil it behaves
+    /// exactly as it did for Pass 72's four tests, which pass nothing.
+    private func chooseRow(_ title: String, _ tag: String, maxSteps: Int = 8, direction: XCUIRemote.Button? = nil) {
         for step in 0...maxSteps {
             let focus = focusLabels()
             if focus.contains(where: { $0.contains(title) }) {
@@ -197,7 +213,7 @@ final class GuideCollectionsUITests: XCTestCase {
                 return
             }
             if step == maxSteps { break }
-            remote.press(title == "All Channels" ? .up : .down); sleep(1)
+            remote.press(direction ?? (title == "All Channels" ? .up : .down)); sleep(1)
         }
         XCTFail("could not reach the \u{201C}\(title)\u{201D} row; focus=\(focusLabels())")
     }
@@ -466,5 +482,125 @@ final class GuideCollectionsUITests: XCTestCase {
             print("UNCHANGED[\(title)] header button \(b.label) \(b.frame)")
         }
         XCTAssertNotNil(heading, "the \(title) header is not in the content area")
+    }
+
+    // MARK: Pass 73 — the empty collection
+
+    /// Every other query in this file is a predicate, for the reason in `focusedElements()`.
+    /// **This one enumerates, and only in the empty state**, where that is cheap rather than
+    /// fatal: with no channel rows the tree holds tens of elements, not the 585+ a loaded Guide
+    /// realises. It is here because the claim being proved is *"the grid shows one line and
+    /// nothing else"*, and only a full listing can show the "nothing else" half.
+    private func enumerateScreen(_ tag: String) {
+        for t in app.staticTexts.allElementsBoundByIndex {
+            print("SCREEN[\(tag)] text \u{201C}\(t.label)\u{201D} \(t.frame)")
+        }
+        for b in app.buttons.allElementsBoundByIndex {
+            print("SCREEN[\(tag)] button \u{201C}\(b.label)\u{201D} \(b.frame)\(b.hasFocus ? " FOCUSED" : "")")
+        }
+    }
+
+    /// No channel cell of either the collection's five members or the two known non-members is
+    /// drawn, and nothing that looks like a guide row is either.
+    private func assertTheGridIsEmpty(_ tag: String) {
+        for (name, number) in localRows + notInLocal {
+            XCTAssertFalse(channelCell(number).exists, "[\(tag)] \(name) is drawn over an empty collection")
+        }
+        XCTAssertEqual(localRowOrder(), [], "[\(tag)] the grid is not empty")
+    }
+
+    /// Pass 72 step 5, which that pass built and could not see: the server then answered an
+    /// unknown filter with the whole 91-channel lineup, so no empty grid could be produced
+    /// without a write. The owner has since made a collection with no channels in it, and
+    /// `GET /api/guide?filter=<that id>` answers `channelCount: 0`, `channels: []`.
+    ///
+    /// What this proves, in order: the line, that the collections button holds the focus with
+    /// no cell to take it, that Select still opens the drop-down from there, that a populated
+    /// collection comes back whole — and then all of it again on a cold launch.
+    func testAnEmptyCollectionDrawsItsOwnLineAndKeepsTheRemote() {
+        openGuide()
+        // Whatever a previous run left behind, start from All Channels.
+        if collectionsButtonLabel() != "All Channels" {
+            openTheOverlay("empty-reset-in")
+            chooseRow("All Channels", "empty-reset-in")
+        }
+        XCTAssertEqual(collectionsButtonLabel(), "All Channels", "could not start from All Channels")
+
+        // The overlay lists the empty collection like any other — nothing filters that list.
+        openTheOverlay("pick-empty")
+        let emptyRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", emptyName))
+            .allElementsBoundByIndex.first { $0.frame.minY > 260 }
+        print("EMPTY overlay row=\(emptyRow.map { "\u{201C}\($0.label)\u{201D} \($0.frame)" } ?? "ABSENT")")
+        XCTAssertNotNil(emptyRow, "the overlay does not list \(emptyName)")
+        chooseRow(emptyName, "pick-empty")
+
+        // (1) the line, and nothing else.
+        shot("73a-nothing-in-the-empty-collection")
+        dump("73a-empty")
+        enumerateScreen("73a-empty")
+        XCTAssertEqual(collectionsButtonLabel(), emptyName, "the button does not read \(emptyName)")
+        let line = app.staticTexts[emptyLine]
+        print("EMPTY line exists=\(line.exists) frame=\(line.exists ? "\(line.frame)" : "ABSENT")")
+        XCTAssertTrue(line.exists, "the Guide does not draw \u{201C}\(emptyLine)\u{201D}")
+        assertTheGridIsEmpty("73a")
+        // Neither header pill is drawn over an empty grid: `endOfListings` is true with no rows,
+        // which removes "+12h", and the window is at now, which removes "\u{21A9} Now". The
+        // collections button is the only thing in the header the remote can land on.
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "+12h")).firstMatch.exists,
+                       "+12h is drawn over an empty collection")
+
+        // (2) the focused element is the collections button.
+        print("EMPTY focused=\(focusLabels())")
+        shot("73b-focus-on-the-collections-button")
+        XCTAssertTrue(focusIsOnTheCollectionsButton(),
+                      "the remote is stranded: focus is not on the collections button; focus=\(focusLabels())")
+
+        // (3) Select from there opens the drop-down.
+        remote.press(.select)
+        XCTAssertTrue(app.staticTexts["Show in the Guide"].waitForExistence(timeout: 20),
+                      "Select on the collections button did not open the overlay over an empty grid")
+        sleep(4)
+        shot("73c-overlay-opens-from-the-empty-grid")
+        print("EMPTY overlay focused=\(focusLabels())")
+
+        // (4) choose Local, and the five rows return. Up, not Down: \(emptyName) is the last row.
+        chooseRow(localName, "empty-to-local", direction: .up)
+        shot("73d-the-five-rows-return")
+        dump("73d-local")
+        XCTAssertEqual(collectionsButtonLabel(), localName, "the button does not read \(localName)")
+        let returned = localRowOrder()
+        print("EMPTY rows back: \(returned)")
+        XCTAssertEqual(returned, localRows.map(\.0), "the five rows did not come back in the server's order")
+        XCTAssertFalse(app.staticTexts[emptyLine].exists, "the empty line is still drawn over a populated collection")
+        XCTAssertFalse(focusLabels().isEmpty, "nothing has focus after the rows came back")
+
+        // (5) the same state on a cold launch, with the empty collection remembered.
+        openTheOverlay("relaunch-pick-empty")
+        chooseRow(emptyName, "relaunch-pick-empty")
+        XCTAssertEqual(collectionsButtonLabel(), emptyName, "the pick did not take before the relaunch")
+        shot("73e-empty-before-the-relaunch")
+
+        app.terminate()
+        sleep(4)
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Marlin"].waitForExistence(timeout: 60), "Home did not come back")
+        sleep(3)
+        remote.press(.select)
+        XCTAssertTrue(app.staticTexts[guideLegend].waitForExistence(timeout: 40), "the Guide did not open after the relaunch")
+        sleep(6)
+        shot("73f-empty-after-the-relaunch")
+        dump("73f-after-relaunch")
+        enumerateScreen("73f-after-relaunch")
+        XCTAssertEqual(collectionsButtonLabel(), emptyName, "the Guide did not open on \(emptyName) after a relaunch")
+        XCTAssertTrue(app.staticTexts[emptyLine].exists, "the empty line is not drawn after the relaunch")
+        assertTheGridIsEmpty("73f")
+        print("RELAUNCH focused=\(focusLabels())")
+        XCTAssertTrue(focusIsOnTheCollectionsButton(),
+                      "the remote is stranded on launch: focus=\(focusLabels())")
+
+        // Leave the device on All Channels, so a later run starts where the owner left it.
+        openTheOverlay("empty-reset-out")
+        chooseRow("All Channels", "empty-reset-out")
+        XCTAssertEqual(collectionsButtonLabel(), "All Channels", "could not put it back to All Channels")
     }
 }
