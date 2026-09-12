@@ -1119,3 +1119,35 @@ does matched Pass 72's spec, so nothing was corrected.
   four run again as a regression on the helper edits, with a second collection now present on the
   server. **The harness still writes nothing**: its only non-GET traffic is the app's own launch
   ping, and it leaves the device on All Channels.
+
+## 2026-09-12 (Pass 74 — Passes 72-73 accepted and pushed)
+
+- **Owner acceptance: the Guide's channel collections were tested on Home Theater on 2026-09-12 and
+  accepted** — "all good" (owner, 2026-09-12). The acceptance covers **both** Passes 72 and 73
+  together, which is right because **Pass 73 changed no app-target code**: the binary the owner
+  tested carries Pass 72's behaviour, and Pass 73 added only the test harness, the notebook and its
+  report.
+- **What was accepted, named so a later pass does not have to infer it from the commits:** the
+  **collections button** in the Guide's header between the title and the date range, reading
+  "All Channels" or the collection's name; the **drop-down** — the app's own overlay of `MenuRow`s,
+  the same mechanism as `ChannelActionsMenu`, listing All Channels first and then every collection in
+  the server's order; the **filtered reload** through `GET /api/guide?filter=<id>`, in the owner's own
+  member order, with `↩ Now`, `+12h` and the DRM filter unchanged against the filtered rows;
+  **persistence** across a rail trip and across a relaunch, in the one new `UserDefaults` key
+  `"marlinGuideCollection"`; and the **empty-collection state** — "Nothing in <name> right now" with
+  the focus landing on the collections button, which Pass 73 proved on the device.
+- **Pushed to `origin main` in this pass: `9f5505e` (Pass 72) and `c7e0fb4` (Pass 73)**, with this
+  pass's own commit carrying this entry and its report. **A fast-forward from `2206a92`**, verified
+  before the push (`origin/main` an ancestor of `main`, no merges in the range, `c7e0fb4`'s parent
+  `9f5505e` and `9f5505e`'s parent `2206a92`) and again after it by fetch, `git rev-parse` and
+  `git ls-remote`. **Nothing forced, nothing rebased, nothing amended, and no branch other than
+  `main`.**
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. That is the Pass 68 rule working as intended: the SHA lives in the pass
+  response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68), rule (b) of
+  2026-09-09 (Pass 60)). **The step asked for it by name; this is the one place its text could not be
+  taken literally, and the reason is structural rather than a choice.**
+- **The four open questions Passes 72 and 73 left are not closed by this acceptance** and are not
+  re-raised here: the overlay does not scroll, "Collections unavailable" is unproven, the **stale-id
+  revert is unproven** and needs a collection deleted, and whether the collection should reach
+  `GET /api/guide/now` and `GET /api/channels` is still the owner's call (Pass 71 open question 8).

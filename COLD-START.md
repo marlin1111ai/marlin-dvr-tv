@@ -914,6 +914,19 @@ enumeration rule above has exactly one documented exception, in that test: with 
 tree holds tens of elements, and only a full listing can prove that the one line is the *only*
 thing drawn.
 
+Pass 74 (`reports/2026-09-12-pass74-collections-accepted-and-pushed.md`): **the owner tested the
+Guide's channel collections on Home Theater on 2026-09-12 and accepted them — "all good"** (owner,
+2026-09-12) — and **Passes 72 and 73 were pushed**, `9f5505e` and `c7e0fb4`, a fast-forward from
+`2206a92`, with this pass's own commit carrying the notebook and its report. **This supersedes the
+"committed locally and NOT pushed — the owner tests it first" clauses in the two entries above**;
+both are kept as history. One acceptance covers both passes because **Pass 73 changed no app-target
+code** — the binary tested carries Pass 72's behaviour. The acceptance covers the collections button,
+the drop-down, the filtered reload, persistence across a rail trip and a relaunch, and the empty
+state. **It closes none of the open questions** those passes raised: the overlay still does not
+scroll, "Collections unavailable" is still unproven, the **stale-id revert is still unproven** and
+needs a collection deleted, and whether the collection should reach `GET /api/guide/now` and
+`GET /api/channels` is still the owner's call.
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -1002,6 +1015,18 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 74.** The owner accepted the Guide's channel collections on Home
+Theater on 2026-09-12 ("all good"), and the two commits that had been waiting on that test were
+pushed: **`9f5505e` (Pass 72, the collections themselves) and `c7e0fb4` (Pass 73, the
+empty-collection state proven on the device)**, together with **this pass's own commit**, which
+carries this paragraph, the `DECISIONS.md` acceptance entry and
+`reports/2026-09-12-pass74-collections-accepted-and-pushed.md`. **A fast-forward from `2206a92`**,
+which is still an ancestor; no merges in the range, `c7e0fb4`'s parent is `9f5505e` and `9f5505e`'s
+parent is `2206a92`; nothing forced, rebased or amended. **This pass's own SHA is not written here
+and cannot be** — a commit cannot contain its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in
+the Pass 74 response and belongs in the next pass's entry. The two paragraphs below, written by
+Passes 73 and 72, described the unpushed state correctly when written and are kept as history.
 
 **Two commits are now local and unpushed, and both wait on the same test.** Pass 73
 (`reports/2026-09-12-pass73-empty-collection-proof.md`) proved the empty-collection state on Home
