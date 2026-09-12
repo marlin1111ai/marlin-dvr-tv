@@ -1549,3 +1549,52 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   the Guide (Pass 72 step 7) and unlike the Search screen, which needed a subtree rebuild measured
   twice (`GuideSearchScreen.swift:295-311`). **No generation counter was added to On Later.**
 - **Committed locally and NOT pushed** — the owner tests it on Home Theater first.
+
+## 2026-09-12 (Pass 83 — On Later's pills accepted and pushed, and the bedroom Apple TV)
+
+- **Owner acceptance: On Later's three pills were tested on Home Theater on 2026-09-12 and
+  accepted** — **"good to go"** (owner, 2026-09-12). Pushed to `origin main` in this pass together
+  with the notebook work recording the acceptance.
+- **What was accepted, named so a later pass does not have to infer it from the commit:** On Later
+  taking On Now's page layout — the header, a pill row beneath it built the same way, a three-column
+  card grid; **exactly three pills, "On Today" · "On This Week" · "Premieres", and no channel-filter
+  pills**; the screen listing **every** upcoming airing on the channels his collections hold, with no
+  "notable" narrowing; opening on **On Today** every visit with the pick not persisting; the sort by
+  start time then channel number; the empty states with focus staying on the pill row; and Select on
+  a card opening the airing sheet with its controls live.
+- **The Premieres pill being empty on the current data is accepted** (owner, 2026-09-12). It is not
+  a defect and it is not an open item: `program.premiere` is true on nothing this server holds
+  (DECISIONS.md, 2026-09-12 (Pass 81)), and the three derived clauses select nothing on his
+  collection channels this week either, so the screen draws "Nothing on Premieres for your
+  collections". He was shown that before accepting.
+- **The two files touched outside `OnLaterScreen.swift` are accepted as built** (owner,
+  2026-09-12): `Models.swift`, where `ChannelCollection` gained `channelIds` — which is what the
+  union and therefore "No collection channels" turn on, and what lets an empty collection be skipped
+  instead of costing seven requests — and the one line in `ScreenShell.swift:99` passing `onPlay`,
+  without which the airing sheet's "Watch live" would close the sheet and play nothing. **This
+  closes Pass 82 open questions 2 and, as to the file count, the constraint they sat against.**
+- **The `/api/guide` block-layout loss is accepted** (owner, 2026-09-12). **This closes Pass 82 open
+  question 1.** The route lays listings out into whole half-hour blocks and drops the ones that will
+  not fit (`guide.go:679`, `:699`, `:705`); measured against the complete `/export/*/guide.xml` for
+  the same five channels and the same week, that is **2 airings of 140 — 1.4 %** — a 15-minute
+  *Monday Night Postgame* at 23:15 and a three-hour *College Football*, **both on ESPN**, with the
+  four antenna channels losing nothing. He was told which two and accepted the trade rather than
+  taking `/export/guide.xml`, which is complete but cannot carry the premiere flag, `seriesId` or
+  `rating` (`export.go:95-111`). **Nothing is to be raised with the marlin-dvr project about it.**
+- **Nothing else Pass 82 raised is closed by this acceptance**, and none of it is re-raised here:
+  the two-read sheet reconstitution (open question 3), the ≤30-minute far edge of "On This Week"
+  (4), the now-dead `api.later()`, `LaterResponse`, `LaterSection` and `LaterItem` (5), which
+  sentence an undrawable-but-non-empty union should get (6), and the card carrying no
+  new/live/premiere tags (7).
+- **No app-target code changed in this pass.** The binary the owner tested is Pass 82's, and the
+  binary installed on the bedroom Apple TV in this pass is built from the same sources.
+- **The bedroom Apple TV was brought up to the pushed head**, by the method Pass 54 recorded and to
+  the same device — `xcodebuild` to `platform=tvOS,name=Master Bedroom ATV` with
+  `-allowProvisioningUpdates`, then `xcrun devicectl device install app`. It had been on Pass 53's
+  `0b3589d` since 2026-09-08 and was **28 commits behind `ad7f5f5`**, 29 behind the head this pass
+  pushes. Home Theater was not reinstalled in this pass.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68), rule (b) of 2026-09-09 (Pass 60)). **The bedroom install's
+  evidence is in the same position and for the same structural reason**: the install is of the head
+  this commit becomes, so its result cannot be inside it. See the Pass 83 report §5.

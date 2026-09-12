@@ -1134,6 +1134,30 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
   -only-testing:"Marlin DVR TVUITests/OnLaterPillsUITests"
 ```
 
+Pass 83 (`reports/2026-09-12-pass83-on-later-accepted-pushed-bedroom.md`): **the owner tested
+On Later's three pills on Home Theater on 2026-09-12 and accepted them — "good to go"** (owner,
+2026-09-12) — and **Pass 82 was pushed**, `ad7f5f5`, a fast-forward from `54b2335`, with this pass's
+own commit carrying the notebook and its report. **This supersedes the "committed locally and NOT
+pushed — the owner tests it first" clause in the Passes 81-82 entry above**, which is kept as
+history.
+
+- **The acceptance covers** the page layout, the three pills and the absence of channel-filter
+  pills, every airing on collection channels with no "notable" narrowing, opening on On Today with
+  the pick not persisting, the sort, the empty states, and Select opening the airing sheet.
+- **Three things were accepted explicitly rather than by silence**, and they close Pass 82's first
+  two open questions: the **Premieres pill being empty** on the current data; the **two app files
+  touched outside `OnLaterScreen.swift`** (`Models.swift`'s `channelIds`, and the one line in
+  `ScreenShell.swift:99` that gives the sheet's "Watch live" a Player); and the **`/api/guide`
+  block-layout loss of 2 airings in 140 over a week, both on ESPN** (DECISIONS.md, 2026-09-12
+  (Pass 83)).
+- **No app-target code changed in Pass 83** — the binary the owner tested is Pass 82's.
+- **The bedroom Apple TV is no longer twenty-eight commits behind.** It had run Pass 53's `0b3589d`
+  since 2026-09-08; Pass 83 built the pushed head for it and installed it by the method Pass 54
+  recorded — `xcodebuild -destination 'platform=tvOS,name=Master Bedroom ATV'
+  -allowProvisioningUpdates build`, then `xcrun devicectl device install app` — to the same device.
+  **Home Theater was not reinstalled in this pass.** It is still a development-signed build and will
+  stop launching when the provisioning profile expires; when that is is still unchecked.
+
 ### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
 
 The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
@@ -1240,6 +1264,19 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 83.** The owner accepted On Later's three pills on Home Theater on
+2026-09-12 ("good to go"), and the commit that had been waiting on that test was pushed: **`ad7f5f5`
+(Pass 82, the pills themselves)**, together with **this pass's own commit**, which carries this
+paragraph, the `DECISIONS.md` acceptance entry and
+`reports/2026-09-12-pass83-on-later-accepted-pushed-bedroom.md`. **A fast-forward from `54b2335`**,
+which is still an ancestor; no merges in the range, and `ad7f5f5`'s parent is `54b2335`; nothing
+forced, rebased or amended. **This pass's own SHA is not written here and cannot be** — a commit
+cannot contain its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 83 response and
+belongs in the next pass's entry. **The bedroom Apple TV was brought up to that pushed head in this
+pass**, and its install evidence sits in the same place and for the same structural reason — the
+install is of the head this commit becomes. The paragraph below, written by Pass 82, described the
+unpushed state correctly when written and is kept as history.
 
 **Pass 82 is committed locally and NOT pushed.** On Later's three pills
 (`reports/2026-09-12-pass82-on-later-pills.md`) were built, proven on Home Theater on 2026-09-12 and
