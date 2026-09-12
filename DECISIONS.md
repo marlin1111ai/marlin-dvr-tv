@@ -1261,3 +1261,34 @@ alone**, 129 insertions and 1 deletion, and that one deletion is a closure signa
   `WeatherScreen.swift:109-113` records for its Radar button. It matters more now, because the owner
   will sit at the right-hand edge of a row often and reaching `↩ Now` from there needs a Left press
   first. **Nothing was changed for it** — it is outside what this pass names.
+
+## 2026-09-12 (Pass 78 — the Guide's scroll-right accepted and pushed)
+
+- **Owner acceptance: the Guide's scroll-right was tested on Home Theater on 2026-09-12 and
+  accepted** — **"it all feels good"** (owner, 2026-09-12). Pushed to `origin main` in this pass
+  together with the notebook work recording the acceptance.
+- **What was accepted, named so a later pass does not have to infer it from the commit:** one Right
+  press on the last visible cell of a row moving the window forward **one slot (30 min)**, with the
+  time strip, every row and the header moving together; **forward only**; `Left`, `Menu`, `↩ Now`,
+  `+12h` and a rail trip all behaving as they did; the window stopping at the last slot that has a
+  listing; and the refetch happening on the existing rule without disturbing the strip, the rows or
+  focus.
+- **The focus rule is accepted as built** (owner, 2026-09-12): after a nudge, **focus stays on the
+  programme** while that programme is still in the window, and goes to the leftmost cell its row
+  still has when it has left. The alternative — focus tracking the right-hand edge — was never built
+  and is not to be revisited on the strength of the press ratio alone.
+- **The press ratio is accepted** (owner, 2026-09-12). **This closes Pass 77 open question 2.**
+  Roughly three presses in five move the window, because focus staying on the same programme means
+  the revealed slot often puts a new cell to its right and the next press is taken by the focus
+  engine; measured at **1.00 slots per press on a long programme and 0.60 on half-hour programmes**
+  (48 slots in 78 presses over a full day). It was raised to him before the acceptance and he
+  accepted it as built, so it is **not a defect and not an open item**.
+- **Nothing else Pass 77 raised is closed by this acceptance**, and none of it is re-raised here: the
+  third focus case where a row has **no** cell at all in the new window and focus falls back to
+  `firstCellID` on another row (open question 1); whether a **physical** held Right auto-repeats where
+  the synthesized hold did not (open question 3); the pre-existing header geometry that makes `↩ Now`
+  unreachable by Up from the middle of a row (open question 4); `lastListedSlot` being computed from
+  the current fetch only (open question 5); and the 150 ms settle's cost to a fast presser
+  (open question 6).
+- **No app-target code changed in this pass.** The binary the owner tested carries Pass 77's
+  behaviour exactly; this pass adds the notebook entries and its report.

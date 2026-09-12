@@ -988,6 +988,25 @@ and the report. **Committed locally and NOT pushed: the owner tests it on Home T
   header has no focusable item above that span — the same thing `WeatherScreen.swift:109-113` records.
   It matters more now, since reaching `↩ Now` from the right-hand edge needs a Left press first.
 
+Pass 78 (`reports/2026-09-12-pass78-scroll-accepted-and-pushed.md`): **the owner tested the Guide's
+scroll-right on Home Theater on 2026-09-12 and accepted it — "it all feels good"** (owner,
+2026-09-12) — and **Pass 77 was pushed**, `f0613e5`, a fast-forward from `38067c8`, with this pass's
+own commit carrying the notebook and its report. **This supersedes the "committed locally and NOT
+pushed" clause in the Pass 77 entry above**, which is kept as history.
+
+- **The acceptance covers** one Right press on a row's last visible cell moving the window one slot
+  with the strip and every row together, forward only, `Left`/`Menu`/`↩ Now`/`+12h`/a rail trip
+  unchanged, the window stopping at the last listed slot, and the refetch on the existing rule.
+- **The focus rule is accepted as built**: focus stays on the programme while it is in the window,
+  and goes to the leftmost cell of its row when it has left.
+- **The press ratio is accepted, which closes Pass 77 open question 2.** Roughly three presses in
+  five move the window — 1.00 slots per press on a long programme, 0.60 on half-hour ones — and the
+  owner was told before he accepted. **It is not a defect and not an open item.**
+- **It closes nothing else Pass 77 raised:** the third focus case where a row has no cell at all in
+  the new window, whether a *physical* held Right auto-repeats, the pre-existing header geometry that
+  blocks Up from the middle of a row, `lastListedSlot` being per-fetch, and the 150 ms settle.
+- **No app-target code changed in Pass 78** — the binary the owner tested is Pass 77's.
+
 ### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
 
 The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
@@ -1094,6 +1113,17 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 78.** The owner accepted the Guide's scroll-right on Home Theater on
+2026-09-12 ("it all feels good"), and the commit that had been waiting on that test was pushed:
+**`f0613e5` (Pass 77, the scroll-right itself)**, together with **this pass's own commit**, which
+carries this paragraph, the `DECISIONS.md` acceptance entry and
+`reports/2026-09-12-pass78-scroll-accepted-and-pushed.md`. **A fast-forward from `38067c8`**, which is
+still an ancestor; no merges in the range, and `f0613e5`'s parent is `38067c8`; nothing forced, rebased
+or amended. **This pass's own SHA is not written here and cannot be** — a commit cannot contain its own
+SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 78 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 77, described the unpushed state correctly when written
+and is kept as history.
 
 **Pass 77 is committed locally and NOT pushed.** The Guide's scroll-right
 (`reports/2026-09-12-pass77-guide-scroll-right.md`) was built and proven on Home Theater and committed
