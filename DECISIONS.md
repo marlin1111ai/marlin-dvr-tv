@@ -1292,3 +1292,89 @@ alone**, 129 insertions and 1 deletion, and that one deletion is a closure signa
   (open question 6).
 - **No app-target code changed in this pass.** The binary the owner tested carries Pass 77's
   behaviour exactly; this pass adds the notebook entries and its report.
+
+## 2026-09-12 (Pass 79 — the Guide keeps up with the clock)
+
+**The owner's defect of 2026-09-12, fixed.** Left open, the Guide did not move with the time: the
+window, the "· now" column and the Now marker all stayed where they were when the screen opened.
+Now a beat once a minute republishes the screen's clock, and at each half-hour boundary a window
+that is sitting at now advances to the new current half hour. **The app-target diff is
+`GuideScreen.swift` alone** — 115 insertions, 6 deletions. Build warnings unchanged from HEAD's two,
+measured by a clean build of each.
+
+- **The cause has two halves and both had to be fixed.** *(a)* **Nothing ever moved the window.**
+  `GuideModel.windowStart` is written in exactly four places, and at `HEAD` every one of them was a
+  user action or the screen opening: `loadNow()` (HEAD `:108`), `pageForward()` (`:114`),
+  `nudgeForward()` (`:143`) and `snapToNow()` (`:156`). There was **no timer, no `.task` loop, no
+  scene-phase handler and no notification observer anywhere in `GuideScreen.swift`** — its only two
+  `Task.sleep`s were one-shots, the 60 ms after the airing sheet closes (`:409`) and Pass 77's 150 ms
+  focus settle (`:469`). So the window was set once, on open, from `TimeFormat.currentHalfHour`
+  (`:108` → `Formatting.swift:65`), and never again. *(b)* **Even a clock that did move would have
+  redrawn nothing.** `isAtNow` (HEAD `:99`) read `TimeFormat.currentHalfHour`, which reads `Date()`,
+  and the pill read `TimeFormat.clock(Date())` (HEAD `:566`). **A `Date()` read inside a view body is
+  observed by nothing**, so the strip's "· now" (`:619`), the footer sentence (`:634`) and the two
+  header pills (`:559`, `:571`) could not redraw on the passage of time at all — only when something
+  else on the model changed. That is why the Now marker froze at the moment the screen opened.
+- **The app already had this pattern one screen over, and the Guide simply never got it.**
+  `AiringSheet.swift:62` holds `@State private var now = Date()` and `:173-179` is a `.task` loop
+  that republishes it every 20 s, with the comment *"Keeps 'Watch live' honest if the sheet is left
+  open across the start time"*. The Guide had no counterpart. Pass 79's `GuideModel.now` is that
+  same idea, owned by the model instead of the view because `isAtNow` is the model's.
+- **The screen's clock is `GuideModel.now` (`:112`) and everything "now" is derived from it, never
+  from `Date()`.** `nowHalfHour` (`:118`) is the half hour it falls in — the same truncation the
+  server performs (`guide.go:659-663`) — and `isAtNow` (`:120`) compares the window against that.
+  `loadNow()` (`:127`) and `snapToNow()` (`:201`) republish it at the instant they read it, so no
+  action can leave the observed clock behind the wall clock.
+- **The roll is one write to `windowStart` and nothing else, which is why the whole screen moves
+  together.** `tick()` (`:187`) sets `windowStart = nowHalfHour`; the time strip, every row, the
+  header's date range, the "· now" marker, the footer and both pills are all derived from that one
+  number and from nothing else — the property Pass 77 relied on for the scroll-right, unchanged.
+- **The window advances only when the clock has already left the half hour it is sitting at**
+  (owner, 2026-09-12). The test is `windowStart < nowHalfHour` (`:188`), and it is exact rather than
+  approximate: `windowStart` is only ever set to the current half hour or advanced past it, so being
+  *behind* the clock can only mean the window was at now and the clock moved on. **A window scrolled
+  ahead by a Pass 77 nudge or by `+12h` is therefore never moved**, and neither is one the clock has
+  merely caught up with — that one simply becomes `isAtNow` again, loses its `↩ Now` pill and gains
+  the strip's "· now", which is correct.
+- **No extra network on the beat.** The refetch is the existing rule and the same line `snapToNow()`
+  and `nudgeForward()` use — `windowStart < fetchStart || windowEnd > fetchEnd` (`:190`) — so a roll
+  inside the fetched 24 hours makes no request at all. Measured on Home Theater: across three real
+  boundaries the app's own `fetch=` never moved.
+- **The beat is a `.task` on the Guide and nothing else** (`:437-453`), which is what ties it to the
+  screen's lifetime rather than to the app's: `ScreenShell.swift:57` puts `.id(current)` on the
+  content and destroys the Guide on every rail visit, and SwiftUI cancels a destroyed view's `.task`.
+  It prints `[guide] clock stopped after N beat(s)` when the loop ends, so the stop is a reading and
+  not an assumption. **No `Timer`, no `NotificationCenter`, no scene-phase observer and no state
+  above the shell were added.**
+- **The beat is aligned to the wall clock's next whole minute** (`secondsToNextMinute()`, `:570`),
+  not spaced a fixed 60 s apart, so the roll lands within a moment of the half hour it belongs to
+  and the pill's clock changes on the minute it names.
+- **Focus after a roll is Pass 77's rule, reused rather than reinvented** (`settleFocusAfterRoll`,
+  `:598`): it stays on the same programme while that programme is still in the window, and goes to
+  the leftmost cell its row still has when the programme has left it; a row with no cell at all in
+  the new window falls back to `firstCellID`, which is Pass 77 open question 1's third case and this
+  screen's existing convention. Anything that is not a programme cell is left where it is.
+  **`nudge(from:)` was not touched** — Pass 77's proven path is byte-identical.
+- **"The Now marker" is read as the `↩ Now · 2:04 PM` pill, and this is an interpretation, recorded
+  as one.** The owner's defect names three things — the window, the "· now" column and the Now
+  marker — and the app has exactly two that say "now": the strip's `· now` suffix (`:619`) and that
+  pill's clock. **There is no vertical now-line in the app or in `design/`** (Pass 75 §3), so the
+  third thing can only be the pill, whose clock is the one reading that must track *within* a half
+  hour. It now does, measured minute by minute on the device.
+- **A cell has no live/past appearance in this app, and none was invented.** `GuideCellLabel`
+  (`:841-880`) colours a cell from its `mark` and from nothing else. The live/past distinction is
+  behavioural — `select` (`:323-330`) reads the wall clock at press time, so it was always current —
+  and what the roll changes is *which* programmes are in the window: `cells(for:)` (`:237`) keeps
+  only those with `p.end > windowStart` (`:241`), so a programme that has ended leaves the grid at the
+  roll.
+- **The beat does nothing at all while one of the Guide's own overlays is up** (`:583`) — the airing
+  sheet, the channel menu or the collections drop-down — which is the guard `gridMoved` already
+  takes and for the same reason: each of them owns the remote and disables the grid, and a roll
+  underneath one would move the grid and could leave the sheet's Menu restoring focus to a cell that
+  no longer exists. The cost is that the pill's clock pauses and the roll is deferred to the first
+  beat after the overlay closes, up to 60 s. **Chosen deliberately; not measured on the device.**
+- **`TimeFormat.currentHalfHour` (`Formatting.swift:65`) now has no caller.** `GuideScreen.swift` was
+  its only one, and the model derives the half hour from its own observed clock instead so that the
+  two can never straddle a boundary between two `Date()` reads. Removing it is a `Formatting.swift`
+  edit, which this pass's scope lock does not allow; it is left in place and raised as a question.
+- **Committed locally and NOT pushed** — the owner tests it on Home Theater first.

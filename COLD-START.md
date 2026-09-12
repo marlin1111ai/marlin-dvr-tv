@@ -1007,6 +1007,47 @@ pushed" clause in the Pass 77 entry above**, which is kept as history.
   blocks Up from the middle of a row, `lastListedSlot` being per-fetch, and the 150 ms settle.
 - **No app-target code changed in Pass 78** — the binary the owner tested is Pass 77's.
 
+Pass 79 (`reports/2026-09-12-pass79-guide-clock.md`): **the Guide keeps up with the clock.** The
+owner's defect of 2026-09-12 — left open, the Guide did not move with the time; the window, the
+"· now" column and the Now marker stayed where they were when the screen opened. A beat once a
+minute republishes the screen's clock, and a window sitting at now advances to the new current half
+hour at each half-hour boundary. **The app-target diff is `GuideScreen.swift` alone**, 115
+insertions and 6 deletions, plus the Pass 76/77 harness, the notebook and the report. Build warnings
+unchanged from HEAD's two, measured by a clean build of each tree. **Committed locally and NOT
+pushed: the owner tests it on Home Theater first.**
+
+- **The cause was two things, not one.** Nothing ever moved the window — `windowStart` had four
+  writers at `HEAD` and all four were a user action or the screen opening, and there was **no timer,
+  no `.task` loop, no scene-phase handler and no notification observer anywhere in
+  `GuideScreen.swift`**. And nothing would have redrawn if it had: `isAtNow` and the `↩ Now` pill
+  both read `Date()` inside the view body, **which SwiftUI observes not at all**, so the strip's
+  "· now", the footer sentence and both header pills could not react to the passage of time.
+- **The screen's clock is now `GuideModel.now`, and everything "now" derives from it.** The roll is
+  one write to `windowStart`, so the strip, every row, the header's date range and the "· now"
+  marker move together — the same single-number property Pass 77 built the scroll-right on.
+- **A scrolled window is never moved.** The test is `windowStart < nowHalfHour`, which is exact: the
+  window is only ever set to the current half hour or advanced past it, so being behind the clock
+  can only mean it was at now. A window the clock catches up with simply becomes `isAtNow` again.
+- **No extra network on the beat** — the refetch is the existing rule, the same line `snapToNow()`
+  and `nudgeForward()` use. Across three real boundaries on Home Theater the app's own `fetch=`
+  never moved.
+- **The beat is a `.task` on the Guide**, so `ScreenShell.swift:57`'s `.id(current)` ends it on every
+  rail visit. It prints `[guide] clock stopped after N beat(s)` when the loop ends, and the counts
+  measured on the device match the minutes each Guide was on screen exactly — 9, 4, 2 and 21 beats
+  for four visits, with **no `[guide]` line at all** during three minutes away on Radio.
+- **"The Now marker" is read as the `↩ Now · 2:04 PM` pill, and that is an interpretation.** The app
+  has exactly two things that say "now" — the strip's `· now` suffix and that pill's clock — and
+  **there is no vertical now-line in the app or in `design/`** (Pass 75 §3). The pill's clock is the
+  one reading that can track *within* a half hour, and it now does.
+- **A cell has no live/past appearance in this app and none was invented.** `GuideCellLabel` colours
+  a cell from its `mark` alone; the live/past distinction is behavioural (`select` reads the wall
+  clock at press time and was always current), and what the roll changes is which programmes are in
+  the window at all.
+- **The line numbers Pass 77's report and this file cite for `GuideScreen.swift` have moved**, since
+  Pass 79 inserts above them — the `channelFocusID` build warning, for instance, is at **`:635`**
+  where Pass 77 recorded `:528`. The earlier text is left exactly as written, as this project's rule
+  requires (DECISIONS.md, 2026-09-09 (Pass 56)).
+
 ### Citation drift corrected by Pass 76 — the drifted comment lines are NOT edited, these are the current numbers
 
 The six the Pass 75 report listed, each re-verified against `HEAD` after that pass's diagnostic was
@@ -1113,6 +1154,15 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Pass 79 is committed locally and NOT pushed.** The Guide's clock
+(`reports/2026-09-12-pass79-guide-clock.md`) was built, run against a real half-hour boundary on
+Home Theater and committed in one commit with the harness, the notebook and the report — **the owner
+tests it on Home Theater before anything is pushed**, which is the standing separate push gate.
+Local `main` is one commit ahead of `origin/main`; nothing forced, rebased or amended. This pass's
+own SHA is not written here and cannot be — a commit cannot contain its own SHA (DECISIONS.md,
+2026-09-11 (Pass 68)); it is in the Pass 79 response and belongs in the next pass's entry. The
+paragraph below, written by Pass 78, described its own state correctly when written.
 
 **Nothing is unpushed as of Pass 78.** The owner accepted the Guide's scroll-right on Home Theater on
 2026-09-12 ("it all feels good"), and the commit that had been waiting on that test was pushed:

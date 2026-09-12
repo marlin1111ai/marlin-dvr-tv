@@ -24,6 +24,20 @@
 //  elements at roughly 0.8 s each — two Pass 72 harness runs were killed at t = 1317 s and t = 908 s
 //  before the queries were rewritten. Do not reintroduce one.
 //
+//  Pass 79 extends it again, with five checks for "the Guide keeps up with the clock". Those tests
+//  **wait out real half-hour boundaries** — there is no way to fake one from outside the app — so
+//  each takes up to about 35 minutes and only one boundary can be spent on one state. Run them one
+//  at a time, with `-only-testing` down to the method.
+//
+//  **What has and has not been run, so nobody reads an unrun test as a green one** (Pass 79 §4):
+//    testTheWindowRollsWithTheClockAtNow      RUN, passed — the real 14:30 and 13:30 boundaries
+//    testTheRollHoldsTheCollection            RUN, passed — the real 14:00 boundary, "Local" selected
+//    testTheClockStopsWhenTheGuideDoes        RUN, passed — four Guide visits, beat counts matched
+//    testAScrolledWindowDoesNotRoll…          RUN PARTWAY — killed ~18 min before its boundary; it
+//                                             measured the ↩ Now pill tracking the clock for ten
+//                                             minutes on a window that did not move, and no more
+//    testTheGuideIsAtTheTrueHalfHour…         NEVER RUN — written, compiles, never executed
+//
 //  Run (the app first, with its console attached, then the tests):
 //    xcrun devicectl device process launch --device "Home Theater" --console --terminate-existing \
 //      com.marlin1111.MarlinDVRTV &
@@ -871,6 +885,368 @@ final class GuideRightEdgeUITests: XCTestCase {
         XCTAssertNotNil(stripFirstColumn("I-LIMIT"), "the strip does not show the window start at the limit")
         XCTAssertEqual(windowPosition(), lastWindow, "the window moved after the limit was reached")
         log("I RESULT the window stops at the last slot that has a listing; further Right presses do nothing")
+    }
+
+    // MARK: Pass 79 — the Guide keeps up with the clock
+
+    /// The two footer sentences, which are how `isAtNow` reads from outside the app.
+    private static let atNowFooterText = "Starts at the current half hour · forward only"
+    private static let aheadFooterText = "Menu snaps back to now · forward only, 24 hours per request"
+
+    /// The time strip's column labels, left to right, read by **geometry and shape** rather than by
+    /// matching the header's date range — so that "the strip moved with the window" is two
+    /// independent readings and not one. A strip label is a clock, optionally with a weekday in
+    /// front of it on the midnight column and "· now" behind it on the first, and it sits at y≈157:
+    /// below the header pills (y≈79) and above the first row (y≈228). This stays a predicate query,
+    /// per the file header — `↩ Now · 10:47 AM` matches the shape but is excluded by the band.
+    private func stripColumns() -> [String] {
+        let pattern = "(^|.* · )[0-9]{1,2}:[0-9]{2} (AM|PM)( · now)?$"
+        return app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", pattern))
+            .allElementsBoundByIndex
+            .filter { $0.frame.minY >= 130 && $0.frame.minY < Self.headerBottom }
+            .sorted { $0.frame.minX < $1.frame.minX }
+            .map(\.label)
+    }
+
+    /// The `↩ Now · 10:47 AM` pill, or nil when the window is at now and it is not drawn.
+    private func nowPillLabel() -> String? {
+        let e = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "↩ Now")).firstMatch
+        return e.exists ? e.label : nil
+    }
+
+    private func footerState() -> String {
+        if app.staticTexts[Self.atNowFooterText].exists { return "at-now" }
+        if app.staticTexts[Self.aheadFooterText].exists { return "ahead" }
+        return "neither"
+    }
+
+    /// Everything this pass is about in one line: the header's date range, the strip read
+    /// independently of it, which footer sentence is drawn, and the ↩ Now pill's own clock.
+    private func clockLine(_ tag: String) -> String {
+        "\(tag) window=\u{201C}\(windowLabel() ?? "?")\u{201D} strip=\(stripColumns()) " +
+        "footer=\(footerState()) nowPill=\(nowPillLabel().map { "\u{201C}\($0)\u{201D}" } ?? "absent")"
+    }
+
+    private func secondsToNextHalfHour() -> TimeInterval {
+        1800 - Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1800)
+    }
+
+    /// The Mac's own current half hour in the same monotonic minute space `windowPosition()` reads
+    /// the device's window label into, so "the window is at the current half hour" is an equality.
+    private func currentHalfHourPosition() -> Int {
+        let truncated = Date(timeIntervalSince1970: (Date().timeIntervalSince1970 / 1800).rounded(.down) * 1800)
+        let c = Calendar.current.dateComponents([.month, .day, .hour, .minute], from: truncated)
+        return (((c.month! - 1) * 31) + c.day!) * 1440 + c.hour! * 60 + c.minute!
+    }
+
+    /// Wait until there is at least `lead` seconds of room before the next half-hour boundary, so a
+    /// test's own set-up presses cannot straddle the boundary it is about to measure. Called first,
+    /// before anything is opened.
+    private func waitForRoom(_ tag: String, lead: TimeInterval) {
+        let room = secondsToNextHalfHour()
+        guard room < lead else {
+            log("\(tag) ROOM \(Int(room)) s before the next half hour — enough, starting now")
+            return
+        }
+        let sleepFor = room + 20
+        log("\(tag) ROOM only \(Int(room)) s before the next half hour — sitting out \(Int(sleepFor)) s so the set-up cannot straddle it")
+        Thread.sleep(forTimeInterval: sleepFor)
+    }
+
+    /// Wait out one real half-hour boundary **with the app left exactly as it is** — no press, no
+    /// activation, nothing but reading. It samples every 30 s, which puts the moment the window
+    /// moves on the record and keeps the Mac's wireless test connection from sitting idle (Pass 15:
+    /// that link is what drops, not the app).
+    private func waitOutABoundary(_ tag: String, slack: TimeInterval = 40) {
+        let deadline = Date().addingTimeInterval(secondsToNextHalfHour() + slack)
+        log("\(tag) WAIT \(Int(secondsToNextHalfHour())) s to the boundary, then \(Int(slack)) s of slack")
+        var beat = 0
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: min(30, max(1, deadline.timeIntervalSinceNow)))
+            beat += 1
+            log(clockLine("\(tag) t-\(Int(max(0, deadline.timeIntervalSinceNow)))s"))
+        }
+        log("\(tag) waited out the boundary in \(beat) sample(s)")
+    }
+
+    // MARK: (a) — at now, left alone through a real half-hour boundary
+
+    func testTheWindowRollsWithTheClockAtNow() {
+        waitForRoom("A", lead: 200)
+        openGuide()
+        log(windowLine("A-OPEN"))
+        log(clockLine("A-OPEN"))
+        shot("120-at-now-before-the-boundary")
+
+        guard let before = windowPosition() else { return XCTFail("no window label; focus=\(focusLine())") }
+        XCTAssertEqual(before, currentHalfHourPosition(), "the Guide did not open at the current half hour")
+        XCTAssertEqual(footerState(), "at-now", "the at-now footer is not drawn on opening")
+        XCTAssertNil(nowPillLabel(), "↩ Now is drawn on a window that is at now")
+        let stripBefore = stripColumns()
+        XCTAssertTrue(stripBefore.first?.contains("· now") == true,
+                      "the strip's first column does not carry the now marker: \(stripBefore)")
+        guard let heldCell = focusedInGrid() else { return XCTFail("nothing focused in the grid") }
+        let heldLabel = heldCell.label
+        let heldFrame = heldCell.frame
+        log("A held cell before the boundary: \u{201C}\(heldLabel)\u{201D} \(rect(heldFrame))")
+
+        waitOutABoundary("A")
+
+        log(windowLine("A-AFTER"))
+        log(clockLine("A-AFTER"))
+        shot("121-at-now-after-the-boundary")
+
+        guard let after = windowPosition() else { return XCTFail("no window label after the boundary") }
+        log("A RESULT window \(before) -> \(after) minutes (\(after - before) min), current half hour is \(currentHalfHourPosition())")
+        XCTAssertEqual(after - before, 30, "the window did not advance one half hour across the boundary")
+        XCTAssertEqual(after, currentHalfHourPosition(), "the window is not at the new current half hour")
+
+        // The strip moved with it, read independently of the header's date range, and still carries
+        // the now marker — the window is at now again.
+        let stripAfter = stripColumns()
+        log("A strip \(stripBefore) -> \(stripAfter)")
+        XCTAssertNotEqual(stripAfter, stripBefore, "the time strip did not move with the window")
+        XCTAssertTrue(stripAfter.first?.contains("· now") == true,
+                      "the strip's first column lost the now marker: \(stripAfter)")
+        XCTAssertNotNil(stripFirstColumn("A-AFTER"),
+                        "the strip's first column does not agree with the header's date range")
+        XCTAssertEqual(footerState(), "at-now", "the footer stopped saying the window is at now")
+        XCTAssertNil(nowPillLabel(), "↩ Now is drawn on a window the roll has kept at now")
+
+        // Focus, by the owner's rule, and the proof that every row moved with the strip: a cell that
+        // keeps focus keeps its label and its box slides one slot to the left.
+        guard let held = focusedInGrid() else {
+            return XCTFail("nothing focused in the grid after the roll; focus=\(focusLine())")
+        }
+        if held.label == heldLabel {
+            log("A FOCUS stayed on \u{201C}\(heldLabel)\u{201D}: \(rect(heldFrame)) -> \(rect(held.frame))")
+            // Never rightward. It moves *left* by one slot only when the programme starts inside the
+            // window; one that began before the window is clipped to it and drawn flush at x=554 in
+            // the old window and the new one alike (Pass 75 §2.1), so its box does not move at all.
+            // The reading is logged either way; the strip above is what proves the window moved.
+            XCTAssertLessThanOrEqual(held.frame.minX, heldFrame.minX,
+                                     "the focused programme's cell moved right across the roll")
+        } else {
+            log("A FOCUS \u{201C}\(heldLabel)\u{201D} left the window; focus is now \u{201C}\(held.label)\u{201D} \(rect(held.frame))")
+        }
+    }
+
+    // MARK: (b) — the same roll with the owner's "Local" collection selected
+
+    func testTheRollHoldsTheCollection() {
+        waitForRoom("B79", lead: 330)
+        openGuide()
+        guard chooseCollection("Local", "B79") else { return XCTFail("could not choose Local") }
+        let rowsBefore = localRowOrder()
+        log("B79 filtered rows: \(rowsBefore)")
+        XCTAssertEqual(rowsBefore, localRows.map(\.0), "Local's five rows are missing or out of order")
+        intoTheGrid("B79")
+        log(windowLine("B79-OPEN"))
+        log(clockLine("B79-OPEN"))
+        shot("130-local-before-the-boundary")
+
+        guard let before = windowPosition() else { return XCTFail("no window label") }
+        XCTAssertEqual(before, currentHalfHourPosition(), "the filtered Guide is not at the current half hour")
+        let stripBefore = stripColumns()
+
+        waitOutABoundary("B79")
+
+        log(windowLine("B79-AFTER"))
+        log(clockLine("B79-AFTER"))
+        shot("131-local-after-the-boundary")
+
+        guard let after = windowPosition() else { return XCTFail("no window label after the boundary") }
+        log("B79 RESULT window \(before) -> \(after) minutes (\(after - before) min)")
+        XCTAssertEqual(after - before, 30, "the filtered window did not advance one half hour")
+        XCTAssertEqual(after, currentHalfHourPosition(), "the filtered window is not at the new current half hour")
+        XCTAssertNotEqual(stripColumns(), stripBefore, "the time strip did not move with the filtered window")
+        XCTAssertTrue(stripColumns().first?.contains("· now") == true, "the now marker left the strip")
+
+        let rowsAfter = localRowOrder()
+        log("B79 filtered rows after the roll: \(rowsAfter)")
+        XCTAssertEqual(rowsAfter, rowsBefore, "the collection's rows changed across the roll")
+        XCTAssertEqual(collectionsButton()?.label, "Local", "the button stopped reading Local")
+        for (name, number) in notInLocal {
+            XCTAssertFalse(channelCell(number).exists, "\(name) is drawn in the filtered grid after the roll")
+        }
+        log("B79 focus after the roll: \(focusLine())")
+        XCTAssertNotNil(focusedInGrid(), "nothing focused in the filtered grid after the roll")
+
+        _ = chooseCollection("All Channels", "B79-reset")
+    }
+
+    // MARK: (c) — a window scrolled two slots ahead does not roll, and ↩ Now tracks the clock
+
+    func testAScrolledWindowDoesNotRollAndTheNowPillTracksTheClock() {
+        waitForRoom("C79", lead: 420)
+        openGuide()
+        guard let atNow = windowPosition() else { return XCTFail("no window label") }
+        XCTAssertTrue(walkToLastCell("C79-WALK"), "could not reach the row's last visible cell")
+        let (slots, presses) = nudge(slots: 2, cap: 12, "C79")
+        log("C79 \(slots) slot(s) in \(presses) press(es)")
+        XCTAssertEqual(slots, 2, "could not scroll the window two slots ahead")
+
+        log(windowLine("C79-AHEAD"))
+        log(clockLine("C79-AHEAD"))
+        shot("140-two-slots-ahead-before-the-boundary")
+
+        guard let before = windowPosition() else { return XCTFail("no window label while ahead") }
+        XCTAssertEqual(before - atNow, 60, "the window is not two slots ahead of now")
+        XCTAssertEqual(footerState(), "ahead", "the ahead-of-now footer is not drawn on a scrolled window")
+        guard let pillBefore = nowPillLabel() else { return XCTFail("↩ Now is not drawn on a scrolled window") }
+        log("C79 ↩ Now before the boundary: \u{201C}\(pillBefore)\u{201D}")
+        let stripBefore = stripColumns()
+        XCTAssertFalse(stripBefore.first?.contains("· now") == true,
+                       "the now marker is on the strip of a scrolled window: \(stripBefore)")
+
+        // Sample the pill through the wait: this is where "within a half hour, the Now marker tracks
+        // the clock" is measured, minute by minute, on a window that must not move.
+        var pillReadings: [String] = [pillBefore]
+        let deadline = Date().addingTimeInterval(secondsToNextHalfHour() + 40)
+        log("C79 WAIT \(Int(secondsToNextHalfHour())) s to the boundary, sampling every 30 s")
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: min(30, max(1, deadline.timeIntervalSinceNow)))
+            log(clockLine("C79 t-\(Int(max(0, deadline.timeIntervalSinceNow)))s"))
+            if let p = nowPillLabel(), p != pillReadings.last { pillReadings.append(p) }
+        }
+
+        log(windowLine("C79-AFTER"))
+        log(clockLine("C79-AFTER"))
+        shot("141-two-slots-ahead-after-the-boundary")
+        log("C79 ↩ Now readings in order: \(pillReadings)")
+
+        guard let after = windowPosition() else { return XCTFail("no window label after the boundary") }
+        XCTAssertEqual(after, before, "the window moved across the boundary — a scrolled window must not roll")
+        XCTAssertEqual(footerState(), "ahead", "the footer stopped saying the window is ahead of now")
+        XCTAssertNotNil(nowPillLabel(), "↩ Now stopped being drawn on a window still ahead of now")
+        XCTAssertEqual(after - currentHalfHourPosition(), 30,
+                       "the window should be one slot ahead of the new current half hour")
+        XCTAssertFalse(stripColumns().first?.contains("· now") == true,
+                       "the now marker appeared on the strip of a scrolled window")
+        XCTAssertGreaterThan(pillReadings.count, 1,
+                             "the ↩ Now pill's clock never changed while the clock passed: \(pillReadings)")
+        log("C79 RESULT the window stayed at \(after) while the clock passed; ↩ Now advanced \(pillReadings.count - 1) time(s)")
+
+        remote.press(.menu)   // leave the device at now
+        sleep(5)
+    }
+
+    // MARK: (d) — the app backgrounded across a boundary, then the Guide read again
+
+    func testTheGuideIsAtTheTrueHalfHourAfterBackgrounding() {
+        waitForRoom("D79", lead: 240)
+        openGuide()
+        log(windowLine("D79-OPEN"))
+        guard let before = windowPosition() else { return XCTFail("no window label") }
+        XCTAssertEqual(before, currentHalfHourPosition(), "the Guide did not open at the current half hour")
+        shot("150-before-backgrounding")
+
+        log("D79 pressing Home to background the app")
+        remote.press(.home)
+        sleep(8)
+        // 1 = notRunning, 2 = runningBackgroundSuspended, 3 = runningBackground, 4 = foreground.
+        log("D79 app state after Home: \(app.state.rawValue)")
+        XCTAssertNotEqual(app.state, .runningForeground, "the app is still in the foreground after Home")
+        log("D79 backgrounded; waiting out the boundary with the app not in the foreground")
+
+        let deadline = Date().addingTimeInterval(secondsToNextHalfHour() + 40)
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: min(30, max(1, deadline.timeIntervalSinceNow)))
+            log("D79 t-\(Int(max(0, deadline.timeIntervalSinceNow)))s (backgrounded)")
+        }
+
+        log("D79 activating the app again; state before = \(app.state.rawValue)")
+        app.activate()
+        sleep(10)
+        // Two outcomes are possible and this pass reports which one happened rather than assuming:
+        // tvOS may have kept the app suspended with the Guide still on screen, or it may have
+        // evicted it, in which case activating relaunches it cold on to Home.
+        let cameBackOnTheGuide = app.staticTexts[guideLegend].waitForExistence(timeout: 25)
+        log("D79 came back with the Guide still on screen: \(cameBackOnTheGuide) (state \(app.state.rawValue))")
+        if cameBackOnTheGuide {
+            log(windowLine("D79-RESUMED"))
+            log(clockLine("D79-RESUMED"))
+            shot("151-resumed-immediately")
+            // The beat is aligned to the minute, so read again after one has certainly passed.
+            Thread.sleep(forTimeInterval: 70)
+            log(windowLine("D79-RESUMED+70s"))
+            log(clockLine("D79-RESUMED+70s"))
+            shot("152-resumed-after-a-minute")
+        } else {
+            log("D79 the app did not come back on the Guide — tvOS relaunched it rather than resuming it")
+            shot("151x-relaunched-rather-than-resumed")
+            goHome()
+            openGuide()
+            log(windowLine("D79-RELAUNCHED"))
+            log(clockLine("D79-RELAUNCHED"))
+            shot("152x-guide-opened-after-a-relaunch")
+        }
+
+        guard let resumed = windowPosition() else { return XCTFail("no window label after resuming") }
+        log("D79 RESULT window \(before) -> \(resumed); current half hour is \(currentHalfHourPosition())")
+        XCTAssertEqual(resumed, currentHalfHourPosition(),
+                       "the Guide is on a stale half hour after the app sat backgrounded across a boundary")
+        XCTAssertEqual(footerState(), "at-now", "the footer does not say the window is at now after resuming")
+        XCTAssertNotNil(focusedInGrid(), "nothing focused in the grid after resuming; focus=\(focusLine())")
+
+        // And the cold path the step names: leave the Guide and open it again.
+        goHome()
+        openGuide()
+        log(windowLine("D79-REOPENED"))
+        shot("153-guide-reopened")
+        XCTAssertEqual(windowPosition(), currentHalfHourPosition(),
+                       "reopening the Guide did not land on the true current half hour")
+        log("D79 RESULT the reopened Guide is at the current half hour")
+    }
+
+    // MARK: (e) — the clock stops with the screen, and no beat outlives it
+
+    /// The app prints `[guide] clock stopped after N beat(s)` when the `.task` loop ends, which is
+    /// the evidence this item asks for. It needs the app's console — see the file header — so this
+    /// test drives the remote and the console is read beside it.
+    func testTheClockStopsWhenTheGuideDoes() {
+        openGuide()
+        log("E79 the Guide is open; sitting on it for 3 minutes so the clock beats")
+        log(clockLine("E79-OPEN"))
+        Thread.sleep(forTimeInterval: 185)
+        log(clockLine("E79-AFTER-3-MIN"))
+        shot("160-three-minutes-on-the-guide")
+
+        // Out to the rail and into Radio: `ScreenShell`'s `.id(current)` destroys the Guide here.
+        for press in 1...4 {
+            if focusIsInTheRail() { break }
+            remote.press(.left); sleep(2)
+            log("E79 left \(press) -> \(focusZone())")
+        }
+        XCTAssertTrue(focusIsInTheRail(), "could not reach the rail; focus=\(focusLine())")
+        for _ in 0..<5 { remote.press(.down); usleep(700_000) }
+        sleep(1)
+        remote.press(.select); sleep(8)
+        shot("161-radio")
+        log("E79 on Radio — the console must now carry \u{201C}[guide] clock stopped after N beat(s)\u{201D}")
+
+        // Three more minutes away from the Guide. If a beat had outlived the screen it would keep
+        // printing, and a second Guide would later report a beat count that includes them.
+        Thread.sleep(forTimeInterval: 185)
+        log("E79 three minutes away from the Guide")
+
+        // Back to the Guide, sit for two minutes, then leave again: the second stop line reports the
+        // second clock's own beats, and nothing else.
+        for _ in 1...4 {
+            if focusIsInTheRail() { break }
+            remote.press(.left); sleep(2)
+        }
+        for _ in 0..<5 { remote.press(.up); usleep(700_000) }
+        sleep(1)
+        remote.press(.select)
+        XCTAssertTrue(app.staticTexts[guideLegend].waitForExistence(timeout: 40), "the Guide did not come back")
+        sleep(6)
+        log(clockLine("E79-SECOND-VISIT"))
+        Thread.sleep(forTimeInterval: 125)
+        remote.press(.menu); sleep(6)
+        log("E79 left the Guide a second time; zone=\(focusZone())")
+        shot("162-left-the-guide-again")
+        log("E79 RESULT two clocks started and two stopped — read the console for the two stop lines")
     }
 
     // MARK: 1 — Right along the first row, and three presses past its last cell

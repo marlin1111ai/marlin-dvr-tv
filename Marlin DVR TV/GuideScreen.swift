@@ -25,6 +25,13 @@
 //  untouched. The press is received through `.onMoveCommand` on the grid's own `ScrollView`, which
 //  is where Pass 76 measured it arriving, and the edge is read from the settled focus because the
 //  focus write and the command delivery race (see `gridMoved`).
+//  Pass 79: the Guide keeps up with the clock. A once-a-minute beat on this screen's own `.task`
+//  republishes `GuideModel.now` — which is what makes `isAtNow`, the footer, the strip's "· now"
+//  and the "↩ Now · 10:47" pill tell the truth as the clock passes, because a `Date()` read inside
+//  a view body is observed by nothing and so redraws nothing — and, while the window is sitting at
+//  a half hour the clock has already left, advances it to the new current half hour with the same
+//  single write to `windowStart` that "+12h", "↩ Now" and a Pass 77 nudge use. A window scrolled
+//  ahead is never moved. The beat is a `.task` on this screen, so it stops when the screen does.
 //
 
 import SwiftUI
@@ -96,8 +103,21 @@ final class GuideModel {
     }
 
     var windowEnd: Int { windowStart + Self.windowSeconds }
-    var isAtNow: Bool { windowStart == TimeFormat.currentHalfHour }
     var slotStarts: [Int] { (0..<4).map { windowStart + $0 * Self.slotSeconds } }
+
+    /// Pass 79: the wall clock as this screen last read it, republished by every beat of `tick()`.
+    /// Everything the Guide derives from "now" is derived from **this** and never from `Date()`:
+    /// a `Date()` read inside a view body is observed by nothing, so nothing redraws when the clock
+    /// moves — which is the whole of the defect the owner reported on 2026-09-12.
+    private(set) var now = Date()
+
+    /// The half hour `now` falls in. The same truncation the server performs (guide.go:659-663) and
+    /// the same arithmetic as `TimeFormat.currentHalfHour`, over the observed clock above rather
+    /// than over `Date()`, so that `isAtNow` — and the footer, the strip's "· now" and the two
+    /// header pills that turn on it — re-evaluate when a beat moves the clock.
+    var nowHalfHour: Int { Int(now.timeIntervalSince1970 / 1800) * 1800 }
+
+    var isAtNow: Bool { windowStart == nowHalfHour }
 
     /// True when the window's start and end fall on different days (frame 3c header).
     var crossesMidnight: Bool {
@@ -105,7 +125,8 @@ final class GuideModel {
     }
 
     func loadNow() async {
-        windowStart = TimeFormat.currentHalfHour
+        now = Date()
+        windowStart = nowHalfHour
         await fetch(from: windowStart)
     }
 
@@ -145,6 +166,32 @@ final class GuideModel {
         return true
     }
 
+    /// Pass 79: one beat of the screen's clock, once a minute while the Guide is on screen
+    /// (owner, 2026-09-12).
+    ///
+    /// It **always** republishes `now`, which is what makes `isAtNow`, the footer, the strip's
+    /// "· now" and the "↩ Now · 10:47" pill tell the truth as the clock passes. It advances the
+    /// window **only when the clock has already left the half hour the window is sitting at**:
+    /// `windowStart` is only ever set to the current half hour or advanced past it, so
+    /// `windowStart < nowHalfHour` is exactly "the window was at now and the clock has moved on".
+    /// A window the owner has scrolled ahead is therefore never moved, and neither is one the clock
+    /// has merely caught up with — that one simply becomes `isAtNow` again.
+    ///
+    /// The roll is one write to `windowStart`, so the time strip, every row, the header's date
+    /// range and the "· now" marker move together: all of them are derived from it and from nothing
+    /// else. **The refetch is the existing rule** — the same line `snapToNow()` and
+    /// `nudgeForward()` use — so a beat inside the fetched 24 hours makes no request at all.
+    ///
+    /// Returns true when the window actually moved, which is the caller's signal to settle focus.
+    @discardableResult
+    func tick() async -> Bool {
+        now = Date()
+        guard windowStart < nowHalfHour else { return false }
+        windowStart = nowHalfHour
+        if windowStart < fetchStart || windowEnd > fetchEnd { await fetch(from: windowStart) }
+        return true
+    }
+
     /// Pass 72: a collection was chosen or cleared. Re-run the fetch at the window the Guide
     /// is already showing, so the pick does not move the clock.
     func reloadForCollection() async {
@@ -152,9 +199,10 @@ final class GuideModel {
     }
 
     func snapToNow() async {
-        let now = TimeFormat.currentHalfHour
-        windowStart = now
-        if now < fetchStart || now + Self.windowSeconds > fetchEnd { await fetch(from: now) }
+        now = Date()
+        let start = nowHalfHour
+        windowStart = start
+        if start < fetchStart || start + Self.windowSeconds > fetchEnd { await fetch(from: start) }
     }
 
     private func fetch(from start: Int) async {
@@ -389,6 +437,19 @@ struct GuideScreen: View {
         .task {
             await model.loadNow()
             focusSoon { focused = firstCellID ?? "collections" }
+            // Pass 79: the clock. It is a `.task` on this screen and nothing else, which is what
+            // ties it to the screen's own lifetime: `ScreenShell.swift:57` puts `.id(current)` on
+            // the content and destroys the Guide on every rail visit, and SwiftUI cancels a
+            // destroyed view's `.task`, so no beat can outlive the screen as an orphan. The count
+            // is printed when the loop ends, which is the evidence that it ended.
+            var beats = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.secondsToNextMinute()))
+                guard !Task.isCancelled else { break }
+                beats += 1
+                await beat()
+            }
+            print("[guide] clock stopped after \(beats) beat(s)")
         }
         .onChange(of: focused) { old, new in
             if let new, new.contains("@") { lastCell = new }
@@ -501,6 +562,52 @@ struct GuideScreen: View {
         }
     }
 
+    // MARK: Pass 79 — the Guide keeps up with the clock
+
+    /// Pass 79: the beat is aligned to the wall clock's next whole minute rather than spaced a fixed
+    /// 60 s apart, so a roll lands within a moment of the half hour it belongs to and the
+    /// "↩ Now · 10:47" clock changes on the minute it names.
+    private static func secondsToNextMinute() -> Double {
+        60 - Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
+    }
+
+    /// One beat. `GuideModel.tick()` republishes the clock and rolls the window if the clock has
+    /// left it behind; this settles focus afterwards by Pass 77's rule.
+    ///
+    /// **While one of this screen's own overlays is up the beat does nothing at all**, which is the
+    /// guard `gridMoved` takes and for the same reason: the airing sheet, the channel menu and the
+    /// collections drop-down each own the remote and disable the grid, so a roll underneath one of
+    /// them would move the grid and could leave the sheet's own Menu restoring focus to a cell that
+    /// no longer exists. The next beat rolls once the overlay closes.
+    private func beat() async {
+        guard model.sheet == nil, channelMenu == nil, !collectionsOpen else { return }
+        let held = focused
+        guard await model.tick() else { return }
+        print("[guide] roll -> \(model.windowLabel) · fetch=\(model.fetchStart)")
+        settleFocusAfterRoll(held)
+    }
+
+    /// Pass 77's focus rule, after a roll rather than after a nudge: focus stays on the same
+    /// programme while that programme is still in the window, and goes to the leftmost cell its row
+    /// still has when the programme has left it. A row with no cell at all in the new window falls
+    /// back to `firstCellID` — this screen's existing convention, and the third case Pass 77 open
+    /// question 1 records.
+    ///
+    /// Anything that is not a programme cell is left exactly where it is: a channel cell, the
+    /// collections button, a header pill, or the rail, where this screen's `focused` is nil.
+    private func settleFocusAfterRoll(_ held: String?) {
+        guard let held, let key = Self.cellKey(held),
+              let row = model.rows.first(where: { $0.channel.id == key.channel }) else { return }
+        let cells = model.cells(for: row)
+        if cells.contains(where: { $0.id == held }) {
+            print("[guide] roll · focus stays on \(held)")
+            return
+        }
+        let landing = cells.first?.id ?? firstCellID ?? "collections"
+        print("[guide] roll · \(held) left the window, focus to \(landing)")
+        focusSoon { focused = landing }
+    }
+
     /// Menu on the overlay: it closes and nothing changes.
     private func closeCollections() {
         collectionsOpen = false
@@ -563,7 +670,9 @@ struct GuideScreen: View {
                             focusSoon { focused = firstCellID ?? "collections" }
                         }
                     } label: {
-                        PillLabel(text: "↩ Now · \(TimeFormat.clock(Date()))", active: true, focused: focused == "now", size: Nocturne.TextSize.floor)
+                        // Pass 79: the observed clock, not `Date()` — a `Date()` read here is not
+                        // observed by anything, so the pill kept the time the screen opened at.
+                        PillLabel(text: "↩ Now · \(TimeFormat.clock(model.now))", active: true, focused: focused == "now", size: Nocturne.TextSize.floor)
                     }
                     .buttonStyle(BareButtonStyle())
                     .focused($focused, equals: "now")
