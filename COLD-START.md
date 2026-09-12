@@ -892,6 +892,25 @@ compensated for in the app.
   (`reports/2026-09-08-pass40-session-start-values.md` §1 records their path); **if they vanish, only
   a fresh Apple TV capture could recover the rows — which is exactly what they asked us not to
   spend.**
+- **Their 1.8.1 report was answered on 2026-09-11, and its central claim was corrected.** That claim
+  — *no client sends `"format":"file"` on the recording session request, so the LIVE badge, the
+  refused fast-forward and the resume overshoot are all still live* — **was true of every client
+  until the evening of 2026-09-08 and is out of date now.** This app has sent `"format":"file"` on
+  every recording session request since `137f1de` (2026-09-08 21:01:06 -0400), which is an ancestor
+  of `origin/main` and of `0b3589d`, the build on both Apple TVs; `git diff 137f1de HEAD` over the
+  three player files is empty, so nothing since has reverted it (Pass 70). The three defects stay
+  closed on the evidence already recorded above — the badge and the fast-forward wait on the owner's
+  own Home Theater testing of 2026-09-08, the overshoot by Pass 42's measurement. **The reply is
+  `reports/2026-09-11-pass70-note-to-marlin-dvr.md`**, written to be read by them and confined to
+  what they asked about; the check behind it is
+  `reports/2026-09-11-pass69-server-181-check.md`. **Nothing was asked of them and no request was
+  sent to the server.** In particular the undocumented route (Pass 41 open question 7.6) was **not**
+  re-raised and stays open.
+- **1.8.1's change to `GET /api/library`'s `recordings` count — it now excludes trashed recordings —
+  needs nothing from this app.** The field is a non-optional `Int` (`Models.swift:330`), so a value
+  change cannot affect decoding, and it is displayed in exactly two places: the Recordings screen
+  header (`RecordingsScreen.swift:86`) and the Home Recordings tile (`HomeView.swift:76`). Nothing
+  else reads it and nothing derives from it. **Both strings simply show a smaller number** (Pass 70).
 
 ## Open questions
 

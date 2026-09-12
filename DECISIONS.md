@@ -942,3 +942,52 @@ This entry is a **standing rule**, not an observation about this pass.
   is the rule working the first time it is applied.
 - **This is settled. No later pass should re-raise it**, and none should re-derive why the old
   ordering existed. Pass 67 §7.1 named the fix; this is it.
+
+
+## 2026-09-11 (Pass 70 — the server's 1.8.1 report checked and answered)
+
+- **The marlin-dvr project's 1.8.1 report was checked against this app, and its central claim does
+  not hold here.** That claim is that no client sends `"format":"file"` on the recording session
+  request. **This app has sent it on every recording session request since commit `137f1de`,
+  2026-09-08 21:01:06 -0400**, which is an ancestor of `origin/main` and of `0b3589d`, the build
+  installed on both Apple TVs. Verified from git rather than from the notebook:
+  `git log -S'case .recording: return "file"'` names that one commit, and
+  `git diff 137f1de HEAD` over `PlayRequest.swift`, `PlaybackSession.swift` and `PlayerModel.swift`
+  is **empty**, so nothing since has reverted or gated the route. The choice is
+  `PlayRequest.swift:49` and it reaches the wire at `PlaybackSession.swift:70`, the app's only
+  `POST /api/play/sessions` site. **Their claim was true of every client, this one included, until
+  the evening of 2026-09-08; it is out of date, not wrong about a mechanism.**
+- **The three defects stay closed, and the evidence for each is unchanged.** The LIVE badge and the
+  refused fast-forward were closed on the owner's own Home Theater testing of 2026-09-08, and the
+  resume overshoot by measurement in the Pass 42 device run (`start=1484.004768173`, a skip landing
+  at item time `t=272.538500` with the app reporting `position 1478.54 s` — exactly
+  `startOffset + t`, and the break's own `endSeconds`). **Nothing was re-tested this pass**: no
+  build, no device run, and no request to the server.
+- **1.8.1's library-count change affects two display strings and needs no app change.** `recordings`
+  in `GET /api/library` now excludes trashed recordings. The field is a non-optional `Int`
+  (`Models.swift:330`), so a change in its value cannot affect decoding, and it is displayed in
+  exactly two places — the Recordings screen header (`RecordingsScreen.swift:86`) and the Home
+  Recordings tile (`HomeView.swift:76`). Nothing else in the app reads it, compares it, caches it,
+  sums it with the trash count or derives anything from it; the Trash screen counts its own list
+  (`TrashManageView.swift:96-99`). **Both strings simply show a smaller number.**
+- **A note was written back to the marlin-dvr project**,
+  `reports/2026-09-11-pass70-note-to-marlin-dvr.md`, addressed to them and confined to what they
+  asked about: the commit and where it has shipped, the exact JSON body with the client id redacted,
+  that the app plays the response's `url` and never builds a playback URL, how each of the three
+  defects was verified closed, the "Preparing the recording" state during the remux wait, the three
+  410 paths, the two places the library count is displayed, and the desync. **It makes no request of
+  them, passes no judgement on their code, and raises nothing they did not ask about** — in
+  particular it does not re-raise the undocumented route (Pass 41 open question 7.6), which stays
+  open and unasked.
+- **The audio/video desync is unchanged and stays where Pass 39 put it.** No client-side
+  compensation has ever been built and none is to be. Their outstanding request — that the owner
+  match the sessions in which he observed the desync to individual session records — **is still
+  outstanding and is the owner's to answer.**
+- **Pass 69's report is in the repo.** It was written to the session scratchpad because that pass's
+  own end-state required a clean tree and forbade a commit; the owner decided for this pass that it
+  belongs in `reports/`. It went in **byte-identical** as
+  `reports/2026-09-11-pass69-server-181-check.md` — same 32,344 bytes, same 507 lines, same
+  `sha256 8084a7a7…` — heading already present, so nothing was added. **Its own §0 paragraph still
+  says the report sits outside the repo.** That sentence is now superseded by this pass and was
+  deliberately **not** edited: reports are the historical record and are never rewritten to match a
+  later decision (DECISIONS.md, 2026-09-09 (Pass 56)).
