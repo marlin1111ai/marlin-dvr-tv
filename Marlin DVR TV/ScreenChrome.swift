@@ -10,14 +10,39 @@
 
 import SwiftUI
 
-struct ScreenHeader<Trailing: View>: View {
+struct ScreenHeader<Accessory: View, Trailing: View>: View {
     let title: String
     let subtitle: String?
+    /// Pass 72: one optional slot, rendered between the title and the subtitle, for a control
+    /// that belongs to the screen's own name rather than to its right-hand pills — the Guide's
+    /// collections button. When it is `EmptyView` the `HStack` lays out no subview and takes no
+    /// spacing for it, so a header without one is the header it always was.
+    @ViewBuilder let accessory: () -> Accessory
     @ViewBuilder let trailing: () -> Trailing
 
-    init(_ title: String, subtitle: String? = nil, @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }) {
+    /// No accessory. **`Accessory` is pinned by the `where` clause rather than defaulted**, which
+    /// leaves exactly one closure parameter, so the eleven callers that pass only a trailing
+    /// closure forward-match it and are untouched. Giving `accessory` a default instead puts two
+    /// closure parameters in one initialiser, and every one of those callers then falls back to
+    /// Swift's deprecated *backward* matching — a warning apiece, and the closure bound to
+    /// whichever parameter happens to be last rather than to the one meant.
+    init(_ title: String,
+         subtitle: String? = nil,
+         @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }) where Accessory == EmptyView {
         self.title = title
         self.subtitle = subtitle
+        self.accessory = { EmptyView() }
+        self.trailing = trailing
+    }
+
+    /// With an accessory. Both closures are labelled at the one call site that uses this.
+    init(_ title: String,
+         subtitle: String? = nil,
+         @ViewBuilder accessory: @escaping () -> Accessory,
+         @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.title = title
+        self.subtitle = subtitle
+        self.accessory = accessory
         self.trailing = trailing
     }
 
@@ -27,6 +52,7 @@ struct ScreenHeader<Trailing: View>: View {
                 .font(.nocturne(Nocturne.TextSize.screenTitle, .medium))
                 .tracking(-0.01 * Nocturne.TextSize.screenTitle)
                 .foregroundStyle(Nocturne.text)
+            accessory()
             if let subtitle {
                 Text(subtitle)
                     .font(.nocturne(Nocturne.TextSize.secondary))

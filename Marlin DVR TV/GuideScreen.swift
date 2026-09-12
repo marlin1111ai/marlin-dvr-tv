@@ -14,6 +14,11 @@
 //  Pass 9: a click-and-hold is delivered by `RemoteHold` (window press recognizer) and acted
 //  on here against whatever this screen has focused — a programme cell opens the sheet, a
 //  channel cell in the left column opens the channel's Favorite menu.
+//  Pass 72: the header carries a collections button between "Guide" and the date range. It
+//  opens `CollectionsMenu`; picking a collection re-runs the fetch with `filter=<id>`, and the
+//  server returns that collection's members in the owner's own order (sources.go:389-401).
+//  The selection itself lives in `GuideCollectionsModel`, above the shell, because this
+//  screen is rebuilt on every rail visit (ScreenShell.swift:55).
 //
 
 import SwiftUI
@@ -66,6 +71,9 @@ final class GuideModel {
     static let slotSeconds = 1800
 
     private let api: APIClient
+    /// Pass 72: the chosen collection, owned above the shell. Every fetch reads the filter
+    /// from here, so all three callers of `fetch(from:)` carry the selection by construction.
+    private let collections: GuideCollectionsModel
     private(set) var rows: [GuideRow] = []
     private(set) var jobs: [Job] = []
     private(set) var fetchStart = 0
@@ -76,8 +84,9 @@ final class GuideModel {
     private(set) var windowStart = 0
     var sheet: AiringSelection?
 
-    init(api: APIClient) {
+    init(api: APIClient, collections: GuideCollectionsModel) {
         self.api = api
+        self.collections = collections
     }
 
     var windowEnd: Int { windowStart + Self.windowSeconds }
@@ -100,6 +109,12 @@ final class GuideModel {
         if windowEnd > fetchEnd { await fetch(from: windowStart) }
     }
 
+    /// Pass 72: a collection was chosen or cleared. Re-run the fetch at the window the Guide
+    /// is already showing, so the pick does not move the clock.
+    func reloadForCollection() async {
+        await fetch(from: windowStart)
+    }
+
     func snapToNow() async {
         let now = TimeFormat.currentHalfHour
         windowStart = now
@@ -108,10 +123,15 @@ final class GuideModel {
 
     private func fetch(from start: Int) async {
         do {
-            async let guide = api.guide(start: start, slots: Self.fetchSlots)
+            async let guide = api.guide(start: start, slots: Self.fetchSlots, filter: collections.selectedId)
             async let schedule = api.schedule()
             let g = try await guide
-            rows = g.channels
+            // Pass 72: the server validates nothing a collection stores, so a member id held
+            // twice comes back as two rows carrying the same channel (sources.go:396-400).
+            // `GuideRow.id` is the channel id and the grid is a plain `Identifiable` ForEach,
+            // which duplicate ids break: keep the first occurrence and drop the rest.
+            var seen = Set<String>()
+            rows = g.channels.filter { seen.insert($0.id).inserted }
             fetchStart = g.start
             fetchEnd = g.start + g.slots * Self.slotSeconds
             endOfListings = !rows.contains { $0.blocks.contains { $0.program != nil } }
@@ -189,6 +209,8 @@ final class GuideModel {
 
 struct GuideScreen: View {
     let api: APIClient
+    /// Pass 72: the chosen collection. Owned above the shell so it survives a rail visit.
+    let collections: GuideCollectionsModel
     let onLeave: () -> Void
     let onPlay: (PlayRequest) -> Void
     @Environment(RemoteHold.self) private var hold
@@ -196,15 +218,17 @@ struct GuideScreen: View {
     @FocusState private var focused: String?
     @State private var lastCell: String?
     @State private var channelMenu: MergedChannel?
+    @State private var collectionsOpen = false
 
     /// The focus id of a channel cell in the left column.
     static func channelFocusID(_ channel: MergedChannel) -> String { "ch:\(channel.id)" }
 
-    init(api: APIClient, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
+    init(api: APIClient, collections: GuideCollectionsModel, onLeave: @escaping () -> Void, onPlay: @escaping (PlayRequest) -> Void) {
         self.api = api
+        self.collections = collections
         self.onLeave = onLeave
         self.onPlay = onPlay
-        _model = State(initialValue: GuideModel(api: api))
+        _model = State(initialValue: GuideModel(api: api, collections: collections))
     }
 
     /// DECISIONS.md 2026-09-06: a click on a program airing now plays it; a click on a
@@ -221,7 +245,7 @@ struct GuideScreen: View {
     /// A hold: open the sheet for the focused programme cell, or the Favorite menu for the
     /// focused channel cell. Anything else focused is left alone.
     private func handleHold() {
-        guard model.sheet == nil, channelMenu == nil, let focus = focused else { return }
+        guard model.sheet == nil, channelMenu == nil, !collectionsOpen, let focus = focused else { return }
         if focus.hasPrefix("ch:") {
             guard let row = model.rows.first(where: { Self.channelFocusID($0.channel) == focus }) else { return }
             hold.armSwallow()
@@ -252,6 +276,14 @@ struct GuideScreen: View {
                     ErrorLine(text: error)
                 } else if !model.loaded {
                     LoadingLine().focusable().focused($focused, equals: "loading")
+                } else if model.rows.isEmpty, let name = collections.selectedName {
+                    // Pass 72 step 5. Non-interactive on purpose: the remote is not stranded
+                    // by it, because the reload puts focus on the collections button above
+                    // (`focused = firstCellID ?? "collections"`), which is drawn whatever the
+                    // grid holds.
+                    Text("Nothing in \(name) right now")
+                        .font(.nocturne(Nocturne.TextSize.secondary))
+                        .foregroundStyle(Nocturne.neutral500)
                 }
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 12) {
@@ -271,9 +303,16 @@ struct GuideScreen: View {
                     }
                     .padding(.vertical, 6)
                 }
-                .disabled(model.sheet != nil || channelMenu != nil)
+                .disabled(model.sheet != nil || channelMenu != nil || collectionsOpen)
                 legend
                     .padding(.top, 16)
+            }
+            if collectionsOpen {
+                CollectionsMenu(
+                    model: collections,
+                    onPick: { pick($0) },
+                    onClose: closeCollections
+                )
             }
             if let channel = channelMenu {
                 ChannelActionsMenu(
@@ -305,15 +344,17 @@ struct GuideScreen: View {
         .defaultFocus($focused, "loading")
         .task {
             await model.loadNow()
-            focusSoon { focused = firstCellID ?? "page" }
+            focusSoon { focused = firstCellID ?? "collections" }
         }
         .onChange(of: focused) { _, new in
             if let new, new.contains("@") { lastCell = new }
         }
         .onChange(of: hold.holds) { _, _ in handleHold() }
         .onExitCommand {
-            print("[guide] menu: sheet=\(model.sheet != nil) channelMenu=\(channelMenu != nil) atNow=\(model.isAtNow)")
-            if channelMenu != nil {
+            print("[guide] menu: sheet=\(model.sheet != nil) channelMenu=\(channelMenu != nil) collections=\(collectionsOpen) atNow=\(model.isAtNow)")
+            if collectionsOpen {
+                closeCollections()
+            } else if channelMenu != nil {
                 closeChannelMenu()
             } else if model.sheet != nil {
                 model.sheet = nil
@@ -324,11 +365,34 @@ struct GuideScreen: View {
             } else if !model.isAtNow {
                 Task {
                     await model.snapToNow()
-                    focusSoon { focused = firstCellID ?? "page" }
+                    focusSoon { focused = firstCellID ?? "collections" }
                 }
             } else {
                 onLeave()
             }
+        }
+    }
+
+    /// Menu on the overlay: it closes and nothing changes.
+    private func closeCollections() {
+        collectionsOpen = false
+        focusSoon { focused = "collections" }
+    }
+
+    /// A row was chosen. The selection is stored (and persisted), then the Guide re-fetches at
+    /// the window it is already showing.
+    ///
+    /// Pass 72 step 7: this is the Guide's existing mechanism — a plain `@FocusState`
+    /// assignment behind `focusSoon` — tried first and measured on the Apple TV, rather than
+    /// the `.id(generation)` rebuild the Search screen needed (GuideSearchScreen.swift:295-311).
+    /// The reload replaces every row, which is the case that screen's plain assignment failed.
+    private func pick(_ collection: ChannelCollection?) {
+        collectionsOpen = false
+        collections.select(collection)
+        Task {
+            await model.reloadForCollection()
+            print("[guide] collection \(collection?.name ?? "All Channels") rows=\(model.rows.count) refocus=\(firstCellID ?? "collections")")
+            focusSoon { focused = firstCellID ?? "collections" }
         }
     }
 
@@ -346,13 +410,29 @@ struct GuideScreen: View {
     }
 
     private var header: some View {
-        ScreenHeader("Guide", subtitle: model.loaded ? model.windowLabel : nil) {
+        ScreenHeader("Guide", subtitle: model.loaded ? model.windowLabel : nil, accessory: {
+            // Pass 72: the collections button, in `ScreenHeader`'s slot between the title and
+            // the date range. It is drawn whatever the grid holds — before the first fetch, on
+            // an error, and on an empty collection — so the screen always has something the
+            // remote can reach. Same pill, same focus section, same `BareButtonStyle` as
+            // "↩ Now" and "+12h"; `active` marks that a filter is on.
+            Button {
+                collectionsOpen = true
+            } label: {
+                PillLabel(text: collections.buttonLabel,
+                          active: collections.selectedId != nil,
+                          focused: focused == "collections",
+                          size: Nocturne.TextSize.floor)
+            }
+            .buttonStyle(BareButtonStyle())
+            .focused($focused, equals: "collections")
+        }, trailing: {
             HStack(spacing: 14) {
                 if model.loaded && !model.isAtNow {
                     Button {
                         Task {
                             await model.snapToNow()
-                            focusSoon { focused = firstCellID ?? "page" }
+                            focusSoon { focused = firstCellID ?? "collections" }
                         }
                     } label: {
                         PillLabel(text: "↩ Now · \(TimeFormat.clock(Date()))", active: true, focused: focused == "now", size: Nocturne.TextSize.floor)
@@ -373,7 +453,7 @@ struct GuideScreen: View {
                     .focused($focused, equals: "page")
                 }
             }
-        }
+        })
         .focusSection()
     }
 

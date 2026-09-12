@@ -991,3 +991,73 @@ This entry is a **standing rule**, not an observation about this pass.
   says the report sits outside the repo.** That sentence is now superseded by this pass and was
   deliberately **not** edited: reports are the historical record and are never rewritten to match a
   later decision (DECISIONS.md, 2026-09-09 (Pass 56)).
+
+## 2026-09-12 (Pass 72 — channel collections in the Guide)
+
+**The owner's design, taken on 2026-09-11 and built in Pass 72.** The Guide's header gains a
+collections button; pressing it drops a list; picking a collection reloads the grid filtered to it,
+in the owner's own order; the button takes the collection's name; the Apple TV remembers the pick.
+Pass 71 reconnoitred it read-only (`reports/2026-09-11-pass71-guide-collections-recon.md`), Pass 72
+built it (`reports/2026-09-12-pass72-guide-collections.md`). **Everything else in the app is
+untouched.**
+
+- **The header row is "Guide" · collections button · date range · ↩ Now / +12h** (owner,
+  2026-09-11). `ScreenHeader` had title → subtitle → `Spacer` → trailing and **no third slot**
+  (Pass 71 §2.1), so it gains one optional `accessory` slot between the title and the subtitle,
+  defaulting to `EmptyView`. **The eleven other callers, which pass nothing, render byte-identically**, which
+  was not assumed: the same screens were photographed on Home Theater from HEAD's code and from
+  this pass's, and On Later's title `(236.0, 60.0, 191.0, 62.5)` / subtitle `(455.0, 84.5, 478.5,
+  31.5)` and Cameras' title `(236.0, 60.0, 201.0, 62.5)` / subtitle `(465.0, 84.5, 130.5, 31.5)`
+  are identical to the point in both. An `EmptyView` in an `HStack` is no subview and takes no
+  spacing.
+- **The drop-down is the app's own overlay of buttons, the same mechanism as `ChannelActionsMenu`**
+  (owner, 2026-09-11) — not SwiftUI's `Menu`, not `Picker`, not `.sheet`. Pass 71 §4 established
+  that all three exist on tvOS 18 but that **none of them has ever been presented by this app on
+  either Apple TV**, while the `ZStack` overlay is proven on the device across Passes 8, 9, 10, 47
+  and 49. `CollectionsMenu` is that shape: dimmed backdrop, `Nocturne.surface` card, `MenuRow`s,
+  its own `.focusSection()`, Menu closing it with no change.
+- **The filter value is the collection id, never the name** (owner, 2026-09-11). The server's
+  `findCollection` accepts either (`collections.go:50-60`), but four built-in filter words —
+  `All Channels`, `Favorites`, `HD`, `Non-HD` — shadow a collection of the same name
+  (`sources.go:362`), and duplicate names resolve to the first in the file. An id has neither trap.
+  "All Channels" sends **no `filter` parameter at all**.
+- **The selection lives above `ScreenShell` and in `UserDefaults`.** `.id(current)` at
+  `ScreenShell.swift:55` destroys `GuideScreen` and its model on every rail visit, so
+  `GuideCollectionsModel` is owned by the app the way `HomeModel`, `WeatherModel` and
+  `GuideSearchModel` are. **One new key, `"marlinGuideCollection"`** — the fourth this app writes —
+  holding JSON `{"id","name"}`. The **name** is stored beside the id deliberately: the collections
+  read happens only when the overlay opens, so without it the button would read "All Channels" over
+  a filtered grid on the first frame after a relaunch.
+- **A saved id the server no longer has reverts to All Channels silently, and the key is cleared.**
+  This is not tidiness. The server answers an **unknown** filter by applying no predicate at all and
+  returning every visible channel — not an error, not an empty list (`sources.go:362-364`).
+  **Measured live on 2026-09-12**: `GET /api/guide?filter=col-does-not-exist-pass72&slots=1`
+  answered `channelCount: 91`, the whole lineup. A deleted collection would otherwise leave the
+  Apple TV showing everything under a button still reading the old name.
+- **Duplicate member ids are collapsed, first occurrence kept.** The server validates nothing a
+  collection stores and returns a duplicate as two rows with the same channel
+  (`sources.go:396-400`); `GuideRow.id` is the channel id and the grid is a plain `Identifiable`
+  `ForEach`, which duplicate ids break. Unexercised in the owner's data.
+- **The Guide's existing re-focus mechanism was enough, and this was measured rather than
+  assumed.** Step 7 required trying the plain `@FocusState` assignment behind `focusSoon` first,
+  and falling back to the `.id(generation)` rebuild the Search screen needed
+  (`GuideSearchScreen.swift:295-311`) only if the device showed nothing focused. **It did not.**
+  Across six row-replacing reloads on Home Theater — choosing a collection, `+12h`, `↩ Now`, back
+  to All Channels, a rail round trip and a relaunch — focus landed on a real cell every time and
+  was never empty. **No generation counter was added to the Guide.** This also answers, for this
+  screen and this case, the standing question from Passes 63, 65, 66 and 68 that `GuideScreen` might
+  carry the same latent focus defect: on a rows-replaced reload it does not.
+- **The focus fallback is now the collections button, not `"page"`.** `firstCellID ?? "page"` named
+  a view that is not drawn once `endOfListings` is true, and with an empty collection neither header
+  pill is drawn at all — the stranded-remote failure `TrashManageView.swift:58-62` and
+  `RadarScreen.swift:202-203` both record from the device. The collections button is drawn whatever
+  the grid holds, so it is always a valid landing place.
+- **The empty-collection state is built and is NOT proven on the device, and the reason is the
+  server.** Step 5 allowed the made-up-id proof only if the server answers an unknown filter with an
+  empty envelope; it answers with the full lineup, so that sub-step **stopped** as the step
+  instructed. The owner's one collection has five live, non-DRM, non-hidden members, and the only
+  other ways to reach zero rows are writes this project may not make. The line "Nothing in <name>
+  right now" and the focus placement are built and code-traced, **not seen**.
+- **`GET /api/guide/now` and `GET /api/channels` are NOT filtered by the collection.** Both honour
+  `filter` and both are already called by this app, but the approved design is the Guide only
+  (Pass 71 open question 8). Home, On Now, Favorites and Search are untouched.

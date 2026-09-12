@@ -28,6 +28,8 @@ struct ScreenShell: View {
     /// the content on every visit and the owner's decision is that a query and its results
     /// survive a trip to the rail and back.
     let search: GuideSearchModel
+    /// Pass 72: the Guide's chosen collection, owned above this shell for the same reason.
+    let collections: GuideCollectionsModel
     let onPlay: (PlayRequest) -> Void
     @FocusState private var focus: ShellFocus?
     /// True while the remote is inside the rail; the guard on the restore, so it fires on the
@@ -93,7 +95,7 @@ struct ScreenShell: View {
         switch current {
         case .favorites: FavoritesScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .onNow: OnNowScreen(api: api, onLeave: leave, onPlay: onPlay)
-        case .guide: GuideScreen(api: api, onLeave: leave, onPlay: onPlay)
+        case .guide: GuideScreen(api: api, collections: collections, onLeave: leave, onPlay: onPlay)
         case .onLater: OnLaterScreen(api: api, onLeave: leave)
         case .recordings: RecordingsScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .cameras: CamerasScreen(api: api, onLeave: leave, onPlay: onPlay)

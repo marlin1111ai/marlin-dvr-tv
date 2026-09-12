@@ -68,6 +68,16 @@ extension APIClient {
         return response
     }
 
+    /// GET /api/collections (collections.go:90-99) — Pass 72. Every collection in one read;
+    /// there is no `GET /api/collections/{id}`. The order is the server's own, the order of
+    /// `data/collections.json`, which no route reorders. **No DRM rule applies here**: a
+    /// collection is a list of channel ids, not a list of channels, and the rule is applied
+    /// where the rows arrive (`guide` above, line 67).
+    func collections() async throws -> [ChannelCollection] {
+        let response: CollectionsResponse = try await get("/api/collections")
+        return response.collections
+    }
+
     /// GET /api/guide/later (guide.go:695-754).
     func later() async throws -> LaterResponse {
         try await get("/api/guide/later")

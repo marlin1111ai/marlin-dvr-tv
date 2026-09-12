@@ -19,6 +19,8 @@ struct ContentView: View {
     /// Pass 63: Search's query and results outlive its screen, which `ScreenShell` rebuilds
     /// on every visit.
     let search: GuideSearchModel
+    /// Pass 72: and so does the Guide's chosen collection.
+    let collections: GuideCollectionsModel
     @State private var screen: Destination? = nil
     @State private var playRequest: PlayRequest? = nil
     @State private var hold = RemoteHold()
@@ -27,7 +29,7 @@ struct ContentView: View {
         ZStack {
             Nocturne.bg
             if screen != nil {
-                ScreenShell(screen: $screen, clientName: session.displayName, api: api, weather: weather, search: search) { request in
+                ScreenShell(screen: $screen, clientName: session.displayName, api: api, weather: weather, search: search, collections: collections) { request in
                     playRequest = request
                 }
             } else {
@@ -61,5 +63,5 @@ struct ContentView: View {
 
 #Preview {
     let api = APIClient()
-    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api), weather: WeatherModel(), search: GuideSearchModel(api: api))
+    ContentView(api: api, session: ClientSession(api: api), home: HomeModel(api: api), weather: WeatherModel(), search: GuideSearchModel(api: api), collections: GuideCollectionsModel(api: api))
 }

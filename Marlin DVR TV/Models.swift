@@ -38,6 +38,21 @@ struct ChannelsResponse: Decodable {
     let sources: [String]
 }
 
+// MARK: Channel collections (collections.go:12-17, 63-67; GET /api/collections, collections.go:90-99)
+
+/// One of the owner's channel collections: a named, ordered list of channel ids curated on
+/// the server's admin page. The response also carries `icon`, the resolved `channels` and a
+/// `count`; the Guide reads neither — it asks the server to filter and draws the rows that
+/// come back — so only the two fields this app uses are decoded.
+struct ChannelCollection: Decodable, Identifiable, Hashable {
+    let id: String          // "col-<unix milliseconds>"
+    let name: String
+}
+
+struct CollectionsResponse: Decodable {
+    let collections: [ChannelCollection]
+}
+
 // MARK: Guide (guide.go:18-38, 550-563, 590-664, 667-691, 695-754)
 
 struct Program: Decodable, Hashable {

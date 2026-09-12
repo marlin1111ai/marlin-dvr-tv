@@ -34,10 +34,11 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
 
 ## What is built
 
-**The server is marlin-dvr 1.8.0** (owner, 2026-09-08): he read his own Status page and it showed
-**VERSION 1.8.0, "up to date · checked 45m ago"**. Not measured from here — the running server is
-on this project's do-not-touch list — so this is the owner's own reading, cited the way this file
-cites the marlin-dvr project's other version facts. Before that it was **1.7.0**, which the owner
+**The server is marlin-dvr 1.8.1** (Pass 72, 2026-09-12), and this one **is** measured from here:
+`GET /api/status` answers `{"name":"marlin-dvr","version":"1.8.1",…}` — read in Pass 71 and read
+again in Pass 72. It supersedes the **1.8.0** this file recorded on the owner's own Status-page
+reading of 2026-09-08 (**VERSION 1.8.0, "up to date · checked 45m ago"**). Before that it was
+**1.7.0**, which the owner
 installed at **00:06 on 2026-09-08 from the app's own Status-page button**, an in-place update
 rather than an Unraid image switch (marlin-dvr project, 2026-09-08). Three things this app depends
 on:
@@ -64,13 +65,12 @@ this route we have**, read from their Go source (`cmd/marlin-dvr/playfile.go`,
 `cmd/marlin-dvr/stream.go`) at `origin/main`. Anyone building against the contract file alone will
 be wrong about this route.
 
-Note that the read-only reference clone at `~/Xcode/marlin-dvr-reference` has a **checked-out tree
-still at 1.2.1** (`cmd/marlin-dvr/main.go:38`), which has none of this — checking it out is the
-owner's job and no pass has done it. **Its `origin/main` was fetched in Pass 41 on 2026-09-08 and
-now reads `095de81`** (it read `c417c60` before, and `fba51f2` before that), so their current
-sources and notebook can be read out of the clone with `git show origin/main:<path>` without
-checking anything out. Server facts are still measured against the running server's own responses
-and its `GET /api/logs`, never against the checkout.
+Note that the read-only reference clone at `~/Xcode/marlin-dvr-reference` now has a **checked-out
+tree at 1.8.1** (`cmd/marlin-dvr/main.go:38`), and **`HEAD` and `origin/main` both read `eb0c098`**
+(verified in Pass 72; `origin/main` read `095de81` before, and `c417c60` and `fba51f2` before
+that), so their current sources and notebook can be read out of the clone directly, or with
+`git show origin/main:<path>`. Server facts are still measured against the running server's own
+responses and its `GET /api/logs`, never against the checkout.
 
 The empty project — Pass 1 was plumbing. One app entry point (`Marlin_DVR_TVApp.swift`) and one `ContentView` showing the app name.
 
@@ -829,6 +829,62 @@ and the airing sheet opens on it with every control live.
   goes to the previous row, not to the strip** — it took **eight Up presses** to get back.
   Measured twice, the same both times. Accepted as built (owner, 2026-09-11).
 
+Passes 71-72 (`reports/2026-09-11-pass71-guide-collections-recon.md`,
+`reports/2026-09-12-pass72-guide-collections.md`, **built and proven on Home Theater 2026-09-12,
+committed locally and NOT pushed — the owner tests it first**): **channel collections in the
+Guide.** The header reads **"Guide" · a collections button · the date range · ↩ Now / +12h**;
+pressing the button drops the app's own overlay listing "All Channels" and every collection the
+server has; picking one reloads the grid filtered to it, in the owner's own order; the button takes
+that collection's name; and the Apple TV remembers the pick across a rail trip and across a
+relaunch.
+
+- **The whole thing is one query parameter the typed client already had.**
+  `GET /api/guide?filter=<collection id>` (`ChannelFilter.swift:61-69`, which has accepted
+  `filter:` since sweep 2 and was simply never passed one by the Guide). The server does the
+  filtering **and** the ordering: `filterChannels` re-sorts its result back into the owner's stored
+  member order, overriding the channel-number sort, with its own comment "collection order wins"
+  (`sources.go:389-401`). **Measured on the device:** 375 buttons unfiltered, 39 filtered to
+  "Local", and the five rows drawn in exactly the order the live GET returned them — WMAR-HD 2.1,
+  WGAL-TV 8.1, WBAL-DT 11.1, WJZ-TV 13.1, ESPN 50007.
+- **`ScreenHeader` gained one optional slot** between the title and the subtitle
+  (`ScreenChrome.swift:13-52`), defaulting to `EmptyView`. Every other screen renders unchanged,
+  photographed from HEAD's code and from this pass's and compared frame by frame.
+- **One new `UserDefaults` key, `"marlinGuideCollection"`** — the fourth this app writes, after
+  `marlinClientId`, `marlinResume.<id>` and `marlinWeatherFix`. It holds JSON `{"id","name"}`, and
+  `GuideCollectionsModel` is owned above `ScreenShell` like `HomeModel`, `WeatherModel` and
+  `GuideSearchModel`, because `ScreenShell.swift:55` destroys the Guide on every rail visit.
+- **A stale collection id fails invisibly on the server, so the app handles it.** An unknown
+  `filter` applies **no predicate** and returns every visible channel — measured live on
+  2026-09-12: `filter=col-does-not-exist-pass72` answered `channelCount: 91`. The app reverts to
+  All Channels silently and clears the key on the next collections read.
+- **The Guide's plain `@FocusState` re-focus was measured and is enough.** It was tried first, as
+  the pass required, across six row-replacing reloads on Home Theater and never left the screen
+  unfocused — so the Search screen's `.id(generation)` rebuild was **not** copied into the Guide.
+  The standing question from Passes 63, 65, 66 and 68 — whether `GuideScreen` carries the same
+  latent focus defect — is answered **no** for this case.
+- **The empty-collection state is built and unproven.** "Nothing in <name> right now" plus focus on
+  the collections button exists in code and has never been seen, because the server will not
+  produce an empty filtered guide for an id it does not know and the owner's one collection has
+  five live members. Named here so nobody mistakes it for tested.
+- **Only the Guide is filtered.** `GET /api/guide/now` and `GET /api/channels` honour `filter` too
+  and this app already calls both, but the approved design is the Guide alone; Home, On Now,
+  Favorites and Search are untouched.
+
+`GuideCollectionsUITests` (Pass 72) is the same kind of harness and needs the physical Apple TV,
+the real remote and the owner's live "Local" collection. **It makes no server write of any kind.**
+Its five tests are `testTheHeaderButtonAndTheOverlay`, `testChoosingACollectionFiltersTheGridAndComingBack`,
+`testTheCollectionSurvivesATripToTheRail`, `testTheCollectionSurvivesARelaunch` and
+`testTwoUnchangedScreens`. **Every query in it is a predicate, never an enumeration**, and that is
+load-bearing: the Guide realises all 91 channel rows at once, so
+`descendants(matching: .any).allElementsBoundByIndex` resolves 585+ elements at about 0.8 s each and
+the test never finishes — measured, twice, before the harness was rewritten.
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/GuideCollectionsUITests"
+```
+
 ### KNOWN AND UNFIXED after Pass 38 — do not mistake these for proven, and do not re-derive them
 
 - **CLOSED by Pass 42 — a resumed recording starting well past its resume point.** It was measured
@@ -917,6 +973,14 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Pass 72 is committed locally and NOT pushed.** The Guide's channel collections
+(`reports/2026-09-12-pass72-guide-collections.md`) were built, proven on Home Theater on
+2026-09-12 and committed in one commit with the report and its screenshots — **the owner tests it
+on Home Theater before anything is pushed**, which is the standing separate push gate. The commit
+is the first unpushed work since Pass 66's push; local `main` is one commit ahead of `origin/main`
+and nothing was forced, rebased or amended. **Pass 71's recon report was pushed already**, in
+`2206a92`.
 
 **Nothing is unpushed as of Pass 66.** On 2026-09-11 local `main`, `origin/main` and
 `git ls-remote origin main` all read `b028650`. **Six commits have landed since Pass 58's
