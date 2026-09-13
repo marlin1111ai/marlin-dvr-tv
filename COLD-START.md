@@ -1267,6 +1267,20 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 87.** The owner accepted Pass 86 — channel logos in the Guide's
+channel cell — on Home Theater on 2026-09-13 ("good to go"). **`29afca5` (Pass 86) was pushed
+together with this pass's own commit**, which carries this paragraph, the `DECISIONS.md` acceptance
+entry and `reports/2026-09-13-pass87-channel-logos-accepted-pushed.md`. **It was a fast-forward from
+`3342b1d`**, the parent of `29afca5`; nothing was forced, rebased or amended.
+
+**The white antenna logos' faint contrast on the backing** (`86a`; 1.23:1 and 1.14:1) was shown to
+the owner before he accepted, and is accepted as built. **No app-target code changed in Pass 87.**
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)). It is in the Pass 87 response and belongs in the next pass's
+entry. The paragraphs below, written by Pass 86, described the unpushed state correctly when written
+and are kept as history.
+
 **Pass 86 is committed locally and NOT pushed — the owner tests it on Home Theater first**, which is
 the standing separate push gate. **Pass 85's verified push SHA is `3342b1d`**, a fast-forward from
 `829e5d7`. Local `main` is one commit ahead of `origin/main`; nothing forced, rebased or amended.

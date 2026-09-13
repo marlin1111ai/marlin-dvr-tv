@@ -1642,3 +1642,26 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   project, against the server's two radio `iconUrl`s (both identical) and all 58 distinct channel
   logo URLs (all identical to a Go-style `quote_plus`).
 - **Committed locally and NOT pushed** — the owner tests it on Home Theater first.
+
+## 2026-09-13 (Pass 87 — Pass 86 accepted and pushed)
+
+- **Owner acceptance: Pass 86 was tested on Home Theater on 2026-09-13 and accepted — "good to
+  go"** (owner, 2026-09-13). `29afca5` (Pass 86) is pushed to `origin main` in this pass, together
+  with this pass's own commit, a fast-forward from `3342b1d`.
+- **What was accepted, named so a later pass does not have to infer it from the commit:**
+  - **The logo:** a Guide channel cell whose channel has a `logo` draws it in the **62 pt tile**,
+    **aspect-fitted with a 6 pt inset**, on the **`Nocturne.neutral200` (`#E4E7F5`) backing**.
+  - **The fallback:** a channel whose `logo` is empty, and a logo that fails to load or decode, draws
+    the **initials tile with no backing**.
+  - **The request:** the logo is fetched **only through `/api/art/feed?u=`** plus the Go-escaped
+    source URL, never from the provider directly.
+- **The white antenna logos' faint contrast on the backing is accepted as built. It is not an open
+  item.**
+  - In `86a`, WJZ-TV's CBS and WBFF45's FOX measure **1.23:1 and 1.14:1** against `#E4E7F5`.
+  - It was shown to the owner before he accepted.
+  - This closes Pass 86 open question 1.
+- **Pass 86's open questions 2-5 are neither closed nor re-raised by this acceptance.**
+- **No app-target code changed in this pass.** The binary the owner tested is Pass 86's.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
