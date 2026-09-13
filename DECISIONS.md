@@ -1665,3 +1665,28 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-13 (Pass 88 — the bedroom Apple TV brought to 168d8a7)
+
+- **The bedroom Apple TV is brought from `070c9a5` (Pass 83) to `168d8a7`** (the pushed head after
+  Pass 87), by Pass 54's method to the same device — `xcodebuild -destination
+  'platform=tvOS,name=Master Bedroom ATV' -allowProvisioningUpdates build`, then `xcrun devicectl
+  device install app`. **Home Theater was not touched.** The television reports **Marlin DVR TV ·
+  com.marlin1111.MarlinDVRTV · Version 1.0 · Bundle Version 1**, read from the device itself with
+  `xcrun devicectl device info apps`, not taken from the installer's own success message.
+- **The Guide's channel logos were seen on that television**, not only installed. The existing
+  `GuideChannelLogosUITests` (Pass 86, unmodified — no test-target file was touched) was run against
+  `platform=tvOS,name=Master Bedroom ATV`: **TEST SUCCEEDED, 671.080 s**, with the collection the
+  device had saved locally ("Local") switched to All Channels for the screenshots and switched back
+  before the test ended. The screenshot is `reports/assets/pass88/88a-logos-on-the-bedroom-apple-tv.jpg`.
+- **A CPU-usage diagnostic was generated during the run, and it is not a crash.** `bug_type: "202"`
+  ("cpu usage"), **`Action taken: none`** — the process was not killed and the test still passed.
+  Measured: 90 s of CPU over a 105 s window (85% average), against a 50%-over-180-s limit, entirely
+  inside a stack under `SwiftUI` → `UIAccessibility` → `AXRuntime`. **No app-target code changed in
+  this pass**, so nothing was fixed or worked around. Recorded because it is new evidence about this
+  older, slower Apple TV (`AppleTV6,2`) that no earlier pass measured, and because the run on Home
+  Theater's `AppleTV14,1` (Pass 86) took 238.7 s against this run's 671.1 s for the identical,
+  unmodified harness.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).

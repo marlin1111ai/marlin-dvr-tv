@@ -1267,6 +1267,17 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 88.** **Both Apple TVs run `168d8a7`.** Home Theater has run it
+since Pass 87's push; the bedroom Apple TV ("Master Bedroom ATV", `AppleTV6,2`, tvOS 26.6) was built
+and installed from that same head in this pass, by Pass 54's method, and its own
+`xcrun devicectl device info apps` reading, its Guide-logos screenshot and its evidence sit in
+`reports/2026-09-13-pass88-bedroom-install.md` and `reports/assets/pass88/`. This pass's commit
+carries that report, this paragraph and the `DECISIONS.md` entry, and is pushed as a fast-forward
+from `168d8a7`. This pass's own SHA is not written here and cannot be — a commit cannot contain its
+own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 88 response and belongs in the next
+pass's entry. The paragraph below, written by Pass 87, described its own state correctly when
+written and is kept as history.
+
 **Nothing is unpushed as of Pass 87.** The owner accepted Pass 86 — channel logos in the Guide's
 channel cell — on Home Theater on 2026-09-13 ("good to go"). **`29afca5` (Pass 86) was pushed
 together with this pass's own commit**, which carries this paragraph, the `DECISIONS.md` acceptance
