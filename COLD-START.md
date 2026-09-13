@@ -1267,6 +1267,41 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Pass 86 is committed locally and NOT pushed — the owner tests it on Home Theater first**, which is
+the standing separate push gate. **Pass 85's verified push SHA is `3342b1d`**, a fast-forward from
+`829e5d7`. Local `main` is one commit ahead of `origin/main`; nothing forced, rebased or amended.
+
+Pass 86 (`reports/2026-09-13-pass86-channel-logos.md`) puts **channel logos in the Guide's channel
+cell**. The app-target diff is `GuideScreen.swift` alone.
+- **A channel with a `logo`** draws it in the 62 pt tile, aspect-fitted 6 pt inside, on a
+  `Nocturne.neutral200` (`#E4E7F5`) backing (owner decision 1a).
+- **The request** is only `/api/art/feed?u=` plus the Go-escaped source URL, the radio icons' form.
+- **9023 AS-INFOMERCIALS, which has no logo,** keeps the initials tile with no backing, and so does a
+  logo that fails to load (`DECISIONS.md`, 2026-09-13 (Pass 86)).
+- **Nothing else in the cell changed.**
+
+**The one Home Theater run** was `GuideChannelLogosUITests`, TEST SUCCEEDED in 238.7 s, with its
+three screenshots in `reports/assets/pass86/`.
+- **Requests:** the server's own log shows **96 `GET /api/art/feed`** — 95 answered 200 and one 404
+  — against the Guide's 96 rows that carry a logo.
+- **The 404 is 50002 Science Channel's `.svg`**, which the device drew as its initials tile.
+- **The finding the owner should look at first:** on the light backing the **white antenna logos —
+  WJZ-TV and WBFF45 — read at 1.14–1.23:1 and are faint**, while the black Verizon and YouTube CBS
+  and FOX logos read at 16.9–17.1:1. That is photographed in `86a`. This pass's own SHA is not
+  written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 86 response.
+
+To run the harness again — the physical Apple TV, the real remote, and the Guide's lineup as it
+stood on 2026-09-13. It makes no server write:
+
+```
+xcodebuild -project "Marlin DVR TV.xcodeproj" -scheme "Marlin DVR TV" \
+  -destination 'platform=tvOS,name=Home Theater' -allowProvisioningUpdates test \
+  -only-testing:"Marlin DVR TVUITests/GuideChannelLogosUITests"
+```
+
+The paragraph below, written by Pass 85, described its state correctly when written and is kept as
+history.
+
 **Nothing is unpushed as of Pass 85.** **Pass 84's verified push SHA is `829e5d7`**: before Pass 85
 committed anything, `git fetch origin` was run and `git rev-parse main`, `git rev-parse origin/main`
 and `git ls-remote origin main` all read `829e5d7dc603d231c5b96c780122f06c4485d549`, with

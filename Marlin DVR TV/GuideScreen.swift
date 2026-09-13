@@ -809,7 +809,7 @@ struct ChannelCell: View {
 
     var body: some View {
         HStack(spacing: 18) {
-            InitialsTile(initials: channel.initials, logoBg: channel.logoBg, size: 62, fontSize: Nocturne.TextSize.floor)
+            GuideChannelTile(channel: channel)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(channel.name)
@@ -834,6 +834,62 @@ struct ChannelCell: View {
             RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
                 .strokeBorder(focused ? Nocturne.accent : .clear, lineWidth: focused ? Nocturne.Focus.ringWidth : 0)
         }
+    }
+}
+
+/// Pass 86: the channel cell's 62 pt tile. A channel with a `logo` draws it, fitted and never
+/// cropped, 6 pt inside the tile on a light neutral backing (owner decision 1a, 2026-09-13) —
+/// Pass 85 measured the provider's black CBS and FOX artwork at 1.18–1.45:1 on this cell's dark
+/// ground. A channel without a `logo` draws the initials tile exactly as before, with no backing.
+/// A logo that fails to load or decode draws that same initials tile, through `ServerImage`'s
+/// own fallback, and no backing either.
+struct GuideChannelTile: View {
+    let channel: MergedChannel
+
+    static let size: CGFloat = 62
+    static let logoInset: CGFloat = 6
+
+    /// True while `ServerImage` is showing its fallback — until the logo arrives, and for good if
+    /// it never does — so the backing is drawn under a logo only, never under the initials. It
+    /// starts false so a logo already on screen at the first frame still gets its backing.
+    @State private var showingInitials = false
+
+    var body: some View {
+        if let path = Self.artFeedPath(for: channel.logo) {
+            ZStack {
+                if !showingInitials {
+                    RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous)
+                        .fill(Nocturne.neutral200)
+                }
+                ServerImage(path: path, contentMode: .fit) {
+                    initials
+                        // The logo's frame is inset; the fallback tile still fills all 62 pt.
+                        .padding(-Self.logoInset)
+                        .onAppear { showingInitials = true }
+                        .onDisappear { showingInitials = false }
+                }
+                .padding(Self.logoInset)
+            }
+            .frame(width: Self.size, height: Self.size)
+        } else {
+            initials
+        }
+    }
+
+    private var initials: some View {
+        InitialsTile(initials: channel.initials, logoBg: channel.logoBg, size: Self.size, fontSize: Nocturne.TextSize.floor)
+    }
+
+    /// `/api/art/feed?u=` and the logo URL escaped exactly as the server escapes a radio icon
+    /// (`radio.go:72`, Go's `url.QueryEscape`): every byte but `A–Z a–z 0–9 - _ . ~` is
+    /// percent-encoded and a space becomes `+`. The provider's URL is never requested directly.
+    /// Nil when there is no logo.
+    static func artFeedPath(for logo: String) -> String? {
+        guard !logo.isEmpty else { return nil }
+        var unreserved = CharacterSet()
+        unreserved.insert(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~ ")
+        guard let escaped = logo.addingPercentEncoding(withAllowedCharacters: unreserved) else { return nil }
+        return "/api/art/feed?u=" + escaped.replacingOccurrences(of: " ", with: "+")
     }
 }
 

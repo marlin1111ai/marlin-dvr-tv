@@ -1617,3 +1617,28 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   `eb0c098`, whose `cmd/marlin-dvr/main.go:38` is `appVersion = "1.8.1"`, so the server-source
   lines Pass 85 cites are 1.8.1 source, not necessarily what the server now runs. The clone was not
   fetched. What 1.8.2 changed is not known to this project.
+
+## 2026-09-13 (Pass 86 — channel logos in the Guide's channel cell)
+
+- **Pass 85's verified push SHA is `3342b1d`.** After Pass 85's own `git fetch origin`, `main`,
+  `origin/main` and `git ls-remote origin main` all read it, a fast-forward from `829e5d7`.
+- **Decision 1a (owner, 2026-09-13): every logo in the Guide's channel cell is drawn on a light
+  neutral backing that fills the 62 pt tile. No backing is drawn behind the initials tile.** It
+  answers Pass 85's measurement that the provider's black CBS and FOX artwork reads at 1.18–1.45:1 on
+  the cell's dark ground. **The backing is the design system's `Nocturne.neutral200`, `#E4E7F5`**
+  (`Theme.swift:33`). The brief allowed `#E8E8EE` only if the project had no light token. Of the
+  project's tokens, `neutral200` is the nearest neutral ramp step to that value — RGB distance 8.1,
+  against 23.4 for `neutral100`. `Nocturne.text` (`#E9E9ED`, 1.7) is nearer still, but it is the text
+  role, not a fill.
+- **Owner-approved call: the logo is aspect-fitted inside the tile and never cropped**, 6 pt in from
+  every edge. This settles Pass 85 open question 2 for the Guide. `ChannelLogo` on On Now and
+  Favorites is not touched.
+- **Owner-approved call: a logo that fails to load or decode draws the initials tile** — the same
+  tile an empty `logo` draws — through `ServerImage`'s own fallback, with no backing under it. This
+  settles Pass 85 open question 3. `ServerImage.swift` is unchanged.
+- **The logo is requested only as `/api/art/feed?u=` plus the source URL escaped the way Go's
+  `url.QueryEscape` escapes it** — the exact form the server hands out for radio icons
+  (`radio.go:72`). The provider's own URL is never requested. The escaping was checked outside the
+  project, against the server's two radio `iconUrl`s (both identical) and all 58 distinct channel
+  logo URLs (all identical to a Go-style `quote_plus`).
+- **Committed locally and NOT pushed** — the owner tests it on Home Theater first.
