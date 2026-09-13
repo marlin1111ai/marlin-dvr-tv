@@ -1607,3 +1607,13 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   build`, then `xcrun devicectl device install app`), the television itself reporting
   `Marlin DVR TV · com.marlin1111.MarlinDVRTV · Version 1.0 · Bundle Version 1`, with its screenshot
   committed by this pass at `reports/assets/pass83/83a-on-later-on-the-bedroom-apple-tv.jpg`.
+
+## 2026-09-13 (Pass 85 — the server answers 1.8.2)
+
+- **Measured, and it contradicts what this notebook recorded: `GET /api/status` answered
+  `{"name":"marlin-dvr","version":"1.8.2","uptime_seconds":1572,"port":8089}`** at 12:25:13 EDT on
+  2026-09-13 (Pass 85 step 1). `COLD-START.md` had recorded the server as **1.8.1**, from the same
+  read in Passes 71 and 72. The reference clone's `HEAD` and `origin/main` both still read
+  `eb0c098`, whose `cmd/marlin-dvr/main.go:38` is `appVersion = "1.8.1"`, so the server-source
+  lines Pass 85 cites are 1.8.1 source, not necessarily what the server now runs. The clone was not
+  fetched. What 1.8.2 changed is not known to this project.

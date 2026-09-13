@@ -34,9 +34,11 @@ xcodebuild -project "Marlin DVR TV.xcodeproj" -target "Marlin DVR TV" -sdk apple
 
 ## What is built
 
-**The server is marlin-dvr 1.8.1** (Pass 72, 2026-09-12), and this one **is** measured from here:
-`GET /api/status` answers `{"name":"marlin-dvr","version":"1.8.1",…}` — read in Pass 71 and read
-again in Pass 72. It supersedes the **1.8.0** this file recorded on the owner's own Status-page
+**The server is marlin-dvr 1.8.2** (Pass 85, 2026-09-13), and this one **is** measured from here:
+`GET /api/status` answers `{"name":"marlin-dvr","version":"1.8.2",…}` — read in Pass 85 at
+12:25:13 EDT. It supersedes the **1.8.1** this file recorded from the same read in Passes 71 and 72
+(DECISIONS.md, 2026-09-13 (Pass 85)); what 1.8.2 changed, and when it was installed, is not recorded
+here. The 1.8.1 reading in turn superseded the **1.8.0** this file recorded on the owner's own Status-page
 reading of 2026-09-08 (**VERSION 1.8.0, "up to date · checked 45m ago"**). Before that it was
 **1.7.0**, which the owner
 installed at **00:06 on 2026-09-08 from the app's own Status-page button**, an in-place update
@@ -1264,6 +1266,27 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 85.** **Pass 84's verified push SHA is `829e5d7`**: before Pass 85
+committed anything, `git fetch origin` was run and `git rev-parse main`, `git rev-parse origin/main`
+and `git ls-remote origin main` all read `829e5d7dc603d231c5b96c780122f06c4485d549`, with
+`git rev-list --left-right --count main...origin/main` at `0 0` — so Pass 84's notebook commit was
+already on `origin/main` and nothing else was waiting. **Pass 85
+(`reports/2026-09-13-pass85-channel-logos-recon.md`) is read-only recon of channel logos for the
+Guide's channel cell, and it changed no app-target code.** Its one commit carries that report, this
+paragraph, the server-version line under "What is built" and one `DECISIONS.md` entry, and the pass
+pushes it. **What it measured, in brief:** `GET /api/channels` lists **97** channels and **96** carry
+a logo — the one without is **9023 AS-INFOMERCIALS** on Philo; `MergedChannel` already decodes `logo`
+(`Models.swift:25`); the Guide's `ChannelCell` draws the server's initials tile and no logo
+(`GuideScreen.swift:812`), exactly as design frame 3a does (`dc:207`); and on the cell's own
+backgrounds — `Nocturne.bg` `#161826` unfocused, about `#27273F` focused — the **antenna CBS and FOX
+logos are white and read at 13.4-17.6:1**, while the **Verizon and YouTube CBS and FOX logos are black
+and read at 1.18-1.45:1**. **Nothing was built and no build is chosen.** **The server now answers
+1.8.2** (Pass 85 step 1), while the reference clone still reads `eb0c098`, which is 1.8.1. This
+pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 85 response and belongs in the next pass's
+entry. The paragraphs below, written by Passes 83 and 84, described their state correctly when
+written and are kept as history.
 
 **Nothing is unpushed as of Pass 83.** The owner accepted On Later's three pills on Home Theater on
 2026-09-12 ("good to go"), and the commit that had been waiting on that test was pushed: **`ad7f5f5`
