@@ -2091,3 +2091,50 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 99 — T1 closed, and an inventory of everything unfinished)
+
+- **Owner decision (2026-09-16), his words: "im not spending any time on something that might never
+  ever happen close this and move on to anything major or that is unfinished".** That closes
+  **Pass 95's T1**, built in Pass 98.
+- **T1 is closed without a device test, and what that means is written down rather than glossed.**
+  `restart(at:)` and `startAgain(at:)` resume a recording the way Resume does — the session asks for
+  the whole recording and the app seeks — and **that path has never run on a television**, on Pass
+  98's build or any other. It is **code-traced only**: `restart(at:)` writes `position = target`,
+  nothing between that write and `armResumeSeek`'s read touches `position`, and the `.readyToPlay`
+  seek puts playback there. **If the trace is wrong, a restarted recording begins at the top of the
+  recording instead of at the restart point, silently.**
+- **The owner declined the one test that would have settled it.** Pass 98's open question 1 offered
+  three ways to reach a restart — a disclosed reverted diagnostic forcing `phase = .expired`, pulling
+  the Apple TV's network for about twenty seconds mid-playback to produce a real 410, or a debug-only
+  control. **Pass 98 open question 1 is closed by his decision above**; none of the three was built
+  and none is to be built unasked.
+- **Why it could not be reached in the first place, so nobody re-derives it:** no restart caller is
+  reachable from the remote. Frame 6h **is** the Expired state and needs a keep-alive 410, which
+  cannot happen because the app fetches every 10 s against the server's 15 s `hlsIdleTimeout` and
+  there is no session lifetime cap; `FailureState`'s "Try again" needs a failure the remote cannot
+  produce; `timeJumped()`'s seek-beyond is dead on the file route; `stopBlockingRecordingAndWatch()`
+  is live only. Pass 98 measured the empirical half: a 5-minute session ended only on the app's own
+  DELETE, and the console carried zero `restarted start=` lines.
+- **Pass 98's other open questions are neither closed nor re-raised** — making `armResumeSeek`'s
+  target explicit instead of reading it out of `position`, and removing the now-inert
+  `request.withStart(target)` call. They stand exactly as Pass 98 left them, as do the three things
+  that pass was least sure of.
+- **Pass 98's verified push SHA is `6a1a0dd`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main` read `6a1a0ddb9118b6837667a51408be41d5d013f2dc`, `git rev-parse
+  origin/main` and `git ls-remote origin main` both read
+  `80458f9ddb85599c79186e819aabc479bbb698f2` (Pass 97), `git rev-list --left-right --count
+  main...origin/main` was `1 0`, and `git status --porcelain` showed only `?? icon-source/`. It is
+  pushed in this pass as a fast-forward together with this pass's own commit. Nothing forced,
+  rebased or amended.
+- **An inventory of everything this project records as unfinished is now written down**, read-only,
+  in `reports/2026-09-16-pass99-unfinished-inventory.md`: **62 items** in five groups — **12** a
+  feature or screen not built or not working, **20** smaller known defects, **18** questions waiting
+  on the owner, **4** deferred by his own word, **8** belonging to the marlin-dvr project. Every item
+  cites the notebook or a report and **nothing was added, ranked or proposed**; items the notebook
+  records as closed are deliberately absent.
+- **No app-target or test-target file was changed in this pass**, no build was made, no device was
+  touched, and **no request of any kind was sent to the server**.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).

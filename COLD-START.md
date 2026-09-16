@@ -89,7 +89,7 @@ Current state only — one line per screen and one per standing fact, each citin
 - Old-form (pre-1.6.0) trash entries are untested and now untestable; the id rule rests on two files, three cycles each; resume survival across a trash-and-restore was reasoned, never watched (Pass 33).
 - "A playback that starts inside a break offers it" is still unproved, and one commercial skip landed 1.01 s past `endSeconds` instead of on it, unexplained (Pass 38).
 - The end-of-recording clamp, the `hdhomerun` `"none"` branch and the network-failure branch of commercial skip were never exercised live (Pass 38).
-- **Pass 95's T1 is built (Pass 98) but its path has never been driven on a device — and that is now an evidenced limit, not an oversight.** `restart(at:)` writes `position = target` and `startAgain` never overwrites it, so `armResumeSeek` finds the target and the `.readyToPlay` seek puts playback on it; every link was read, and nothing between the write and the read touches `position`. **No restart caller is reachable from the remote:** frame 6h **is** the Expired state and needs a keep-alive 410, which cannot happen because the app fetches every 10 s against the server's 15 s `hlsIdleTimeout` and there is no session lifetime cap; `FailureState`'s "Try again" needs a failure the remote cannot produce; `timeJumped()`'s seek-beyond is dead on the file route; `stopBlockingRecordingAndWatch()` is live only. Measured in Pass 98: a 5-minute session ended only on the app's own DELETE, and the console carries zero `restarted start=` lines. **If the trace is wrong, a restarted recording begins at the top instead of at the restart point, silently** (Passes 96, 98).
+- **Pass 95's T1 is built (Pass 98), its path has never run on a television, and the owner closed it there** — "im not spending any time on something that might never ever happen close this and move on to anything major or that is unfinished" (owner, 2026-09-16). It is **code-traced only**: `restart(at:)` writes `position = target`, nothing between that write and `armResumeSeek`'s read touches `position`, and the `.readyToPlay` seek puts playback there. **If the trace is wrong, a restarted recording begins at the top of the recording instead of at the restart point, silently.** It could not be driven because no restart caller is reachable from the remote: frame 6h **is** the Expired state and needs a keep-alive 410, which cannot happen because the app fetches every 10 s against the server's 15 s `hlsIdleTimeout` and there is no session lifetime cap; `FailureState`'s "Try again" needs a failure the remote cannot produce; `timeJumped()`'s seek-beyond is dead on the file route; `stopBlockingRecordingAndWatch()` is live only. Pass 98 measured the empirical half — a 5-minute session ended only on the app's own DELETE, and the console carried zero `restarted start=` lines. **The three ways to force one were offered and declined; none is to be built unasked** (Passes 96, 98, 99).
 - **The 2 s start the owner asked for is not met and cannot be met inside this app**: 85–94 % of the press-to-picture time is the server's single-file remux, measured at 10.225 s and 6.308 s in its own log against the app's 10.233 s and 6.429 s. The **first** remux of a recording is much slower than the next — 10.225 s against 2.151 s and 2.124 s for the same 1.09 GB whole-file remux — so a warm start is about 2.8 s, which is arithmetic on two measurements and was never measured directly. Why the first is slower is not this project's to answer and no request was made to find out (Pass 96).
 - A break the viewer scrubs through is **spent for that playback** — `noticeCommercialBreak` latches each range into `promptedRanges` and offers it at most once (Pass 38's design). With the whole recording now reachable this will happen more often: rewind past a break and it will not be offered again until the Player is re-entered. Raised in Pass 96, not changed.
 - On the file route: a recording still being written, and one that is not H.264/AAC, were never exercised on the device; the remux wait has never been measured on the Unraid box; build-plan step 7 — resume by seeking, not by `start` — is not built, pending Pass 41 open question 7.2 (Pass 42).
@@ -192,6 +192,35 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 99.** **Home Theater runs this build; the bedroom Apple TV does
+not — it is still on `4396d84`.**
+
+**Pass 95's T1 is closed** — "im not spending any time on something that might never ever happen
+close this and move on to anything major or that is unfinished" (owner, 2026-09-16). Pass 98's
+restart change stays in, **code-traced and never driven on a television**, and the three ways to
+force a restart were offered and declined. Pass 98's other open questions are neither closed nor
+re-raised.
+
+- **Pass 98's `6a1a0dd` is pushed**, together with this pass's own commit carrying the inventory,
+  this paragraph and the `DECISIONS.md` entry — **a fast-forward from `80458f9`**, which is still an
+  ancestor. Nothing forced, rebased or amended.
+- **Everything this project records as unfinished is now in one file**:
+  `reports/2026-09-16-pass99-unfinished-inventory.md`, read-only, **62 items** — **12** a feature or
+  screen not built or not working, **20** smaller known defects, **18** questions waiting on the
+  owner, **4** deferred by his own word, **8** belonging to the marlin-dvr project. Every item cites
+  the notebook or a report; **nothing was added, ranked or proposed**, and anything the notebook
+  records as closed is deliberately absent.
+- **No app-target or test-target file changed in this pass**, no build was made, no device was
+  touched, and **no request of any kind was sent to the server**. The binary on Home Theater is
+  Pass 98's, unchanged.
+- **The bedroom Apple TV was not touched** and still resumes the old way, without Continue watching,
+  the progress bar or resume-rewind, until the owner has it brought up.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 99 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 98, described its own state correctly when written and
+is kept as history.
 
 **Pass 98 is committed and NOT pushed. The owner tests it on Home Theater first, and Home Theater
 is left running exactly this build.**
