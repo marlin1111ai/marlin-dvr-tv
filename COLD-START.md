@@ -174,6 +174,39 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Pass 94 is a read-only recon and changed no code.** It answers the owner's report that the
+commercial-skip prompt has never appeared for him at a break, and the answer is not in this app:
+**nine of his eleven recordings have no commercial markers at all, and the two that do are not the
+ones he has been watching** (`reports/2026-09-16-pass94-commercial-skip-recon.md`).
+
+- **Server-side commercial detection has failed on every recording made since 2026-09-08**, with the
+  same stored reason on each: `the app's comskip.ini is missing (stat
+  /Apps/dvr/marlin-dvr/data/versions/<v>/comskip.ini: no such file or directory)`. Nine recordings
+  therefore answer `state: "unknown"`, which under Pass 38's rule shows nothing, ever. **Only
+  `5328bb632e76`** (History's Greatest Mysteries S4 E14, 4 breaks) **and `d9a4f5c76696`** (Hitler's
+  DNA, 8 breaks), both recorded 2026-09-07, can arm the prompt at all — and on Home Theater each is
+  saved about six minutes short of its next break. The last successful detection on this server ended
+  at 22:42:21 on 2026-09-07.
+- **The app is not at fault.** Every file between the play request and the prompt is unchanged since
+  Pass 42's `137f1de` — the build the owner watched work — and the `"unknown"` branch is doing
+  exactly what Pass 38 decided it must. **No fix was built, proposed as a diff or stubbed**; the cause
+  is the server's and is raised, not acted on, in §8 of the report and in the `DECISIONS.md` entry.
+- **The measurement was 19 GETs and nothing else**: `/api/status` (1.8.2), `/api/library`, the four
+  shows, the eleven `…/commercials`, and `/api/logs` twice. No server write, no `GET /api/settings`,
+  no build, no install, **no device run** — so nothing here is a live proof that the prompt still
+  draws today, and the two detected recordings are the only test subjects left.
+- **Deferred (owner, 2026-09-16): a tvOS Top Shelf extension showing Continue watching — not now,
+  later. Nothing built.**
+- **Pass 93's verified push SHA is `4396d84`**, read three ways before anything changed, with
+  `main...origin/main` at `0 0` and `git status --porcelain` showing only `?? icon-source/`. This
+  pass's one commit — the report, the `DECISIONS.md` entry and this paragraph — is a fast-forward
+  from it. **Both Apple TVs still run that build and neither was touched.**
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 94 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 93, described its own state correctly when written and
+is kept as history.
+
 **Nothing is unpushed as of Pass 93.** **Both Apple TVs run this build.**
 
 **Passes 91 and 92 were tested on Home Theater on 2026-09-16 and accepted — "good to go"**

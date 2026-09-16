@@ -1847,3 +1847,31 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 94 — why the commercial-skip prompt never appears)
+
+- **Measured, read-only: the prompt never appears because nine of the owner's eleven recordings have
+  no commercial markers at all and the two that do are not the ones he has been watching** — server-side
+  detection has failed on **every recording made since 2026-09-08** with `the app's comskip.ini is
+  missing (stat /Apps/dvr/marlin-dvr/data/versions/<v>/comskip.ini: no such file or directory)`, so
+  nine recordings answer `state: "unknown"` and only `5328bb632e76` (4 breaks) and `d9a4f5c76696`
+  (8 breaks), both recorded 2026-09-07, can ever arm it; **the app is not at fault and nothing on its
+  path has changed since Pass 42's `137f1de`** — the whole recon, the eleven-row table, the raw JSON,
+  the `file:line` trace and the git evidence are in
+  `reports/2026-09-16-pass94-commercial-skip-recon.md`.
+- **Raised for the marlin-dvr project, recorded and not acted on:** the failure is silent, is not
+  self-healing (§10.3 — nothing re-runs detection), and therefore leaves **every recording made from
+  2026-09-08 onward permanently without markers**; §8 of the report sets out the mechanism read from
+  the reference clone. **Nothing was changed on the server, nothing was asked of them, and no request
+  was sent.** Whether to raise it, and in what form, is the owner's.
+- **Deferred (owner, 2026-09-16): a tvOS Top Shelf extension showing Continue watching — not now,
+  later. Nothing built.**
+- **Pass 93's verified push SHA is `4396d84`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `4396d846faca38ab8e88f4b83f4585f6efd083cf`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **No app-target file, test file or project file was changed, and no fix of any kind was built** —
+  not as a diff, a stub or a disabled branch. Findings only.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
