@@ -218,10 +218,11 @@ final class PlayerModel {
     ///
     ///  * **`start()`** leaves `position` at 0 and carries the saved position on the request, as
     ///    `resumeSeconds` — the number `ShowDetailScreen` passed in.
-    ///  * **`restart(at:)`** sets `position = target` before it gets here (`:830`) and that write
+    ///  * **`restart(at:)`** sets `position = target` before it gets here (`:844`) and that write
     ///    survives, because `startAgain` replaces `startOffset` and `duration` but never `position`.
-    ///    **Nothing in `restart(at:)` or `startAgain(at:)` was changed by this pass** (Pass 95 T1):
-    ///    they are read here, not edited, and a restart therefore still resumes where it always did.
+    ///    Pass 96 left those two functions untouched and relied on that write incidentally;
+    ///    **Pass 98 (Pass 95's T1) made it deliberate** — `restart(at:)` no longer pre-seeds
+    ///    `startOffset` with the target, and its comment names this hand-off as load-bearing.
     ///
     /// `position` is set to the target immediately so the HUD's "x of y" never shows 0:00 for the
     /// moment between the first frame and the seek landing.
@@ -816,6 +817,11 @@ final class PlayerModel {
     // MARK: Restart / stop
 
     /// Frame 6h and seek-beyond: stop this session and start again, for a recording at `at` seconds.
+    ///
+    /// **Pass 98 (Pass 95's T1).** A restarted recording reaches `target` exactly the way Resume
+    /// does since Pass 96 — the new session asks for the **whole** recording and the app seeks —
+    /// and not by pre-seeding `startOffset`. Everything else about the teardown is untouched: the
+    /// same detach, the same DELETE, the same `ResumeStore.save`, in the same order.
     func restart(at requested: Double? = nil) async {
         let target = requested ?? (isRecording ? position : 0)
         writeDone = false
@@ -826,11 +832,25 @@ final class PlayerModel {
         if isRecording, let episode = request.episode {
             ResumeStore.save(recordingID: episode.id, position: target, duration: duration)
         }
-        startOffset = target
+        // Was `startOffset = target`, which claimed the session would begin there. Since Pass 96 it
+        // does not: `PlayRequest.startSeconds` is 0 for a recording, so the server builds the whole
+        // MP4 and the item's own t=0 is the recording's first frame. `startAgain` overwrites this
+        // with whatever the server echoes back anyway (`:859`); 0 is what it echoes, and writing it
+        // here keeps the field honest for the window in between.
+        startOffset = 0
+        // **Load-bearing, and the whole of T1.** This is how `target` reaches the seek: `attach`
+        // calls `armResumeSeek` (`:228`), which reads `position`, and nothing between here and
+        // there writes it — `startAgain` replaces `startOffset` and `duration` and never `position`,
+        // `tick()` is held off by `phase == .starting`, and `detachPlayer` has already run above.
         position = target
         await startAgain(at: target)
     }
 
+    /// `target` is still passed and still reaches `withStart`, but **it no longer reaches the
+    /// wire**: `PlayRequest.startSeconds` answers 0 for a recording since Pass 96, so the body this
+    /// builds carries `start: 0` whatever `target` is. The target travels in `position` instead
+    /// (see `restart(at:)`), and `attach` → `armResumeSeek` → the `.readyToPlay` seek puts playback
+    /// on it. The parameter is kept so the call reads the way the session's own log line does.
     private func startAgain(at target: Double) async {
         phase = .starting
         failure = nil

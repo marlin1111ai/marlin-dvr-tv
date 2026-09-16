@@ -2028,3 +2028,66 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 98 — restart resumes from the whole recording, Pass 95's T1)
+
+- **Owner decision (2026-09-16): T1 is this pass — `restart(at:)` and `startAgain(at:)` resume the
+  same way Pass 96 made Resume work.** Built.
+- **What was built, in one file, `PlayerModel.swift`, +24 / −4.** `restart(at:)`'s
+  `startOffset = target` became **`startOffset = 0`** (`:839`): that line was correct until Pass 96
+  and stopped being so, because `PlayRequest.startSeconds` answers 0 for a recording now, so the
+  server builds the whole MP4 and the item's own t=0 is the recording's first frame. `position =
+  target` (`:844`) is unchanged and is **now documented as load-bearing** — it is how the target
+  reaches `armResumeSeek` and the `.readyToPlay` seek. `startAgain(at:)` has **no code change**,
+  only a comment recording that `target` still reaches `withStart` but **no longer reaches the
+  wire**. **Nothing else in the teardown changed**: the same detach, the same DELETE, the same
+  `ResumeStore.save`, in the same order.
+- **Live, cameras and radio are unchanged by construction.** For both `restart()` is called with no
+  argument and `isRecording` is false, so `target` is 0 — exactly what the old line wrote — and
+  `armResumeSeek` returns at its `guard isRecording`. Radio creates no session at all.
+- **A Pass 96 comment was corrected rather than left standing.** `armResumeSeek`'s doc claimed
+  "Nothing in `restart(at:)` or `startAgain(at:)` was changed by this pass", which was true when
+  written and is false now. A comment whose **claim** has become untrue is a different thing from
+  one whose line numbers have drifted, and this project's rule about not rewriting `file:line`
+  citations is not a reason to leave a false statement in the source.
+- **Step 2's device drive hit its own STOP condition, and this is now an evidenced limit rather than
+  an oversight: no restart caller can be reached from the remote.** All four were traced at this
+  HEAD. **Frame 6h IS the Expired state** (`PlayerScreen.swift:398` marks 6h as dc:1256-1259;
+  `ExpiredState` is the `410 · session ended` card, its Restart at `:448`), so step 2's two named
+  candidates are one button — and it needs a keep-alive 410, which cannot happen because the app
+  fetches every **10 s** against the server's **15 s** `hlsIdleTimeout` (`hls.go:49`) and the server
+  has no session lifetime cap. `FailureState`'s "Try again" (`PlayerScreen.swift:426`, a third
+  caller the step did not name) needs a failure that cannot be produced from the remote.
+  `timeJumped()`'s seek-beyond is dead on the file route (`!fullyPrepared` is false).
+  `stopBlockingRecordingAndWatch()` is live only. **No harness was extended and none was added.**
+- **The empirical half of that STOP is in this pass's own evidence**: the harness's session lived
+  **5 minutes** under constant scrubbing and pausing and ended only on the app's own DELETE — no
+  watchdog line, no 410 — and the app's console carries **zero** `restarted start=` lines across
+  both device runs.
+- **The recording restart path is therefore TRACED, NOT DRIVEN**, for the second pass running, and
+  the trace is: `restart(at:)` writes `position = target` → `startAgain` POSTs `start: 0` and sets
+  `startOffset = created.start` = 0 → `attach` → `armResumeSeek` reads `position` → the
+  `.readyToPlay` seek. Nothing between the write and the read touches `position`: `detachPlayer`
+  does not, `startAgain` does not, `tick()` is held off by `phase == .starting`.
+- **What was driven, and it passes:** `ResumeRewindUITests` **unchanged**, **TEST SUCCEEDED in
+  389.479 s** — Resume still lands on the saved position, scrubbing back still reaches `0:03 of
+  42:51`, and the prompt armed at 1273 s inside break 4 (1271.20–1478.54) with Select landing at
+  1482 s against its `endSeconds` of 1478.54. It proved **break 4** where Pass 96 proved break 3,
+  because breaks 1–3 had been spent on the way back; the break-agnostic assertion Pass 96 §4.2 built
+  handled that without an edit.
+- **Frame stepping is still 0.033367 s a click at 29.97 fps** — measured after a **resume**, not
+  after a restart, because a restart could not be reached — with `armArrowOwnership` claiming and
+  restoring the same two recognizers, and the resume seek landing within 0.4 ms of the stored
+  position.
+- **Disclosed cost of the evidence:** a temporary `FrameStepProbe` harness using `activate()` with
+  the app started by `devicectl … --console`, **deleted before the commit**. **No diagnostic was
+  added to the app target**, so nothing had to be reverted and the binary on Home Theater is the
+  committed one throughout. The saved position on `5328bb632e76` moved **932.000 → 1485.001 s**
+  because the harness ends past break 4; **no entry was cleared — 12 before, 12 after** — and no
+  other position changed. Nothing was deleted, trashed, kept, scheduled or marked watched, no
+  `GET /api/settings` and no `GET /api/status` were read, and the only request beyond the app's own
+  playback traffic was `GET /api/logs`.
+- **Committed locally and NOT pushed.** The owner tests it on Home Theater first.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
