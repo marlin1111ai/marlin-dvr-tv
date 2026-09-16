@@ -1750,3 +1750,59 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 92 — the progress bar on the Continue watching cards)
+
+- **A Continue watching card carries a progress bar across the bottom of its poster, and cards on
+  every other shelf do not** (owner decision 1a, 2026-09-16). It is filled `position ÷ duration`
+  from the two numbers Pass 91 already put on the card, so **it costs no request of any kind** —
+  not of the server, not of `ResumeStore`, which was not touched.
+- **The tokens, and nothing was added to `Theme.swift`:** the filled part is **`Nocturne.accent`**
+  (`#9184D9`) — the token `ProgressBar` already fills with (`ScreenChrome.swift:184`), and the one
+  the focus ring and the "*n* new" badge use. The unfilled part is **`Nocturne.bg` (`#161826`) at
+  `0.7`** — the screen's own background at the one translucency the theme already names, in
+  `Nocturne.Focus.shadowColor`. The bar is **6 pt**, the design's progress track height (dc:93-95)
+  and `ProgressBar`'s. No new asset, dependency, colour definition or colour literal.
+- **It is its own view, `PosterProgressBar`, and `ProgressBar` was left alone.** The two draw the
+  same number but not the same shape: show detail's is an inset **capsule** on an opaque track; the
+  card's runs the **full width** of the poster on its bottom edge, so it is a rectangle — a
+  capsule's rounded ends would read as a pill floating inside the card — with a translucent track.
+  Changing `ProgressBar` would have moved show detail's resume bars too.
+- **The overlay goes before the clip, so the card's own 8 pt corner radius trims it** and nothing
+  sits outside the card's existing layout box. Being an overlay it adds nothing to the layout:
+  Pass 47's 252 × 344 / 296 × 404 is untouched, and the bar widens with the card on focus while
+  staying 6 pt tall in both states.
+- **A zero or missing duration draws no bar** rather than a full or broken one — `Entry.duration`
+  is `0` whenever the Player never learned the length. **Code-traced only**: all twelve entries on
+  Home Theater have a real duration and producing one without would have meant writing a bad entry
+  into the owner's store.
+- **Measured on the television, against the store read off the Apple TV itself.** The store was
+  copied with `xcrun devicectl device copy from` — a read, into a session scratch directory, never
+  committed — before the first run and after the last, byte-identical across both. All five bars
+  match their stored fraction **to within half a point** (one screen pixel) at fractions from 0.120
+  to 0.581, and the focused card's to **0.08 pt** at its grown 296 pt width.
+- **Known and accepted unless the owner says otherwise: on a focused card the bar is mostly under
+  the focus ring.** The ring is 4 pt of the same `Nocturne.accent` drawn over the bar's bottom 4 pt
+  of 6, so only 2 pt is distinguishable while a card holds focus. The fill boundary is still
+  visible. Three fixes are listed in the report's open question 1 and **none was built**.
+- **`activate()` in a UI-test harness can photograph the previous build, and it did.** The first two
+  runs of this pass passed every assertion with no bar on screen: `XCUIApplication.activate()`
+  resumed the Pass 91 process that had been running on the television since 00:51, while the new
+  build sat installed and unlaunched. **The server's log is what proved it** — the app pings on
+  every launch (`ClientSession.swift:8-9`) and there was **no ping at all** in those two runs, where
+  every Pass 91 run had one. `activate()` exists for Pass 38's console attachment; a harness with no
+  console should use **`launch()`**, and this one now does. Pass 91's evidence is unaffected (its
+  shelf only exists in its own binary and it drew). **The other `activate()` harnesses were not
+  changed** — they are other passes' files (report open question 6).
+- **Pass 91's "newest position first" is now measured, not traced.** The same store read carries
+  `savedAt`, and the five cards' timestamps are strictly descending in the order drawn. The read
+  also confirms that of the store's **twelve** entries only **five** draw cards; the other seven
+  belong to recordings that have left the library, including Pass 31's deleted `6007a13f0b46`.
+- **Pass 91's verified state at the start of this pass:** `origin/main` at `92a4770`, local `main`
+  exactly one commit ahead at `c633c9f`, `git status --porcelain` showing only `?? icon-source/`.
+- **Committed locally and NOT pushed.** Passes 91 and 92 are both waiting; the owner tests on Home
+  Theater first, which now runs this build. The bedroom Apple TV was not touched and still runs
+  `168d8a7`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).

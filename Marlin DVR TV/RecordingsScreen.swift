@@ -24,6 +24,10 @@
 //  belongs to one recording. The two Apple TVs therefore show different cards here, deliberately.
 //  The other two shelves — "Recently Updated" and "Recently Added" — are the server's, untouched.
 //
+//  Pass 92: a Continue watching card carries a progress bar across the bottom of its poster,
+//  position over duration, both already on the card (owner decision 1a, 2026-09-16). Cards on
+//  every other shelf have none, and nothing else about any card changed.
+//
 
 import SwiftUI
 
@@ -35,6 +39,20 @@ struct ContinueItem: Identifiable {
     let show: ShowSummary
     let entry: ResumeStore.Entry
     var id: String { episode.id }
+
+    /// How far through the recording this Apple TV is, 0...1, for the card's progress bar
+    /// (Pass 92) — or **nil when the store has no usable length**, in which case no bar is drawn
+    /// at all rather than an empty one or a full one. `Entry.duration` is 0 whenever the Player
+    /// never learned the recording's length (`ResumeStore.swift:15`), and a 0 there would divide
+    /// by zero.
+    ///
+    /// It is the same expression `EpisodeRow.resumeFraction` uses for show detail's own resume
+    /// bars (`ShowDetailScreen.swift:261-264`), against the same two stored numbers, so a
+    /// recording's card and its episode row cannot disagree about how far in it is.
+    var progress: Double? {
+        guard entry.duration > 0 else { return nil }
+        return min(1, max(0, entry.position / entry.duration))
+    }
 
     /// The line under the title, where a server shelf's card carries "4 episodes". One recording
     /// has no episode count, so it names the recording and how far into it this Apple TV is —
@@ -253,7 +271,7 @@ struct RecordingsScreen: View {
                         Button {
                             selected = item.show
                         } label: {
-                            PosterCard(show: item.show, focused: focused == id, subtitle: item.line, badge: false)
+                            PosterCard(show: item.show, focused: focused == id, subtitle: item.line, badge: false, progress: item.progress)
                         }
                         .buttonStyle(BareButtonStyle())
                         .focused($focused, equals: id)
@@ -333,6 +351,10 @@ struct PosterCard: View {
     /// draw unchanged.
     var subtitle: String? = nil
     var badge: Bool = true
+    /// Pass 92: how far through the recording this Apple TV is, 0...1, drawn as a bar across the
+    /// bottom of the poster. **nil draws no bar**, which is what every other shelf's cards pass
+    /// and what a recording with no usable stored length gets.
+    var progress: Double? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -340,6 +362,13 @@ struct PosterCard: View {
                 ArtPlaceholder()
             }
             .frame(width: focused ? 296 : 252, height: focused ? 404 : 344)
+            // Before the clip, not after: the bar runs the full width of the poster and the
+            // card's own 8 pt corner radius trims its two bottom corners, so nothing sits
+            // outside the card's existing layout box. This is the order `EpisodeRow` already
+            // uses for show detail's resume bars (`ShowDetailScreen.swift:299-304`).
+            .overlay(alignment: .bottom) {
+                if let progress { PosterProgressBar(fraction: progress) }
+            }
             .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay(alignment: .topTrailing) {
                 if badge, show.unwatched > 0 {
@@ -368,5 +397,42 @@ struct PosterCard: View {
         .frame(width: focused ? 296 : 252, alignment: .leading)
         .offset(y: focused ? -22 : 0)
         .animation(.easeOut(duration: 0.15), value: focused)
+    }
+}
+
+/// The progress bar across the bottom of a Continue watching poster (Pass 92).
+///
+/// **Why it is not `ProgressBar`** (`ScreenChrome.swift:177-189`), which show detail's episode
+/// rows use for the same number: that one is a 6 pt **capsule**, drawn inset on a thumbnail, on an
+/// opaque `Nocturne.neutral800` track. This bar runs the **full width** of the poster and sits on
+/// its bottom edge, so it is a rectangle — a capsule's own rounded ends would read as a pill
+/// floating inside the card instead of a bar across it — and its unfilled part is translucent so
+/// the poster shows through. `ProgressBar` is left exactly as it is, so show detail is unchanged.
+///
+/// **The colours are existing tokens and nothing is added to `Theme.swift`:**
+/// - filled: `Nocturne.accent` (`#9184D9`) — the token `ProgressBar` fills with, and the one the
+///   focus ring and the "n new" badge already use;
+/// - unfilled: `Nocturne.bg` (`#161826`, the screen's own background) at `0.7`, the one
+///   translucency the theme already names (`Nocturne.Focus.shadowColor`).
+///
+/// It is 6 pt tall in both states — the design's progress track height (dc:93-95) and
+/// `ProgressBar`'s — so the bar draws the same focused and unfocused. Pass 47's focus growth still
+/// reaches it: the bar is an overlay on the poster, so it widens with the card from 252 to 296 pt
+/// and stays on the bottom edge as that edge moves. There is no animation and no text.
+struct PosterProgressBar: View {
+    let fraction: Double
+    /// dc:93-95, and `ProgressBar`'s own height.
+    static let height: CGFloat = 6
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Rectangle().fill(Nocturne.bg.opacity(0.7))
+                Rectangle()
+                    .fill(Nocturne.accent)
+                    .frame(width: geo.size.width * min(max(fraction, 0), 1))
+            }
+        }
+        .frame(height: Self.height)
     }
 }
