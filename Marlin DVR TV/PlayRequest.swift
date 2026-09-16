@@ -60,8 +60,37 @@ enum PlayRequest: Identifiable {
         }
     }
 
-    /// The `start` for a recording (contract §3); live and camera ignore it.
+    /// The `start` of POST /api/play/sessions (contract §3) — **0 for everything, including a
+    /// recording being resumed** (Pass 96 S1; owner decision 2026-09-16, settling Pass 41 open
+    /// question 7.2).
+    ///
+    /// A non-zero `start` is applied by the server as ffmpeg's `-ss` **before** it builds the
+    /// single-file MP4 (`stream.go:328-331`, carried into `playfile.go:108-117`), so the file it
+    /// remuxes *begins* at that point. The picture before it is not slow to reach — it does not
+    /// exist, which is why the owner could not rewind past where he left off. Asking for the whole
+    /// recording and seeking afterwards is what gives that part back; the seek is
+    /// `PlayerModel.seekToResumePosition`, and the position it seeks to is `resumeSeconds`.
+    ///
+    /// Live and camera never sent a `start` and are unchanged. Radio never creates a session at
+    /// all. The switch is exhaustive with no `default`, so a new kind has to decide rather than
+    /// inherit — the same rule `format` follows above.
     var startSeconds: Double {
+        switch self {
+        case .live: return 0
+        case .recording: return 0
+        case .camera: return 0
+        }
+    }
+
+    /// Where a resumed recording is to be **seeked** to once its item is ready, in absolute
+    /// recording seconds — the saved position the entry point passed in
+    /// (`ShowDetailScreen.swift:148-150`). 0 for live, for cameras, and for a recording played
+    /// from the top.
+    ///
+    /// **This never reaches the wire.** It is the same associated value `startSeconds` used to
+    /// return before Pass 96; the case keeps carrying it because `PlayRequest.id` is built from it
+    /// and that is the `fullScreenCover`'s identity.
+    var resumeSeconds: Double {
         if case .recording(_, _, let start) = self { return start }
         return 0
     }

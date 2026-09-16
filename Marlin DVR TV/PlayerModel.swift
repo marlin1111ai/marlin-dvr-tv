@@ -90,6 +90,13 @@ final class PlayerModel {
     private var promptedRanges: Set<Int> = []
     private var commercialPromptTask: Task<Void, Never>?
 
+    // Pass 96 (S2) — resuming by seeking. `pendingResumeSeek` is where this playback is to begin,
+    // in absolute recording seconds, from `attach` until the seek lands; nil at every other moment
+    // and for every playback that begins at the top. `resumeSeekDone` makes the seek happen once
+    // per item, so a `.readyToPlay` that arrives twice cannot seek twice.
+    private var pendingResumeSeek: Double?
+    private var resumeSeekDone = false
+
     static let defaultFrameRate: Double = 30
     /// Frame durations are built at 90 kHz: 1/25, 1/30 and 1/29.97 all land within a microsecond.
     private static let frameTimescale: CMTimeScale = 90_000
@@ -191,6 +198,9 @@ final class PlayerModel {
         let item = AVPlayerItem(url: url)
         item.preferredForwardBufferDuration = 0
         item.externalMetadata = Self.metadata(for: request)
+        // Pass 96 (S2): before the item is observed, so the `.readyToPlay` that `observe` is about
+        // to start listening for finds the target already in hand.
+        armResumeSeek()
         observe(item)
         player.replaceCurrentItem(with: item)
         player.play()
@@ -198,6 +208,32 @@ final class PlayerModel {
         phase = .playing
         showHUD(for: 6)
         loadCommercialsOnce()
+    }
+
+    /// Pass 96 (S2). Decide where this item is to begin, and say so in `position` straight away.
+    ///
+    /// The session now always asks the server for the whole recording (`PlayRequest.startSeconds`),
+    /// so the item's own t=0 is the recording's first frame and the resume point has to be reached
+    /// by seeking. Two callers reach `attach`, and each has already said where it means to begin:
+    ///
+    ///  * **`start()`** leaves `position` at 0 and carries the saved position on the request, as
+    ///    `resumeSeconds` — the number `ShowDetailScreen` passed in.
+    ///  * **`restart(at:)`** sets `position = target` before it gets here (`:830`) and that write
+    ///    survives, because `startAgain` replaces `startOffset` and `duration` but never `position`.
+    ///    **Nothing in `restart(at:)` or `startAgain(at:)` was changed by this pass** (Pass 95 T1):
+    ///    they are read here, not edited, and a restart therefore still resumes where it always did.
+    ///
+    /// `position` is set to the target immediately so the HUD's "x of y" never shows 0:00 for the
+    /// moment between the first frame and the seek landing.
+    private func armResumeSeek() {
+        pendingResumeSeek = nil
+        resumeSeekDone = false
+        guard isRecording else { return }
+        let target = position > 0 ? position : request.resumeSeconds
+        guard target > 0 else { return }
+        pendingResumeSeek = target
+        position = target
+        print(String(format: "[resume] will seek to %.2f s once the item is ready", target))
     }
 
     private static func metadata(for request: PlayRequest) -> [AVMetadataItem] {
@@ -254,6 +290,11 @@ final class PlayerModel {
         let t = item.currentTime().seconds
         guard t.isFinite else { return }
         if isRecording {
+            // Pass 96 (S2): until the resume seek has landed, the item is still at the top of the
+            // recording while `position` already holds where it is going. Publishing `startOffset +
+            // t` in that window would flash 0:00 in the HUD, and `noticeCommercialBreak` would test
+            // the wrong second — and latch the break it matched into `promptedRanges`, spending it.
+            if pendingResumeSeek != nil { return }
             position = startOffset + t
             noticeCommercialBreak()
             refreshFrameRate()
@@ -554,6 +595,44 @@ final class PlayerModel {
         if item.status == .failed {
             playbackFailed(item.error)
         }
+        // Pass 96 (S2). `.readyToPlay` is the first moment a seek is honoured: `attach` calls
+        // `player.play()` on an item whose status is still `.unknown`, and a seek issued there is
+        // against an item with no timebase. This is the KVO arm that already exists for `status`
+        // (`observe`, :262-264) — no second observer was added.
+        if item.status == .readyToPlay { seekToResumePosition(item) }
+    }
+
+    /// Pass 96 (S2). Put playback at the saved position, once, as soon as the item can take it.
+    ///
+    /// The move is the app's existing in-item exact seek — the same call, the same zero tolerances
+    /// and the same seekable-range clamp as `frameStep` (:420-441) and `skipCommercialBreak`
+    /// (:562-583). Play/pause is not touched: AVPlayer carries on playing from wherever it lands.
+    /// `absolute - startOffset` is kept even though `startOffset` is now always 0 for a recording,
+    /// because it is the same absolute-to-item conversion the rest of the file uses and it stays
+    /// right if the server ever answers a `start` of its own.
+    private func seekToResumePosition(_ item: AVPlayerItem) {
+        guard let absolute = pendingResumeSeek, !resumeSeekDone else { return }
+        resumeSeekDone = true
+        var target = CMTime(seconds: max(0, absolute - startOffset), preferredTimescale: Self.frameTimescale)
+        if let range = seekableRange {
+            let low = CMTime(seconds: range.start, preferredTimescale: Self.frameTimescale)
+            let high = CMTime(seconds: max(range.start, range.end - 0.05), preferredTimescale: Self.frameTimescale)
+            if CMTimeCompare(target, low) < 0 { target = low }
+            if CMTimeCompare(target, high) > 0 { target = high }
+        }
+        item.cancelPendingSeeks()
+        item.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.resumeSeekLanded(asked: absolute) }
+        }
+    }
+
+    private func resumeSeekLanded(asked: Double) {
+        pendingResumeSeek = nil
+        guard let item = player.currentItem else { return }
+        let landed = CMTimeGetSeconds(item.currentTime())
+        position = startOffset + landed
+        print(String(format: "[resume] asked %.2f s, landed t=%.6f → position %.2f s of %.2f s",
+                     asked, landed, position, duration))
     }
 
     private func errorLogEntry() {

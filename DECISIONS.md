@@ -1921,3 +1921,67 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 96 — resume from the whole recording)
+
+- **Owner decisions (2026-09-16): build Pass 95's S1 and S2 now; T1 is its own later pass, after he
+  tests this on Home Theater.** S1 is "recording sessions send `start: 0` on the wire, whatever the
+  saved position"; S2 is "seek to the saved position once the item is ready". T1 is `restart(at:)`
+  and `startAgain(at:)`, and **it is not built**.
+- **Owner requirement (2026-09-16): a recording starts within 2 s of pressing Resume** — "all my
+  other past dvr apps have done this instant or within 2 sec".
+- **The requirement is not met, it is measured, and the time is not the app's.** Press → picture at
+  the saved position, on Home Theater: **10.916 s** for `5328bb632e76` (42:51) and **7.567 s** for
+  `d9a4f5c76696` (1:42:18, the largest recording in the library). **85–94 % of both is the server's
+  single-file remux** — the app waits on `GET /api/play/file/{id}/video.mp4`, which the server does
+  not answer until the whole MP4 exists. The server's own log agrees with the app's clock to **8 ms
+  and 121 ms** (10.225 s / 6.308 s). Everything the app itself does is **0.684 s and 1.138 s**.
+  **Nothing was built to shorten it**, as the pass required.
+- **It was not 2 s before this pass either.** On the old build, 43 minutes before this one was
+  installed, the same server remuxed a **trimmed** part of the same recording in **11.049 s**, and
+  two more in 3.47 s and 3.30 s. The file route has always paid a remux; what changed is that it is
+  now the whole recording. On this evidence that costs about **3 s** more on a warm cache, and it
+  buys the rewind.
+- **The first remux of a recording is much slower than the next: 10.225 s against 2.151 s and
+  2.124 s for the same 1.09 GB whole-file remux.** A warm press-to-picture is therefore about
+  **2.8 s** — which is arithmetic on two measurements, not a reading, and still over the target.
+- **What was built, in two files, +109 / −1.** `PlayRequest.startSeconds` answers 0 for every kind
+  through an exhaustive switch, and a new `PlayRequest.resumeSeconds` carries the saved position to
+  the Player without ever reaching the wire; `PlayerModel` remembers it in `attach` (`armResumeSeek`),
+  holds `tick()` off until the seek lands, and seeks once on `.readyToPlay` through the KVO arm that
+  already existed — with both tolerances `.zero` and the same `seekableRange` clamp `frameStep` and
+  `skipCommercialBreak` use. **`PlaybackSession.swift` needed no edit**: it already sent
+  `request.startSeconds`. **`ShowDetailScreen.swift` has no diff** — the three entry points still
+  pass the saved position in.
+- **`restart(at:)` keeps working without being edited, and that is by construction, not luck.** It
+  writes `position = target` before it reaches `attach` (`PlayerModel.swift:830`) and `startAgain`
+  replaces `startOffset` and `duration` but never `position`, so `armResumeSeek` finds the target
+  there. **This was traced, not driven on the device**, and it is the first thing T1's pass should
+  put on a television.
+- **The seek lands exactly.** Asked 931.00 s, landed `t=931.001633`; asked 2353.02 s, landed
+  `t=2353.022333` — within 2 ms and 2 µs of the stored positions.
+- **Proved on Home Theater by `ResumeRewindUITests` (`launch()`, TEST SUCCEEDED in 228.959 s):**
+  Resume lands on the saved position and not 0; **40 Left presses reach `0:03 of 42:51`** with the
+  episode's opening title card on screen — footage that did not exist in the file before this pass;
+  and the commercial prompt arms at 733 s inside the break 730.56–925.46 with Select landing at
+  929 s against that break's `endSeconds` of 925.46. A launch ping in the server's log for every
+  run. **Frame stepping still moves 0.033367 s a click at 29.97 fps** after a resume, with
+  `armArrowOwnership` claiming and restoring the same two recognizers.
+- **The harness's first run failed twice and the app was right both times**, disclosed in §4.2 of
+  the report: it had spent the break it then tried to prove (`noticeCommercialBreak` latches each
+  range once per playback, Pass 38), and a stray Select left the player paused so 65 "restore"
+  presses went to the frame stepper at 0.033367 s each. Both fixes are in the harness; **none is in
+  the app**.
+- **Disclosed cost of the evidence:** a timing diagnostic in `PlayerModel.swift` and
+  `ShowDetailScreen.swift` plus a temporary `ResumeTimingProbe` harness, **all removed before the
+  commit**, with the reverted build rebuilt, reinstalled and re-run — and that build is what Home
+  Theater is left running. The failed harness run moved the owner's saved position on
+  `5328bb632e76` from **931.002 s to 330.079 s**; the run that counts walked it back and left it at
+  **932.000 s**. `d9a4f5c76696` moved 2353.022 → 2433.000 s because the probe played it. **No
+  entry was cleared — 12 before, 12 after.** Nothing was deleted, trashed, kept, scheduled or marked
+  watched, no `GET /api/settings` was read, and the only requests beyond the app's own playback
+  traffic were `GET /api/status` and `GET /api/logs`.
+- **Committed locally and NOT pushed.** The owner tests it on Home Theater first.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
