@@ -15,7 +15,7 @@ Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — 
 
 ## The rules
 
-The standing builder rules live in `CLAUDE.md` at the project root. Read it. This file no longer keeps its own copy of them; a rule change is made in `CLAUDE.md` only (DECISIONS.md, 2026-09-09 (Pass 60)).
+The standing builder rules live in `CLAUDE.md` at the project root. Read it. This file no longer keeps its own copy of them; a rule change is made in `CLAUDE.md` only (DECISIONS.md, 2026-09-09 (Pass 60)). One standing rule is the owner's about this project's own hardware rather than the builder's conduct, and it is kept with the devices it governs: **the bedroom Apple TV is brought up with every proven batch** — see *Standing state of the devices and the evidence* (DECISIONS.md, 2026-09-16 (Pass 102)). It is written there once, not copied here.
 
 ## How to build
 
@@ -73,6 +73,7 @@ Current state only — one line per screen and one per standing fact, each citin
 
 ### Standing state of the devices and the evidence
 
+- **STANDING RULE — the bedroom Apple TV is brought up with every proven batch.** The owner's words, 2026-09-16: **"whenever we done doing updates and they a proven always update the bedroom"**. Once a batch is proven on Home Theater, updating the bedroom Apple TV to that same build is **its own step of that work**, not a separate pass to be scheduled later and not something to leave until asked. Until the next batch is proven the two televisions may legitimately differ, and *Next step* says which build each is on (DECISIONS.md, 2026-09-16 (Pass 102)).
 - **The owner's four pre-1.6.0 trashed recordings are gone — do not go looking for them.** His own web-UI `POST /api/library/trash/empty` at 20:51:50 on 2026-09-07 permanently deleted all four; `6007a13f0b46` no longer exists; the old-form trash entry can no longer be produced (Pass 33).
 - Pass 32's two leftovers, `midday-maryland` `b7a3822d83b4` and `the-view` `eccf81dbdab2`, are back in the library and clean, and they were the only ids ever authorised for trash-and-restore evidence (Pass 33).
 - Two Pass 42 device runs left a resume position deep inside *History's Greatest Mysteries* S4 E14 "Who Is D.B. Cooper?" on Home Theater; it is per-Apple-TV, only playing the recording to its end clears it, and `CommercialSkipUITests/testPromptAppearsAndSelectSkips` keeps failing until it is cleared (Pass 42).
@@ -192,6 +193,41 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 102.** **Home Theater runs the committed build; the bedroom Apple
+TV does not — it is still on `4396d84`.** The standing rule above says it comes up with the next
+proven batch.
+
+Pass 102 is **read-only recon**. It sorts inventory items **A1–A5** for building, which the owner
+ordered on 2026-09-16 — `reports/2026-09-16-pass102-a1-a5-recon.md`. **Nothing was built**, no build
+was made, neither Apple TV was touched, and **no write of any kind reached the server**.
+
+- **The sort. SWEEP — additive, independent, clear of do-not-touch: A1, A3, A4, A5. STANDALONE:
+  A2 alone.** A2 is the one destructive item: the same
+  `PUT /api/library/recordings/{id} {"trash": true}` **deletes the file outright** when the server's
+  trash period is "Immediately", and it fires inside the Player's end-of-recording teardown on a
+  root-level `fullScreenCover` with `.interactiveDismissDisabled(true)` and no library-change
+  callback. **A3 is in the sweep but cannot start**: Pass 9 open question 1 — "Should a click tune
+  the channel live?" — **is** the item, and it is unanswered.
+- **A2's button is not absent — it is drawn and inert** (`PlayerScreen.swift:393`, empty action).
+  COLD-START's "inert **or** absent" was right; the Pass 99 inventory row's "is absent" is the loose
+  wording, and that report is not rewritten (Pass 56's rule).
+- **Three versions, kept apart.** The running server is **1.9.1**, the reference clone **1.8.1**
+  (`eb0c098`), the contract **1.7.0**. **Seven read routes were confirmed 200 against 1.9.1 itself**;
+  **every write route A1–A5 needs is unconfirmed at 1.9.1** and none was called.
+- **Five owner calls are waiting**, each with its file and quote in §3 of the report and **no option
+  invented**: A3's Pass 9 open question 1; whether A2's delete is recoverable (it turns on a setting
+  this project will not read); whether frame 6e gets a confirm step; what A4 should say for the two
+  airings it cannot restore; and A5's interval, for which the notebook records nothing.
+- **A4's proof needs his authorisation first:** all 8 of his scheduled jobs read `Queued` today, so
+  there is **no skipped airing to un-skip** — producing one means cancelling a real recording of
+  his, which is what Pass 10 declined to do.
+- **Pass 101's verified push SHA is `90ff524`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 102 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 101, described its own state correctly when written and
+is kept as history.
 
 **Nothing is unpushed as of Pass 101.** **Home Theater runs the committed build; the bedroom Apple
 TV does not — it is still on `4396d84`.**

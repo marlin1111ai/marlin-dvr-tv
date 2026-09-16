@@ -2221,3 +2221,59 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 102 — A1–A5 sorted for building)
+
+- **Owner decision (2026-09-16): build inventory items A1–A5, after this recon sorts them.** They
+  are, in the inventory's own words: **A1** show detail's "Series pass" does nothing; **A2** the
+  Player's "Delete this recording" (frame 6e) is absent; **A3** a plain click on a Guide channel cell
+  does nothing; **A4** a cancelled pass airing cannot be un-skipped from the app; **A5** the Manage
+  DVR lists never refresh on their own
+  (`reports/2026-09-16-pass99-unfinished-inventory.md`, group A).
+- **Owner standing rule (2026-09-16), his words: "whenever we done doing updates and they a proven
+  always update the bedroom".** Once a batch is proven on Home Theater, **the bedroom Apple TV is
+  brought to the same build as its own step** — not left behind, not scheduled separately. It is
+  written into `COLD-START.md` under *Standing state of the devices and the evidence*, which is
+  where the notebook keeps standing device rules; `CLAUDE.md` was not edited (it is the owner's own
+  rules file and this pass does not name it).
+- **Nothing was built.** No app-target file, test-target file or project file was changed, no build
+  was made, neither Apple TV was touched, and **no write of any kind was sent to the server** — every
+  request was a GET on a read-only route, and `GET /api/settings` was not read.
+- **The sort, which is what the pass was for.** **SWEEP** (additive, independent, clear of
+  do-not-touch): **A1**, **A3**, **A4**, **A5**. **STANDALONE**: **A2** alone — the same
+  `PUT /api/library/recordings/{id} {"trash": true}` **deletes the file outright** when the server's
+  trash period is "Immediately" (`ServerWrites.swift:95-97`, `library.go:683-691`), and it fires
+  inside the Player's end-of-recording teardown on a root-level `fullScreenCover` that disables
+  interactive dismissal. **A3 is in the sweep but cannot start** until the owner answers Pass 9 open
+  question 1 — "Should a click tune the channel live?" — which is the whole of the item and the only
+  option the notebook records.
+- **A measured correction to the inventory, recorded rather than glossed: A2's button is not absent.**
+  It is **drawn and inert** — `PlayerScreen.swift:393` carries
+  `StateButton(title: "Delete this recording", …) { }` with an empty action. COLD-START's own wording
+  ("inert **or** absent") was right; only the Pass 99 inventory row's "is absent" is loose, and that
+  report is not rewritten (DECISIONS.md, 2026-09-09 (Pass 56)).
+- **Three versions had to be kept apart, and every route claim is labelled with which one it rests
+  on.** The running server is **1.9.1** (`GET /api/status`), the reference clone is **1.8.1**
+  (`eb0c098`, `cmd/marlin-dvr/main.go:38`) and the contract `HLS-CLIENT-API.md` still says **1.7.0**.
+  **Seven read routes were confirmed 200 against 1.9.1 itself.** **Every write route A1–A5 needs is
+  unconfirmed at 1.9.1** — they are writes, so none was called, and the newest source readable is two
+  releases behind. A build pass must not assume otherwise.
+- **What the owner still has to decide**, each recorded with its file and quote in §3 of the report
+  and **no option invented**: A3's Pass 9 open question 1 (one recorded option, "tune the channel
+  live"); whether A2's delete is recoverable at all, which turns on a setting this project will not
+  read; whether frame 6e gets a confirm step, which the design does not give it and every other
+  destructive control in the app has; what A4 should say for the two airings it cannot restore; and
+  A5's interval, for which the notebook records no option at all.
+- **A4's proof has a precondition that is his to authorise:** there is **no skipped airing on his
+  server** — all 8 scheduled jobs read `Queued` today — so proving the round trip means cancelling a
+  real recording of his first, which is exactly what Pass 10 declined to do.
+- **The findings are in `reports/2026-09-16-pass102-a1-a5-recon.md`**, read at HEAD
+  `90ff524644ec332797736b70840f8b8671304f14`, with every `file:line` re-verified against that HEAD
+  before the commit.
+- **Pass 101's verified push SHA is `90ff524`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `90ff524644ec332797736b70840f8b8671304f14`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
