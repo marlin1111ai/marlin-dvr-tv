@@ -193,6 +193,38 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 97.** **Home Theater runs this build; the bedroom Apple TV does
+not — it is still on `4396d84`.**
+
+**Pass 96 was tested on Home Theater on 2026-09-16 and accepted — "bank it all good"**
+(owner, 2026-09-16): a resumed recording's session sends **`start: 0`** whatever the saved position,
+and the app **seeks to that position itself** once the item reaches `.readyToPlay`, so **there is
+picture before the resume point and he can rewind into it**.
+
+- **Pass 96's `12ef07f` is pushed**, together with this pass's own commit carrying
+  `reports/2026-09-16-pass96-resume-whole-recording.md`'s acceptance, this paragraph and the
+  `DECISIONS.md` entry — **a fast-forward from `3a88477`**, which is still an ancestor. Nothing
+  forced, rebased or amended.
+- **The acceptance covers the start time as measured, not a promise to improve it.** Press to
+  picture was **10.916 s** and **7.567 s**, **85–94 % of it the server's remux**, against his own
+  2 s requirement; a warm repeat of the same whole-file remux took 2.151 s and 2.124 s, so a warm
+  start is about 2.8 s by arithmetic. **Nothing was built to shorten it.** The three ways out are in
+  the Pass 96 report's open question 1, all outside this app, **none taken, and nothing asked of the
+  marlin-dvr project.**
+- **No app-target or test-target file changed in this pass.** The binary the owner accepted is Pass
+  96's, and the binary pushed is the same one.
+- **Pass 95's T1 is the next pass** (owner, 2026-09-16) — `restart(at:)` and `startAgain(at:)`,
+  which Pass 96 read and did not edit. Their hand-off is traced and **was never driven on the
+  device**; frame 6h's Restart, the Expired state's Restart and `timeJumped()`'s seek-beyond all
+  need a television.
+- **The bedroom Apple TV was not touched** and still resumes the old way until the owner has it
+  brought up.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 97 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 96, described its own state correctly when written and
+is kept as history.
+
 **Pass 96 is committed and NOT pushed. The owner tests it on Home Theater first, and Home Theater
 is left running exactly this build.**
 

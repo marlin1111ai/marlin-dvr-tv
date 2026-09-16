@@ -1985,3 +1985,46 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 97 — Pass 96 accepted and pushed)
+
+- **Owner acceptance: Pass 96 was tested on Home Theater on 2026-09-16 and accepted — "bank it all
+  good"** (owner, 2026-09-16). That covers the whole of what Pass 96 built: a resumed recording's
+  session sending **`start: 0`** whatever the saved position, and the app **seeking to that position
+  itself** once the item reaches `.readyToPlay` — so **there is picture before the resume point and
+  he can rewind into it**, which is the report he made in Pass 95.
+- **The acceptance covers the measured start time as it stands.** Pass 96 measured press-to-picture
+  at **10.916 s** and **7.567 s**, of which **85–94 % is the server's single-file remux**, against
+  his own requirement of 2 s; a warm repeat of the same whole-file remux took 2.151 s and 2.124 s,
+  putting a warm start at about 2.8 s by arithmetic. **Nothing was built to shorten it and nothing
+  is being built now.** He has accepted the feature with that cost known and written down; the three
+  ways out named in the Pass 96 report's open question 1 are all outside this app and **none was
+  taken, and nothing was asked of the marlin-dvr project.**
+- **Pass 96's verified push SHA is `12ef07f`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main` read `12ef07f80b651805c543c7d981453c08ece2f8ca`, `git rev-parse
+  origin/main` and `git ls-remote origin main` both read
+  `3a88477f32a1c9c8bdbfc4e884cae5eb3437ce72` (Pass 95), `git rev-list --left-right --count
+  main...origin/main` was `1 0` — so Pass 96 was the only thing waiting — and `git status
+  --porcelain` showed only `?? icon-source/`. It is pushed in this pass as a fast-forward, together
+  with this pass's own commit. Nothing forced, rebased or amended.
+- **No app-target or test-target file was changed in this pass.** The binary the owner accepted is
+  Pass 96's, and the binary pushed is the same one; Home Theater has been running it since Pass 96's
+  own device run.
+- **The bedroom Apple TV was not touched and still runs `4396d84`** (Pass 93's build). The two
+  televisions are therefore on different builds until the owner says otherwise, and the bedroom one
+  still resumes the old way — its recordings begin at the saved position and cannot be rewound
+  before it.
+- **Pass 95's T1 is still not built, and it is the next pass** (owner, 2026-09-16): `restart(at:)`
+  and `startAgain(at:)`, which Pass 96 read and did not edit. They keep resuming correctly only
+  because `restart(at:)` writes `position = target` before it reaches `attach`
+  (`PlayerModel.swift:830`) and `startAgain` never overwrites `position` — **traced, never driven on
+  the device**, and putting frame 6h's Restart, the Expired state's Restart and `timeJumped()`'s
+  seek-beyond on a television is the first thing that pass should do.
+- **Pass 96's open questions are neither closed nor re-raised by this acceptance** — the 2 s target
+  and the three ways out of it, what the Starting screen should say during the wait (Pass 41 open
+  question 7.3), why a recording's first remux is about five times slower than its next, and a break
+  the viewer scrubs through being spent for that playback. They stand exactly as Pass 96 left them,
+  as do the three things that pass was least sure of.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
