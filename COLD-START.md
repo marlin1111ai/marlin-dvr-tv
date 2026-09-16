@@ -193,6 +193,43 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 100.** **Home Theater runs the committed build; the bedroom Apple
+TV does not — it is still on `4396d84`.**
+
+Pass 100 answered a request from the marlin-dvr side, relayed by the owner: test on the Apple TV
+whether the **raw recording `.mpg`** can be played over HTTP with byte ranges and no remux, and
+whether **HLS** can give rewind-to-zero
+(`reports/2026-09-16-pass100-raw-mpg-and-hls-test.md`). **No shipped app code changed.**
+
+- **The raw `.mpg` could not be tested: this server does not serve it.** Not in the contract, not in
+  the 102 route registrations, and **404 from the running 1.8.2 server on all ten spellings for both
+  subjects**, against four controls that answered 200. Steps 2–5 were skipped as the pass instructed
+  and nothing was substituted. **To pass back: `rss.go:88` advertises `/api/play/recording/{id}.mp4`
+  and no such route is registered.**
+- **HLS gives rewind-to-zero exactly, and reaches picture 9–13× faster** — **0.647 s** and
+  **0.814 s** press-to-picture against the file route's 10.916 s and 7.567 s, with every seek exact
+  in 0.162–0.239 s and **0:00 landing at t=0.000**. **But every defect the file route closed comes
+  back**: at `.readyToPlay` the seekable range is only 172 s and 216 s of the two recordings and
+  takes 8–30 s to complete, so **Pass 96's resume seek is clamped short — asked 1485 s, landed
+  172 s**; the **LIVE badge is drawn over a recording and stays even at +40 s**;
+  `canPlayFastForward` and the step flags are **false throughout**; `item.duration` is NaN; and the
+  frame rate reads unstable, the app adopting **25.0000 fps three times**.
+- **The three routes are side by side in §4 of the report**, the six things HLS never did are quoted
+  from the record in §2, and **the LIVE badge is photographed** in `reports/assets/pass100/`.
+- **Disclosed cost:** the probe's seek script ends at 0:00, so both subjects' saved positions moved
+  to near the start — `5328bb632e76` **1485.001 → 32.004 s**, `d9a4f5c76696` **4498.000 → 76.000 s**.
+  **No entry was cleared — 12 before, 12 after.** The old values are in the report and recoverable
+  by hand; nothing was written to the device to restore them.
+- **The diagnostic was reverted with `git checkout --`** and the reverted build rebuilt, reinstalled
+  and relaunched, with its launch ping in the server's log. **Nothing is raised with marlin-dvr and
+  nothing is recommended** — the owner asked for measured numbers either way.
+- **Pass 99's verified push SHA is `b866a0f`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 100 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 99, described its own state correctly when written and
+is kept as history.
+
 **Nothing is unpushed as of Pass 99.** **Home Theater runs this build; the bedroom Apple TV does
 not — it is still on `4396d84`.**
 

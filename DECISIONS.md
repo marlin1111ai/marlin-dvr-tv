@@ -2138,3 +2138,48 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 100 — raw `.mpg` and HLS, tested on the device)
+
+- **Request from the marlin-dvr side, relayed by the owner (2026-09-16):** before the server changes
+  anything, test on the Apple TV whether AVPlayer can play the raw recording `.mpg` (MPEG-TS, H.264
+  Main@4.0 1920x1080, AAC-LC 44.1k stereo) served over HTTP with byte ranges and no remux, and
+  whether HLS can give rewind-to-zero. Report measured numbers either way.
+- **The raw `.mpg` could not be tested, because this server does not serve it.** No such route is in
+  the contract, in the 102 registrations of `cmd/marlin-dvr/main.go`, or on the running 1.8.2 server
+  — twenty GETs with `Range: bytes=0-0` across ten spellings on both subjects all answered **404**,
+  against four control GETs that answered 200 in the same minute. **Steps 2–5 were skipped as the
+  pass instructed**, nothing was substituted for them, and nothing was built. One thing to pass back:
+  `rss.go:88` advertises an enclosure URL of `/api/play/recording/{id}.mp4` and **no such route is
+  registered** — a dead URL in their own feed.
+- **HLS gives rewind-to-zero, exactly, and it is far faster to first picture — but it brings back
+  every defect the file route closed.** Measured on Home Theater: press to picture **0.647 s** and
+  **0.814 s** against the file route's 10.916 s and 7.567 s, because there is no remux; **every seek
+  exact** — to the saved position, to 20:00, to 60:00 and **back to 0:00 landing at t=0.000** — in
+  0.162–0.239 s. **But** at `.readyToPlay` the seekable range is only **0…172.18 s** and
+  **0…216.23 s**, reaching the whole recording between +8 s and +30 s; **Pass 96's resume seek is
+  therefore clamped short — asked 1485.00 s, landed 172.13 s; asked 4498.00 s, landed 216.18 s**;
+  the **LIVE badge is drawn over a recording and is still drawn at +40 s with the whole recording
+  seekable**; `canPlayFastForward`, `canPlayReverse`, `canStepForward` and `canStepBackward` are
+  **false throughout**; `item.duration` is **NaN**; and the frame-rate reading is unstable, the app
+  adopting **25.0000 fps three times** where the file route reads a stable 29.9700.
+- **The findings are in `reports/2026-09-16-pass100-raw-mpg-and-hls-test.md`**, with the three routes
+  side by side in §4, the six things HLS never did for recordings quoted from the record in §2, and
+  the LIVE badge photographed in `reports/assets/pass100/`.
+- **No shipped app code changed.** The whole test was a disclosed diagnostic — `PlayRequest.format`
+  forced to `"hls"` for recordings, timing marks, and an in-app scripted seek sequence — **reverted
+  with `git checkout --`, which is byte-exact**, with `Probe100.swift` deleted. The reverted build
+  was rebuilt, reinstalled and relaunched on Home Theater and **its launch ping is in the server's
+  log at 14:59:56.480**.
+- **Disclosed cost of the evidence:** the probe's seek script ends at 0:00, so both subjects' saved
+  positions were moved to near the start — `5328bb632e76` **1485.001 → 32.004 s** and
+  `d9a4f5c76696` **4498.000 → 76.000 s**. **No entry was cleared — 12 before, 12 after** — and no
+  other position changed. The old values are recorded here and recoverable by hand; **nothing was
+  written to the device to restore them**, because no step authorised writing to the app's container.
+  Nothing was deleted, trashed, kept, scheduled or marked watched; no `GET /api/settings`, no admin
+  route and no server write of any kind.
+- **Nothing here is a recommendation and nothing was raised with marlin-dvr.** The owner asked for
+  measured numbers either way, and that is what the report is.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
