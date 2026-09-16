@@ -1690,3 +1690,63 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 91 — "Continue watching" on the Recordings screen)
+
+- **The Recordings screen draws "Continue watching" from this Apple TV's `ResumeStore` instead of
+  the server's "Recently Watched" shelf** (owner, 2026-09-16). Same position — first, where the
+  server's `sections[0]` was — and the same `PosterCard`. It lists the recordings this Apple TV has
+  an unfinished saved position on, newest position first; a recording with no saved position never
+  appears. The server's "Recently Watched" shelf is **not drawn**. "Recently Updated" and "Recently
+  Added" are the server's still, in the server's order, untouched.
+- **It is per Apple TV, so the two Apple TVs differ — deliberately.** A resume position lives in
+  that Apple TV's own `UserDefaults` and nowhere else (DECISIONS.md, 2026-09-05 (design)), so Home
+  Theater and the bedroom Apple TV will show different cards on this shelf, and neither is wrong.
+  This is the substance of the change: the shelf it replaces was the opposite of that — the
+  server's `lastWatched`, per show, and shared between both Apple TVs, which the screen's own
+  subtitle already says out loud.
+- **The shelf's members are recordings, not shows.** Two half-watched episodes of one show draw two
+  cards side by side. The card's second line therefore names the recording instead of counting
+  episodes — "S6 E17 · 40 min in", the same words and the same `ResumeStore.label(for:)` as frame
+  5d's Resume button — and carries no "n new" badge, which belongs to a show. `PosterCard` took two
+  parameters with defaults to do it, so the server's shelves draw exactly as Pass 47 left them.
+- **"Not finished" is this Apple TV's store, not the server's `watched` flag.** A card appears when
+  an entry exists, clears the store's existing `position > 5` bar, and is not inside the last three
+  seconds — `saveResume`'s own end-of-file test, kept for the one entry `restart(at:)` can park at
+  the end. `watched` is deliberately not consulted: it is a server flag shared with the other Apple
+  TV, and filtering on it would let one Apple TV empty the other's shelf. The live consequence is on
+  the television now — *History's Greatest Mysteries* S4 E14 is `watched: true` server-side and
+  still carries a 15-minute position on Home Theater, so it is on the shelf. Open question 1 of the
+  report is whether the owner wants that.
+- **An empty shelf is not drawn at all** — no heading, no "Nothing yet." line, no empty row; the
+  shelves below close up. The server's own sections keep their "Nothing yet." line, because the pass
+  said nothing else on the screen changes.
+- **A saved position cannot be matched to a show without reading the shows — measured, not
+  assumed.** `ResumeStore` is keyed by the recording id and stores a position, a duration and a save
+  time, with no index and no show; `GET /api/library` answers shows and carries no recording id; and
+  **there is no per-recording read on this server** — `GET /api/library/recordings/{id}` and three
+  neighbouring spellings all answer 404 on 1.8.2 (Pass 91 §2.3). So the shelf resolves its cards
+  through `GET /api/library/shows/{id}`, the read show detail already makes, over the shows the
+  library answered with: measured at **1 + 4 reads in ~70 ms** on the owner's library, and **no
+  request at all** when the Apple TV has no saved position. **No new route was built and none is
+  raised for marlin-dvr.**
+- **Nothing was added to what `ResumeStore` stores.** The store is enumerated by reading the
+  standard `UserDefaults` domain's keys back and filtering on the existing `marlinResume.` prefix.
+  `Entry` is unchanged, `save` and `clear` are unchanged, and an entry written by the build now on
+  the bedroom Apple TV reads back unchanged.
+- **Pass 89's verified push SHA is `92a4770`**: before this pass changed anything, `git fetch` was
+  run and `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `92a477071df7058942fe3895bd77166e50c3af00`, with `git status --porcelain` showing only
+  `?? icon-source/`.
+- **Two device runs, not one, and why.** The first run of `ContinueWatchingUITests` failed a single
+  assertion — it looked for show detail's Resume line among `app.staticTexts`, and a tvOS button's
+  own text is not a static text. **The screen was correct and the harness was wrong**; the
+  screenshot that run had already taken shows "Resume S6 E17 · 40 min in" drawn. The assertion was
+  moved to `app.buttons` and the run repeated: **TEST SUCCEEDED, 26.574 s**. Both runs' screenshots
+  are byte-identical, and neither made a server write of any kind — the only non-GET line in the
+  server's log across both is the app's own launch ping.
+- **Committed locally and NOT pushed** — the owner tests on Home Theater first. Home Theater now
+  runs this build; the bedroom Apple TV was not touched and still runs `168d8a7`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
