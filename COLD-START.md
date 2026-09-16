@@ -167,12 +167,74 @@ compensated for in the app.
   change cannot affect decoding, and it is displayed in exactly two places: the Recordings screen
   header (`RecordingsScreen.swift:86`) and the Home Recordings tile (`HomeView.swift:76`). Nothing
   else reads it and nothing derives from it. **Both strings simply show a smaller number** (Pass 70).
+- **Commercial detection has failed on the owner's server on every recording made since
+  2026-09-08.** Measured read-only in Pass 94 from the eleven `GET
+  /api/library/recordings/{id}/commercials` answers and the `detect` record the library carries
+  beside each recording: **nine of eleven answer `state: "unknown"`**, eight of them with the same
+  stored reason — `the app's comskip.ini is missing (stat
+  /Apps/dvr/marlin-dvr/data/versions/<v>/comskip.ini: no such file or directory)`, naming first
+  `versions/1.8.0/` and later `versions/1.8.2/` — and the ninth interrupted at 00:06:08 on
+  2026-09-08 by the in-place update itself. **The last successful detection on that server ended at
+  22:42:21 on 2026-09-07.** Only `5328bb632e76` (4 breaks) and `d9a4f5c76696` (8 breaks), both
+  recorded 2026-09-07, carry markers at all, which is why **the commercial-skip prompt has never
+  appeared for the owner** — the app is correct and has nothing to show. The failure is **silent**
+  (nothing in the admin UI or the log says detection has stopped) and **not self-healing** (contract
+  §10.3: nothing re-runs detection), so every recording made from 2026-09-08 onward is permanently
+  without markers even after a fix. The mechanism, read from the reference clone at `eb0c098`, is in
+  **`reports/2026-09-16-pass94-commercial-skip-recon.md` §8**. **Nothing was changed on the server,
+  nothing was asked of them, and no request was sent to them.**
 
 ## Open questions
 
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Pass 95 is a read-only recon and changed no code. It made no server request of any kind.**
+It answers the owner's report of 2026-09-16 — *resuming a recording starts at the saved spot and
+there is no way to rewind to before it* — and records his decision settling **Pass 41 open question
+7.2**: **resume asks for the whole recording from the beginning and then seeks to the saved
+position** (Pass 41 build-plan step 7). **Nothing was built**
+(`reports/2026-09-16-pass95-resume-rewind-recon.md`).
+
+- **The cause is one value on the wire, and there is no bug.** The app sends the saved position as
+  the play session's `start` (`ShowDetailScreen.swift:148-150` → `PlayRequest.swift:63-67` →
+  `PlaybackSession.swift:70`), and the server applies it as ffmpeg's `-ss` **before** it builds the
+  single-file MP4 (`stream.go:328-331`, carried into `playfile.go:108-117`). The file that is
+  remuxed *begins* at the resume point, so there is nothing before it to rewind to. The app never
+  restricts seeking — `requiresLinearPlayback` is set for cameras only (`PlayerScreen.swift:36`).
+- **All three resuming entry points are in `ShowDetailScreen.swift`** — Resume (`:177`), Play newest
+  (`:188`) and a click on an episode row (`:236`) — and **Continue watching is not a fourth**: its
+  cards open show detail (`RecordingsScreen.swift:271-275`). The Player's Play next always sends
+  `start: 0` (`PlayerScreen.swift:101`).
+- **`start: 0` costs almost nothing in correctness.** Ten readers of `startOffset` were listed and
+  **nine are correct at 0 untouched**, because they all compute `position = startOffset + t`, which
+  at 0 is the identity. The tenth is `restart(at:)`'s `startOffset = target`
+  (`PlayerModel.swift:750`). DECISIONS.md, 2026-09-08 (Pass 42) had already corrected Pass 41 §4.3's
+  claim that today's `start: N` breaks `fullyPrepared`, the HUD or the commercial clamp — **it does
+  not**; both schemes are correct and the difference is reach and wait.
+- **The work sorts into two SWEEP items and one STANDALONE.** SWEEP: send `start: 0`
+  (`PlayRequest.swift:63-67`, `PlaybackSession.swift:70`); seek once the item is ready, in a new
+  `.readyToPlay` arm of `itemStatusChanged` (`PlayerModel.swift:552-557`), on the observer that
+  already exists at `:226-228`. STANDALONE: `restart(at:)` / `startAgain(at:)`
+  (`PlayerModel.swift:740-786`), the session-teardown path Pass 39 called the Player's most fragile
+  area. **`armArrowOwnership` and `armSelectOwnership` are not on the path and cannot be**, and the
+  file route's first fetch needs no edit — its 11-minute timeout already covers the server's
+  10-minute ceiling (`PlaybackSession.swift:37`).
+- **The price is the remux**, which becomes the whole recording every time. Pass 41 open question
+  **7.3** — what the screen says during the wait — becomes more visible and was **not** reopened.
+- **Pass 94's finding is now in "Raised for the marlin-dvr project"** above: commercial detection
+  has failed on every recording since 2026-09-08 with the missing `comskip.ini` reason. **Nothing
+  was sent to them.**
+- **Pass 94's verified push SHA is `4f91406`**, and every `file:line` in the Pass 95 report was read
+  from that tree in this run. `git status --porcelain` showed only `?? icon-source/`. This pass's one
+  commit is a fast-forward from it. **Both Apple TVs still run `4396d84`'s binary** — no app-target
+  file has changed since.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 95 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 94, described its own state correctly when written and
+is kept as history.
 
 **Pass 94 is a read-only recon and changed no code.** It answers the owner's report that the
 commercial-skip prompt has never appeared for him at a break, and the answer is not in this app:

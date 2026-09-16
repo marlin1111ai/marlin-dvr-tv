@@ -1875,3 +1875,49 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 95 — resume gives no way back to before the resume point)
+
+- **Owner report (2026-09-16): resuming a recording starts at the saved spot and there is no way to
+  rewind to before it.**
+- **Owner decision (2026-09-16): this settles Pass 41 open question 7.2 — resume asks for the whole
+  recording from the beginning and then seeks to the saved position** (Pass 41 build-plan step 7).
+  The question had been open since 2026-09-08 and Pass 42 deliberately did not answer it; it is
+  answered now, and it is answered for **reach**, not for correctness — DECISIONS.md, 2026-09-08
+  (Pass 42) had already corrected Pass 41 §4.3's claim that today's `start: N` breaks
+  `fullyPrepared`, the HUD's "x of y" or the commercial clamp. **It does not. Both schemes are
+  correct; only one of them lets the owner rewind.**
+- **The cause, measured read-only and with no server request of any kind:** the app sends the saved
+  position as the play session's `start` (`ShowDetailScreen.swift:148-150` →
+  `PlayRequest.swift:63-67` → `PlaybackSession.swift:70`, the app's only POST site), and the server
+  applies it as ffmpeg's `-ss` **before** it builds the single-file MP4 (`stream.go:328-331`, carried
+  into `playfile.go:108-117` — read in the reference clone at `eb0c098`, which is 1.8.1 source while
+  the server answers 1.8.2). **The remuxed file begins at the resume point**, so there is nothing
+  before it to seek to. The app never restricts seeking: `requiresLinearPlayback` is set for cameras
+  only (`PlayerScreen.swift:36`). This is Pass 41's D7, restated at the current source.
+- **All three resuming entry points are in `ShowDetailScreen.swift`** — "Resume" (`:177`), "Play
+  newest" (`:188`) and a click on an episode row (`:236`) — and **Continue watching (Pass 91) is not
+  a fourth**: its cards open show detail (`RecordingsScreen.swift:271-275`). The Player's "Play next
+  episode" always sends `start: 0` (`PlayerScreen.swift:101`).
+- **Nine of the ten readers of `startOffset` are already correct at 0 and need no edit**, because
+  every one of them computes `position = startOffset + t`, which at 0 is the identity. **The tenth
+  is `restart(at:)`'s `startOffset = target` (`PlayerModel.swift:750`)**, and it is the reason the
+  restart path is sorted STANDALONE rather than swept.
+- **Nothing built.** No Swift file, test file or project file was changed, no diff was proposed as
+  code, nothing was stubbed and nothing was left disabled. The work is sorted in
+  `reports/2026-09-16-pass95-resume-rewind-recon.md` §4 into two SWEEP items (send `start: 0`; seek
+  once the item is ready, in a new `.readyToPlay` arm of `itemStatusChanged`,
+  `PlayerModel.swift:552-557`) and one STANDALONE (`restart(at:)` / `startAgain(at:)`,
+  `PlayerModel.swift:740-786`). §5 names what the build pass must prove on the device.
+- **Pass 41 open questions 7.3, 7.4 and 7.5 are not reopened by this decision** and stand exactly as
+  Pass 41 left them — in particular 7.3, what the Starting screen should say during the wait, which
+  becomes more visible because `start: 0` remuxes the whole recording every time.
+- **Pass 94's verified push SHA is `4f91406`**, and every `file:line` in the Pass 95 report was read
+  from that tree in this run; `git status --porcelain` showed only `?? icon-source/`.
+- **Pass 94's finding is now recorded in `COLD-START.md` under "Raised for the marlin-dvr project"**
+  — commercial detection has failed on every recording made since 2026-09-08 with the missing
+  `comskip.ini` reason, pointing at `reports/2026-09-16-pass94-commercial-skip-recon.md` §8.
+  **Nothing was sent to them.**
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
