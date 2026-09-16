@@ -1806,3 +1806,44 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 93 — Passes 91 and 92 accepted and pushed)
+
+- **Owner acceptance: Passes 91 and 92 were tested on Home Theater on 2026-09-16 and accepted —
+  "good to go"** (owner, 2026-09-16). That covers both changes together:
+  - the Recordings screen drawing **"Continue watching"** from **this Apple TV's `ResumeStore`** in
+    place of the server's **"Recently Watched"** shelf — same position, same card, the recordings
+    this Apple TV has an unfinished saved position on, newest position first (Pass 91);
+  - the **6 pt `Nocturne.accent` progress bar** across the bottom of those cards, filled
+    `position ÷ duration` from the numbers already on the card, on a `Nocturne.bg`-at-0.7 track,
+    and on no other shelf's cards (Pass 92).
+- **The focus ring covering 4 of the bar's 6 pt on a focused card was shown to the owner before he
+  accepted, and is accepted as built.** It is **not an open item**: the ring is 4 pt of the same
+  `Nocturne.accent` drawn over the bar's bottom 4 pt, so only 2 pt is distinguishable while a card
+  holds focus, with the fill boundary still visible. Pass 92's report put three possible fixes in
+  its open question 1 and built none of them; the owner has now settled it by accepting what is
+  there. It leaves the KNOWN AND UNFIXED list.
+- **Pass 92's other open questions are neither closed nor re-raised by this acceptance** — the
+  translucent track over a bright poster, 99 % versus 100 % watched, the bar's silence to VoiceOver,
+  the two progress views, and whether the other `activate()` harnesses should move to `launch()`.
+  They stand exactly as Pass 92 left them. Pass 91's open questions likewise.
+- **Pass 92's verified push SHA is `ab2570a`, and Pass 91's is `c633c9f`.** Before this pass
+  committed anything, `git fetch` was run and `git rev-parse main` read
+  `ab2570a7617220796bb565d15abe5e3d1089b96b`, `git rev-parse origin/main` and
+  `git ls-remote origin main` both read `92a477071df7058942fe3895bd77166e50c3af00` (Pass 89), and
+  `git rev-list --left-right --count main...origin/main` was `2 0` — so both passes were waiting
+  and nothing else was. `git status --porcelain` showed only `?? icon-source/`.
+- **No app-target file was changed in this pass.** The binary the owner accepted is Pass 92's, and
+  the binary pushed and installed is the same one.
+- **The bedroom Apple TV is built from the pushed head into
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom`, and that path is reused on every
+  future bedroom install** (owner, 2026-09-16). Earlier passes each made a per-pass directory under
+  `build/` — `build/p88` in Pass 88 — and that stops here: one directory, reused, so an incremental
+  build is possible and the repo does not accumulate one tree per pass.
+- **Install only.** The app was not launched on the bedroom Apple TV, no UI-test harness was run
+  there, and no screenshot was taken — unlike Pass 88, which did all three. The device's own
+  `xcrun devicectl device info apps` reading is the whole of the evidence, and it is in the Pass 93
+  response rather than in a report of its own.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).

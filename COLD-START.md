@@ -93,7 +93,7 @@ Current state only — one line per screen and one per standing fact, each citin
 - Pass 41's open questions 7.2 (start: 0 or start: N for resume), 7.3 (what the Starting screen should say during a long remux), 7.4 (fall back to HLS or show the error), 7.5 (temp space on Unraid) and 7.6 (whether to ask marlin-dvr to document the route) are still unanswered; 7.1 was answered, 7.7 closed by Pass 44, 7.8 overtaken (Passes 41, 42, 44).
 - Multi-card focus traversal on the reflowing Recordings shelf is untested, and the 60 pt downward shift of the shelves is an open item the owner has seen and accepted, not a decision to leave it forever (Pass 47).
 - Continue watching: the shelf is built when the screen opens and after a Keep or Delete, and **not** after a playback — the Player is a `fullScreenCover` over the screen and does not end its `.task`, so playing something and pressing Menu twice shows the shelf as it was read on the way in (the same staleness the server's "Recently Watched" shelf had; leaving Recordings and coming back rebuilds it). Whether a server-`watched` recording should drop off the shelf is the owner's call and it does not today; the empty-shelf case is traced and was never exercised, because exercising it would have meant clearing his saved positions; a position on a show past the shelves' `limit: 6` would go undrawn (Pass 91). **"Newest position first" is no longer on this list — Pass 92 measured it** from the store's own `savedAt` and the five cards' timestamps are strictly descending in the order drawn.
-- The Continue watching progress bar: on a **focused** card the 4 pt accent focus ring covers the bar's bottom 4 pt of 6 and is the same colour, so only 2 pt is distinguishable — seen, measured, and left as built pending the owner (three fixes in Pass 92's open question 1); the zero-duration branch that draws no bar is code-traced and was never exercised; the translucent track has only been seen over posters that are dark along their bottom edge; nothing distinguishes 99 % watched from 100 %; and the bar has no accessibility value, so VoiceOver hears the card's text and nothing of the bar (Pass 92).
+- The Continue watching progress bar: the zero-duration branch that draws no bar is code-traced and was never exercised; the translucent track has only been seen over posters that are dark along their bottom edge; nothing distinguishes 99 % watched from 100 %; and the bar has no accessibility value, so VoiceOver hears the card's text and nothing of the bar (Pass 92). **The focus ring covering 4 of the bar's 6 pt on a focused card has left this list**: it was shown to the owner and accepted as built, not deferred (DECISIONS.md, 2026-09-16 (Pass 93)).
 - **A UI-test harness that uses `activate()` can photograph the previous build.** Pass 92's first two runs passed every assertion with the new feature absent from the screen: `activate()` resumed the process already running on the television while the new build sat installed and unlaunched. The proof is the server's log — the app pings on every launch (`ClientSession.swift:8-9`) and there was **no ping** in those runs. `activate()` exists for Pass 38's console attachment; `ContinueWatchingBarUITests` uses `launch()`. **`ContinueWatchingUITests` (Pass 91), `GuideChannelLogosUITests` (Pass 86) and `OnLaterPillsUITests` (Pass 82) still use `activate()` without a console and carry the same trap** — check for the launch ping before believing their screenshots (Pass 92).
 - The "Recording" and "Scheduled" branches of the airing sheet's first control were code-traced only and accepted by eye (Pass 49).
 - The Weather alert card has never been drawn with real data; its layout was checked with a disclosed, reverted diagnostic (Pass 22).
@@ -173,6 +173,37 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 93.** **Both Apple TVs run this build.**
+
+**Passes 91 and 92 were tested on Home Theater on 2026-09-16 and accepted — "good to go"**
+(owner, 2026-09-16): the Recordings screen drawing **"Continue watching"** from this Apple TV's
+`ResumeStore` in place of the server's **"Recently Watched"** shelf, and the **6 pt
+`Nocturne.accent` progress bar** on those cards. **The focus ring covering 4 of the bar's 6 pt on a
+focused card was shown to him before he accepted and is accepted as built**, not an open item.
+Pass 92's other open questions are neither closed nor re-raised.
+
+- **Pass 91's `c633c9f` and Pass 92's `ab2570a` are pushed**, together with this pass's own commit
+  carrying `reports/2026-09-16-pass93-accepted-pushed-bedroom.md`, this paragraph and the
+  `DECISIONS.md` entry — **a fast-forward from `92a4770`**, which is still an ancestor. Nothing
+  forced, rebased or amended.
+- **No app-target file changed in this pass.** The binary the owner accepted is Pass 92's, and the
+  binary pushed and installed is the same one.
+- **The bedroom Apple TV ("Master Bedroom ATV", `AppleTV6,2`, tvOS 26.6) was brought from
+  `168d8a7` to this build**, built from the pushed head by Pass 54's method and installed with
+  `xcrun devicectl device install app`. **Install only** — not launched, no harness run there, no
+  screenshot. The device's own `xcrun devicectl device info apps` reading is in the Pass 93
+  response.
+- **The bedroom build directory is now
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom`, and it is reused on every future
+  bedroom install** (owner, 2026-09-16) — no more per-pass `build/pNN` trees for that device.
+- **Home Theater already runs this build** from Pass 92's own device run; it was not touched in
+  this pass.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 93 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 92, described its own state correctly when written and
+is kept as history.
 
 **Passes 91 and 92 are committed and NOT pushed. The owner tests them on Home Theater first.**
 
