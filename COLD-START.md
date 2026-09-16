@@ -38,7 +38,7 @@ Current state only — one line per screen and one per standing fact, each citin
 
 ### The server
 
-- **The server is marlin-dvr 1.8.2**, measured from `GET /api/status` on 2026-09-13 (Pass 85). It superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85).
+- **The server is marlin-dvr 1.9.1**, measured from `GET /api/status` on 2026-09-16 (Pass 101). It superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
 - Three server facts this app depends on: **`GET /api/library/trash` exists** (1.6.0) and Manage DVR → Trash is built on it (Pass 33); **automatic pruning is gone server-side — a series pass never trashes anything on its own**, so the keep rule in the Edit series pass screen no longer causes deletions by itself (owner, 2026-09-07; Pass 34); **the single-file MP4 playback route exists** — `POST /api/play/sessions` with `"format":"file"`, served at `GET /api/play/file/{id}/video.mp4` — new in 1.8.0 (Pass 42).
 - **`HLS-CLIENT-API.md` in the marlin-dvr repo is behind their server**: byte-unchanged across the whole 1.8.0 delivery, its header still says 1.7.0, and `"file"` is not listed anywhere in it; §2.3 of `reports/2026-09-08-pass41-single-file-route-recon.md` is the only written description of that route, read from their Go source (Pass 41).
 - **The reference clone `~/Xcode/marlin-dvr-reference` has `HEAD` and `origin/main` both at `eb0c098`**, a checked-out tree at 1.8.1, so their sources and notebook can be read out of it directly; server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the checkout (Pass 72; still `eb0c098` at Pass 85).
@@ -90,7 +90,7 @@ Current state only — one line per screen and one per standing fact, each citin
 - "A playback that starts inside a break offers it" is still unproved, and one commercial skip landed 1.01 s past `endSeconds` instead of on it, unexplained (Pass 38).
 - The end-of-recording clamp, the `hdhomerun` `"none"` branch and the network-failure branch of commercial skip were never exercised live (Pass 38).
 - **Pass 95's T1 is built (Pass 98), its path has never run on a television, and the owner closed it there** — "im not spending any time on something that might never ever happen close this and move on to anything major or that is unfinished" (owner, 2026-09-16). It is **code-traced only**: `restart(at:)` writes `position = target`, nothing between that write and `armResumeSeek`'s read touches `position`, and the `.readyToPlay` seek puts playback there. **If the trace is wrong, a restarted recording begins at the top of the recording instead of at the restart point, silently.** It could not be driven because no restart caller is reachable from the remote: frame 6h **is** the Expired state and needs a keep-alive 410, which cannot happen because the app fetches every 10 s against the server's 15 s `hlsIdleTimeout` and there is no session lifetime cap; `FailureState`'s "Try again" needs a failure the remote cannot produce; `timeJumped()`'s seek-beyond is dead on the file route; `stopBlockingRecordingAndWatch()` is live only. Pass 98 measured the empirical half — a 5-minute session ended only on the app's own DELETE, and the console carried zero `restarted start=` lines. **The three ways to force one were offered and declined; none is to be built unasked** (Passes 96, 98, 99).
-- **The 2 s start the owner asked for is not met and cannot be met inside this app**: 85–94 % of the press-to-picture time is the server's single-file remux, measured at 10.225 s and 6.308 s in its own log against the app's 10.233 s and 6.429 s. The **first** remux of a recording is much slower than the next — 10.225 s against 2.151 s and 2.124 s for the same 1.09 GB whole-file remux — so a warm start is about 2.8 s, which is arithmetic on two measurements and was never measured directly. Why the first is slower is not this project's to answer and no request was made to find out (Pass 96).
+- **The 2 s start the owner asked for is met — by the server, not by this app — and is closed by marlin-dvr 1.9.1 on the owner's own test** (relayed 2026-09-16; Pass 101). 1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves it directly on `format:"file"` with byte ranges and no remux: **first byte at 796 µs against 5.6–12.0 s before**, and **recordings start instantly on the Apple TV, owner-tested**. **The app's own press-to-picture was not re-measured in this pass** — "instant" is his reading on the television, not a number taken here — and `format:"file"` is unchanged for the app: same POST, same URL, same byte ranges. **A recording with no sidecar yet still takes the old remux path.** **Pass 96's open question 1 — the 2 s target and the three ways out of it — is closed with this item; none of the three was taken by this app and nothing was asked of the marlin-dvr project.** What was measured before is kept as history, not re-derived: 85–94 % of the press-to-picture time was the server's single-file remux, 10.225 s and 6.308 s in its own log against the app's 10.233 s and 6.429 s; the **first** remux of a recording was much slower than the next — 10.225 s against 2.151 s and 2.124 s for the same 1.09 GB whole-file remux — so a warm start was about 2.8 s, arithmetic on two measurements and never measured directly. Why the first was slower is still not this project's to answer and no request was made to find out (Passes 96, 101).
 - A break the viewer scrubs through is **spent for that playback** — `noticeCommercialBreak` latches each range into `promptedRanges` and offers it at most once (Pass 38's design). With the whole recording now reachable this will happen more often: rewind past a break and it will not be offered again until the Player is re-entered. Raised in Pass 96, not changed.
 - On the file route: a recording still being written, and one that is not H.264/AAC, were never exercised on the device; the remux wait has never been measured on the Unraid box; build-plan step 7 — resume by seeking, not by `start` — is not built, pending Pass 41 open question 7.2 (Pass 42).
 - Pass 41's open questions 7.2 (start: 0 or start: N for resume), 7.3 (what the Starting screen should say during a long remux), 7.4 (fall back to HLS or show the error), 7.5 (temp space on Unraid) and 7.6 (whether to ask marlin-dvr to document the route) are still unanswered; 7.1 was answered, 7.7 closed by Pass 44, 7.8 overtaken (Passes 41, 42, 44).
@@ -192,6 +192,39 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 101.** **Home Theater runs the committed build; the bedroom Apple
+TV does not — it is still on `4396d84`.**
+
+Pass 101 is a notebook pass. It records what the owner relayed from the marlin-dvr project on
+2026-09-16: **marlin-dvr 1.9.1 is running on 192.168.1.250 and the 7–11 s recording start is gone**.
+**No app code changed, no build was made, neither Apple TV was touched, and nothing is owed by this
+app.**
+
+- **The version was read: `GET /api/status` answered `1.9.1`** on 2026-09-16, and that request is
+  the only one this pass sent to the server. It supersedes the 1.8.2 reading of Pass 85.
+- **Their fix, relayed:** when a recording finishes the server writes an **`.mp4` sidecar** beside
+  the `.mpg`, and `format:"file"` serves that file directly with byte ranges and **no remux** —
+  **first byte at 796 µs against 5.6–12.0 s before**. **Recordings start instantly on the Apple TV,
+  owner-tested.**
+- **Nothing changes for this app.** `format:"file"` is the same POST, the same URL and the same byte
+  ranges; **a recording with no sidecar yet still takes the old remux path**; the library JSON now
+  carries `remux{status,queuedAt,startedAt,endedAt,exitCode,file}` beside `detect{}`, which the app
+  need not read and was not changed to read; **the HLS route is untouched**, so Pass 100's numbers
+  for it stand as taken.
+- **Pass 96's 2 s requirement is met by the server change, on the owner's test**, and the
+  *Known and unfixed* item and **Pass 96's open question 1** are closed accordingly. **The app's own
+  start time was not re-measured in this pass.**
+- **Commercial skip is confirmed working end to end on the Apple TV** (owner, 2026-09-16) — he
+  played a recording, the prompt appeared and the seek landed. **Pass 94's missing-`comskip.ini`
+  finding is left exactly as it stands**: nothing here re-measured detection and nothing here claims
+  it is fixed.
+- **Pass 100's verified push SHA is `83127d1`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 101 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 100, described its own state correctly when written and
+is kept as history.
 
 **Nothing is unpushed as of Pass 100.** **Home Theater runs the committed build; the bedroom Apple
 TV does not — it is still on `4396d84`.**

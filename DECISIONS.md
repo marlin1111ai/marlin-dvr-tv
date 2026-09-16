@@ -2183,3 +2183,41 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 101 — marlin-dvr 1.9.1: the recording start delay is gone)
+
+- **Relayed by the owner from the marlin-dvr project (2026-09-16), recorded here and not acted on.**
+  Nothing below was measured by this pass except the version: the rest is their work and his own
+  test on the television, written down so nobody re-derives it.
+- **The server is marlin-dvr 1.9.1.** `GET /api/status` on http://192.168.1.250:8090/ answered
+  `{"name":"marlin-dvr","version":"1.9.1", …}` on 2026-09-16, and that request is the only one this
+  pass sent to the server. It supersedes the 1.8.2 reading of 2026-09-13 (Pass 85).
+- **The 7–11 s recording start is gone. Recordings start instantly on the Apple TV, owner-tested.**
+- **How: an `.mp4` sidecar.** When a recording finishes the server now writes an `.mp4` beside the
+  `.mpg`, and `format:"file"` serves that file directly with byte ranges and **no remux**. They
+  measured **first byte at 796 µs** with the sidecar, against **5.6–12.0 s** before.
+- **`format:"file"` is unchanged for this app — same POST, same URL, same byte ranges.** **A
+  recording with no sidecar yet still takes the old remux path.**
+- **The library JSON now carries `remux{status,queuedAt,startedAt,endedAt,exitCode,file}` beside
+  `detect{}`.** The app need not read it, and nothing was changed here to read it.
+- **The HLS route is untouched**, so Pass 100's measurements of it stand as they were taken.
+- **Commercial skip is confirmed working end to end on the Apple TV** (owner, 2026-09-16): he played
+  a recording, the prompt appeared and the seek landed. **Pass 94's finding — server-side detection
+  failing on every recording made since 2026-09-08 for a missing `comskip.ini` — is left exactly as
+  it stands.** Nothing in this pass re-measured detection and this entry does not claim it is fixed.
+- **The 2 s requirement from Pass 96 is met by the server change, on the owner's test.** Pass 96
+  measured press-to-picture at 10.916 s and 7.567 s with 85–94 % of it the server's single-file
+  remux, and Pass 97's acceptance covered that cost as it stood; 1.9.1 removes the remux for a
+  finished recording. **The app's own start time was not re-measured in this pass** — "instant" is
+  the owner's reading on the television, not a number taken here. **Pass 96's open question 1 (the
+  2 s target and its three ways out) is closed with it**; none of the three was taken by this app,
+  and nothing was asked of the marlin-dvr project.
+- **Nothing is owed by this app and no app code changed.** No app-target file, test-target file or
+  project file was touched, no build was made, and neither Apple TV was touched.
+- **Pass 100's verified push SHA is `83127d1`.** Before this pass changed anything, `git fetch
+  origin` then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all
+  read `83127d1bb60d63504443c268f68eaf8478382466`, `git rev-list --left-right --count
+  main...origin/main` was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
