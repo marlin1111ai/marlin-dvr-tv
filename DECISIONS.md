@@ -2753,3 +2753,23 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-17 (Pass 114 — Pass 110's open questions 1 and 2 answered)
+
+- **Owner decision (2026-09-17), his words: "they both fine for now leave it".** Said about **Pass 110's open
+  question 1** — the **paused-live screen (6d)**, with its top-left "LIVE · HELD  ch9001 HISTORY · …" — and
+  **open question 2** — **Apple's own transport bar**, showing the item's title and subtitle with the channel
+  number. **Both stay as they are.** Recorded verbatim, "for now" as he said it; **nothing is claimed beyond
+  his words**.
+- **It answers those two questions only.** Nothing else Pass 110 left open is changed by it — among them the
+  live "pause point left the buffer" notice that is no longer drawn, and the harnesses that read the removed
+  card, which stand as recorded.
+- **No app-target file, test-target file, project file, `design/` file or report was changed in this pass**,
+  neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Pass 113's verified push SHA is `1a57d2e`.** Before this pass changed anything, `git fetch origin` then
+  `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `1a57d2ed5cdeda592a92cc0ba79984559a5fa39a`, `git rev-list --left-right --count main...origin/main` was
+  `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
