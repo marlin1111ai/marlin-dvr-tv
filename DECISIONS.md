@@ -2390,3 +2390,63 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 106 — the bedroom install recorded, and the owner closes A2–A5)
+
+- **Pass 105 brought the bedroom Apple TV to `c0fce4a`, install only, and made no commit.**
+  "Master Bedroom ATV" was built from `c0fce4a` by **Pass 54's method**
+  (`-destination 'platform=tvOS,name=Master Bedroom ATV' -allowProvisioningUpdates`) into the fixed
+  path Pass 93 named, `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` — **the path did
+  not exist beforehand, so that build was clean, not incremental** — and installed with
+  `xcrun devicectl device install app`, **first try, no retry**. The television itself reports
+  **Marlin DVR TV · Version 1.0 · Bundle Version 1**, read back with
+  `xcrun devicectl device info apps`. Those two numbers are constants in this project and identify
+  no particular build, so the build was tied to its code instead: **Pass 103's strings were found in
+  the built `Marlin DVR TV.debug.dylib`** (this Debug configuration ships a launcher stub beside the
+  dylib that holds the code), including `[show] pass for `, which exists only in Pass 103's
+  `ShowDetailScreen.loadPass()`, while the bare `Series pass` label Pass 103 replaced is absent.
+  **The app was not opened on that device** — no launch, no screenshot, no harness — so nothing shows
+  A1 drawing on that screen. **Both Apple TVs now run `c0fce4a`.**
+- **The owner has closed A2–A5. None of them is to be built.** With A1 built in Passes 103–105 and
+  accepted, **inventory group A is closed**. His words, 2026-09-16, are recorded verbatim below and
+  **nothing is claimed beyond them**; where he describes his own server or his own use of the app,
+  it is **his report, not a measurement this project took** — nothing here was verified, and this
+  pass sent no request to the server.
+- **A2 — the Player's "Delete this recording" (frame 6e): not to be built, and not to be raised
+  again.** His words: **"Don't build it and don't ask again."** And: **"I never even asked for a
+  play next episode button or a delete button."** The button stays as Pass 102 found it — **drawn
+  and inert** at `PlayerScreen.swift:393` with an empty action, not absent. **His report of his own
+  server, not measured here: "im looking and a deleted recording can be restored"** — which speaks
+  to Pass 102 §3.2, where whether 6e's delete is recoverable was left open because it turns on
+  `GET /api/settings`, a route this project will not read. **That route was still not read**, and
+  his sentence is recorded as his observation, not as a reading of the setting. Pass 102 §3.3, the
+  confirm-step question for 6e, is closed with the item and needs no answer.
+- **A3 — a plain click on a Guide channel cell: stays as it is.** His words: **"It's fine. Leave it
+  as it is. This is why I don't want any suggestions on how my app should work."** That closes
+  **Pass 9 Open Question 1** — *"Should a click tune the channel live?"* — with **no**: the hold
+  favourites the cell and a click does nothing, and that is the finished behaviour, not an omission.
+  **His report of the hold, not measured here: "if I hit a channel and hit the logo in the guide, I
+  can favor it. If I go back, I can unfavor it."**
+- **A4 — un-skipping a cancelled pass airing: not to be built.** **Cancel recording on a pass's
+  airing leaving the pass itself in place is how he wants it** — his words: **"thats the way it
+  should work"**. That closes **Pass 10 Open Question 4**. To record an airing he has cancelled he
+  presses record in the Guide; **his report, not measured by this project: "it works"**. Pass 102's
+  note that proving A4 would have meant cancelling a real recording of his is moot — the item is
+  gone, and **no airing of his was touched to reach this decision**.
+- **A5 — the Manage DVR lists refreshing on their own: stays as it is.** His words: **"so leave it
+  as is"**. The lists reload each time Manage DVR is opened, and that is enough. This closes **Pass
+  10 Open Question 2** and with it Pass 102 §3.5, where the notebook recorded **no** option for an
+  interval and none was invented.
+- **What this leaves.** **A1 built (Passes 103–105); A2, A3, A4 and A5 not to be built.** Three
+  long-standing open questions are answered by owner decision rather than by work — Pass 9 Open
+  Question 1 and Pass 10 Open Questions 2 and 4 — and the four behaviours stay exactly as they are
+  in `COLD-START.md` under *What is NOT built*, now by decision rather than by omission.
+- **No app-target file, test-target file, project file or report was changed in this pass**, neither
+  Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Pass 104's verified push SHA is `c0fce4a`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `c0fce4af53fb0c8274db164580d7ac2551a6ec19`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).

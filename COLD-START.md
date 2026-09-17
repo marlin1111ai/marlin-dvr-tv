@@ -113,7 +113,7 @@ The future screen **Settings**: present as drawn and inert, parked until the own
 
 **Built but blocked on the owner**: nothing. Both entries this block ever held are closed — the radar's request rate by Pass 16's tile store, and **every WeatherKit value by Pass 22**: the App ID carries the capability, the target is entitled, and both weather screens draw real data on the Apple TV. The one thing still unproven there is the **alert card**, which needs a real alert in the owner's area to be seen (Pass 22 Open Question 1).
 
-Deliberately still inert or absent: the Player's 6e "Delete this recording" (Pass 8 Open Question 1) — **show detail's button left this list in Pass 103**, where it became the airing sheet's series-pass control (DECISIONS.md, 2026-09-16 (Pass 103)); any click behaviour on the Guide's channel cell — the hold favourites it, a click does nothing (Pass 9 Open Question 1); any way to un-skip a cancelled pass airing; and any auto-refresh of the Manage DVR lists (Pass 10 Open Questions 2 and 4). Cancelling a booking, which Pass 8 lacked, now lives in Manage DVR → Scheduled Recordings.
+**Four things stay as they are by the owner's decision of 2026-09-16, not by omission, and none of them is to be built** (DECISIONS.md, 2026-09-16 (Pass 106)): the Player's 6e **"Delete this recording"**, which stays drawn and inert — *"Don't build it and don't ask again."*, **and it is not to be raised again**; **any click behaviour on the Guide's channel cell** — the hold favourites it, a click does nothing, and that is finished, which answers Pass 9 Open Question 1 with *"It's fine. Leave it as it is."*; **any way to un-skip a cancelled pass airing** — cancelling a pass's airing while the pass carries on is how he wants it, *"thats the way it should work"*, which answers Pass 10 Open Question 4; and **any auto-refresh of the Manage DVR lists** — they reload each time Manage DVR is opened, *"so leave it as is"*, which answers Pass 10 Open Question 2. **Show detail's "Series pass" button left this list in Pass 103**, where it became the airing sheet's series-pass control (DECISIONS.md, 2026-09-16 (Pass 103)). Cancelling a booking, which Pass 8 lacked, lives in Manage DVR → Scheduled Recordings.
 
 **Built but never exercised against the live server** — wired and code-traced, not proven, and named here so no one assumes otherwise (Pass 10 §4c and Open Question 3):
 
@@ -193,6 +193,42 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 106.** **Both Apple TVs run `c0fce4a`** — Home Theater since the
+Pass 103 harness installed it, the bedroom since Pass 105 — so the standing bedroom rule above is
+satisfied and the two televisions match.
+
+Pass 106 is a notebook pass. It records Pass 105's install and the owner's decisions of 2026-09-16
+closing **A2–A5**. **No app-target file, test-target file, project file or report was changed,
+neither Apple TV was touched, and no request of any kind was sent to the server.**
+
+- **Inventory group A is closed. A1 is built (Passes 103–105) and accepted; A2, A3, A4 and A5 are
+  not to be built.** The four behaviours stay exactly as they are, now **by decision rather than by
+  omission** — see *What is NOT built* above, where each carries his own words. **A2 is not to be
+  raised again.**
+- **Three long-standing open questions are answered by owner decision rather than by work:** Pass 9
+  Open Question 1 (a click on a Guide channel cell — no), and Pass 10 Open Questions 2 and 4 (no
+  Manage DVR auto-refresh, no un-skip).
+- **Pass 105, install only, no commit.** "Master Bedroom ATV" built from `c0fce4a` by Pass 54's
+  method into `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` — **the path did not exist
+  beforehand, so that build was clean** — and installed first try. The device reports **Version 1.0 ·
+  Bundle Version 1**, which are constants here and identify no build, so the binary was tied to its
+  code instead: **Pass 103's strings were found in the built `Marlin DVR TV.debug.dylib`**. **The app
+  was not opened on that device**, so nothing shows A1 drawing on that screen.
+- **Several of the owner's statements are his reports of his own server and his own use of the app,
+  not measurements this project took** — that a deleted recording can be restored, that the hold
+  favourites and unfavourites a channel, and that pressing record in the Guide records a cancelled
+  pass airing. They are recorded as his; **nothing here verified any of them**, and
+  `GET /api/settings` was still not read.
+- **Pass 105's open items stand:** nothing has launched the app on the bedroom television, and
+  **both Apple TVs run development-signed builds that will stop launching when the profile expires,
+  which no pass has yet checked.**
+- **Pass 104's verified push SHA is `c0fce4a`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 106 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 104, described its own state correctly when written and
+is kept as history.
 
 **Nothing is unpushed as of Pass 104.** **Home Theater runs the pushed build** — Pass 103's, which
 the owner accepted; **the bedroom Apple TV does not — it is still on `4396d84`.** This batch is
