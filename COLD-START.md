@@ -194,6 +194,34 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 107.** **Both Apple TVs still run `c0fce4a`**, untouched by this
+pass, so the two televisions match.
+
+Pass 107 is **read-only recon** of the owner's decisions of 2026-09-16 for **a swipe-down info panel
+in the Player** — `reports/2026-09-16-pass107-player-info-panel-recon.md`. **Nothing was built**, no
+build was made, neither Apple TV was touched, and **no write of any kind reached the server**: 14
+GETs on read-only routes, and `GET /api/settings` was not read.
+
+- **What a swipe down does today is AVKit's own info panel**, on a recording and on live alike — the
+  app handles no swipe down and feeds Apple's panel only a title and a subtitle, **both carrying the
+  channel number**. **Nobody on this project has ever observed that panel on a television.**
+- **The fields.** A live channel's are all in hand **as of the moment of tuning** and never re-read;
+  a Favorites channel with no listing has none. A recording's are in hand **except the channel logo:
+  the server gives a recording no channel id and no logo.** The buttons need `GET /api/passes` and
+  `GET /api/schedule`.
+- **Nine owner calls stand before any build**, each with its file and quote in §5 of the report and
+  no option invented — among them how the panel relates to AVKit's own, and **Pass 38's instruction
+  not to be the first to put a focusable view over a running player**.
+- **The running server answers 1.9.3**, where *The server* above still records 1.9.1 and Pass 103
+  read 1.9.2; that line was not edited. **Every write route the panel would use rests on the 1.8.1
+  clone and was not called.**
+- **Pass 106's verified push SHA is `db38beb`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 107 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 106, described its own state correctly when written and
+is kept as history.
+
 **Nothing is unpushed as of Pass 106.** **Both Apple TVs run `c0fce4a`** — Home Theater since the
 Pass 103 harness installed it, the bedroom since Pass 105 — so the standing bedroom rule above is
 satisfied and the two televisions match.

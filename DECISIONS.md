@@ -2450,3 +2450,68 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 107 — the Player's swipe-down info panel, read-only recon)
+
+- **Owner decisions (2026-09-16), in substance, modelled on a Channels DVR screenshot he showed.**
+  While watching a recording or a live channel, **swiping down on the remote brings up an info
+  panel**: the channel logo, the show's title, the episode name with season and episode, HD / rating
+  tags if the server provides them, and the description — **no channel number**. Buttons: on a
+  **recording**, "Add to season pass", or "Edit pass" when the show already has one; on a **live
+  channel**, "Record", "Add to pass" ("Edit pass" when a pass exists), and "Favorite", or
+  "Unfavorite" when the channel already is one — **Favorite is live channels only**. **"Record"
+  reports "● Recording" or "● Scheduled"** when that airing already has that state, as the airing
+  sheet's first control does (Pass 49). **Each button does what the app's existing control of the
+  same kind does** (airing sheet, show detail, the Guide's hold on a channel). **The screenshot is not
+  in this repo or in `design/`.**
+- **Nothing was built.** No app-target file, test-target file, project file or `design/` file was
+  changed, no build was made, neither Apple TV was touched, and **no write of any kind was sent to
+  the server** — 14 GETs on read-only routes, and `GET /api/settings` was not read.
+- **What a swipe down does today is AVKit's, on a recording and on live alike.** Nothing in the app
+  handles a swipe down or the up/down direction; the Player is `AVPlayerViewController` with Apple's
+  controls on (`PlayerHost.swift:5-6`, *"standing call: Apple's transport UI as-is"*), and the app's
+  only input to Apple's panel is `externalMetadata` with two strings — title and subtitle
+  (`PlayerModel.swift:200`, `:240-251`) — **both of which carry the channel number**. Per the tvOS
+  SDK header, info views are on by default and `infoViewActions` defaults to a single "Play From
+  Beginning" and allows **up to 2** custom actions. **This project has never observed that panel on
+  a television.** `design/` draws no panel: its only two "Info" labels sit in frames 6b and 6c's
+  transport cards with no behaviour (`dc:902`, `:933`), under *"Apple's player owns the transport"*
+  (`dc:856`).
+- **The fields, measured against the running server.** Live: logo, title, episode, season/episode,
+  HD, rating and description are all in the `PlayRequest` when there is a programme, but **as of the
+  moment of tuning** — nothing re-reads it, and a Favorites channel with no listing arrives with no
+  programme at all. Recording: title, episode, season/episode, description, and HD and rating inside
+  one `tags` array, are all in hand — **but the server gives a recording no channel id and no logo**,
+  only the string `"9001 HISTORY"`. The pass state needs `GET /api/passes`, the airing state
+  `GET /api/schedule`.
+- **Reuse.** Every `APIClient` call (`passes`, `createPass`, `recordNow`, `schedule`,
+  `setChannelFavourite`), `StateChip`, the two `matchingPass` statics and `AiringSheet.friendly` are
+  callable from the Player unchanged; the screens' own `record()`, `recordSeries()`, `loadPass()` and
+  `apply()` are `private` and are not. `EditSeriesPassScreen` and `ChannelActionsMenu` are callable as
+  views, and are focusable.
+- **Three versions, kept apart. The running server answers 1.9.3** — not the 1.9.1 COLD-START
+  records nor the 1.9.2 Pass 103 read — the reference clone is 1.8.1 (`eb0c098`) and the contract
+  1.7.0. **Every read route the panel needs was confirmed 200 against 1.9.3; every write route
+  (`POST /api/record`, `POST /api/passes`, `PUT`/`DELETE /api/passes/{id}`,
+  `PUT /api/sources/{id}/lineup/{guid}`) rests on the 1.8.1 source and was not called.**
+  COLD-START's *The server* line was not edited.
+- **Nine points need the owner's call before a build**, each with its file and quote in §5 of the
+  report and **no option invented**: how the panel relates to the one AVKit already shows on a swipe
+  down; a focusable control over a running player, which Pass 38 was told not to be the first to
+  place; which airing a live panel describes and acts on once the tuned programme ends or while
+  behind live; a live channel with no listing; a recording's channel logo, which the server does not
+  provide; "Stop recording", which the sheet pairs with "● Recording" and the decisions do not name;
+  result sentences that name "Edit series pass" where the panel says "Edit pass"; the screens
+  underneath after a panel write; and what Menu does with the panel up.
+- **What one Home Theater run can prove without a write, and what cannot**, is §6 of the report.
+  Every press that writes, every label's change after its write, "● Recording" and "● Scheduled"
+  (no airing on now is booked), a channel with no listing and a programme boundary are traced only.
+- **The findings are in `reports/2026-09-16-pass107-player-info-panel-recon.md`**, read at HEAD
+  `db38beb03aa7413dfcda3b63d682f3eff3847114`.
+- **Pass 106's verified push SHA is `db38beb`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `db38beb03aa7413dfcda3b63d682f3eff3847114`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
