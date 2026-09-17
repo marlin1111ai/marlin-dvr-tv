@@ -40,6 +40,22 @@
 //  different press types, and they never overlap in time either — the arrow claim is armed
 //  only while paused on a recording, the Select claim only while one is playing.
 //
+//  Pass 108 (owner decisions, 2026-09-16): **a swipe down on the touch surface, or a click down on
+//  the ring, opens the Player's info panel** while a recording or a live channel plays. The two
+//  arrive differently and are caught differently:
+//   · The **click** is a `UIPress` of `.downArrow` and reaches `pressesBegan` like every arrow click
+//     (Pass 29 measured that for left and right). `onInfoPanel` decides, exactly as `frameStep` and
+//     `onSelectSkip` do: true — it opened the panel — swallows the press and its release; false — a
+//     camera — hands it to Apple as before.
+//   · The **swipe** is not a press at all, so it gets a `UISwipeGestureRecognizer` of its own, on
+//     this container's view and **not** inside `playerController.view`. That keeps it out of the
+//     tree `armArrowOwnership` and `armSelectOwnership` walk, and it claims no press
+//     type (`allowedPressTypes = []`), so the two ownership claims are untouched by construction.
+//     It recognises alongside the player's own recognizers and cancels none of their touches.
+//  While the panel is up its buttons have focus, and this container refuses any focus move back
+//  into the player (`shouldUpdateFocus`), so Up or Down past the panel's last control cannot land
+//  focus on the video with the panel still drawn. When it closes, focus is asked back here.
+//
 
 import AVKit
 import SwiftUI
@@ -59,6 +75,11 @@ struct PlayerHost: UIViewControllerRepresentable {
     /// Pass 38: skip the break the prompt is offering. Returns true when it acted; false —
     /// which is every moment no prompt is on screen — leaves the press to Apple.
     let onSelectSkip: () -> Bool
+    /// Pass 108: true while the info panel is up.
+    let infoPanelOpen: Bool
+    /// Pass 108: open the info panel. Returns true when it acted, which is the signal to swallow a
+    /// down click; false — a camera — leaves the press to Apple.
+    let onInfoPanel: () -> Bool
     let onMenu: () -> Void
 
     func makeUIViewController(context: Context) -> PlayerContainerController {
@@ -66,9 +87,11 @@ struct PlayerHost: UIViewControllerRepresentable {
         controller.onMenu = onMenu
         controller.frameStep = frameStep
         controller.onSelectSkip = onSelectSkip
+        controller.onInfoPanel = onInfoPanel
         controller.attach(player: player, linearOnly: linearOnly, shortWindowSelect: shortWindowSelect)
         controller.armArrowOwnership(ownsArrows)
         controller.armSelectOwnership(ownsSelect)
+        controller.setInfoPanelOpen(infoPanelOpen)
         return controller
     }
 
@@ -76,12 +99,14 @@ struct PlayerHost: UIViewControllerRepresentable {
         controller.onMenu = onMenu
         controller.frameStep = frameStep
         controller.onSelectSkip = onSelectSkip
+        controller.onInfoPanel = onInfoPanel
         controller.armArrowOwnership(ownsArrows)
         controller.armSelectOwnership(ownsSelect)
+        controller.setInfoPanelOpen(infoPanelOpen)
     }
 }
 
-final class PlayerContainerController: UIViewController {
+final class PlayerContainerController: UIViewController, UIGestureRecognizerDelegate {
     /// The seekable window from which AVPlayerViewController pauses a live item on its own
     /// (Pass 7B: refused at 30 s and 36 s, accepted at 60 s).
     static let appleHandlesFromWindow: Double = 60
@@ -92,6 +117,24 @@ final class PlayerContainerController: UIViewController {
     var onMenu: () -> Void = {}
     var frameStep: (Int) -> Bool = { _ in false }
     var onSelectSkip: () -> Bool = { false }
+    /// Pass 108: open the info panel; true when it acted.
+    var onInfoPanel: () -> Bool = { false }
+    /// Pass 108: a down click consumed as the panel's opener, so its release is swallowed too.
+    private var swallowDownRelease = false
+    /// Pass 108: mirrors `PlayerHost.infoPanelOpen`.
+    private var infoPanelOpen = false
+    /// Pass 108: the touch-surface swipe down. On this container's view, outside the player's tree.
+    private lazy var swipeDown: UISwipeGestureRecognizer = {
+        let swipe = UISwipeGestureRecognizer(target: self, action: #selector(swipedDown(_:)))
+        swipe.direction = .down
+        swipe.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        swipe.allowedPressTypes = []
+        swipe.cancelsTouchesInView = false
+        swipe.delaysTouchesBegan = false
+        swipe.delaysTouchesEnded = false
+        swipe.delegate = self
+        return swipe
+    }()
     /// Set when a left/right press was consumed as a frame step, so its release is swallowed too
     /// and Apple's transport never sees half a press.
     private var swallowArrowRelease = false
@@ -125,6 +168,53 @@ final class PlayerContainerController: UIViewController {
         playerController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(playerController.view)
         playerController.didMove(toParent: self)
+        view.addGestureRecognizer(swipeDown)
+    }
+
+    // MARK: Pass 108 — the info panel
+
+    @objc private func swipedDown(_ gesture: UISwipeGestureRecognizer) {
+        guard gesture.state == .ended else { return }
+        let opened = onInfoPanel()
+        print("[panel] swipe down → \(opened ? "panel opened" : "not a recording or live channel, ignored")")
+    }
+
+    /// The swipe only watches: the player's own recognizers keep every touch they would have had.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        gestureRecognizer === swipeDown
+    }
+
+    /// Opening changes nothing here but the focus guard below. Closing asks focus back onto the
+    /// player, so play/pause, the arrows and Menu reach it exactly as they did before the panel.
+    func setInfoPanelOpen(_ open: Bool) {
+        guard open != infoPanelOpen else { return }
+        infoPanelOpen = open
+        print("[panel] \(open ? "open — focus stays out of the player" : "closed — focus back to the player")")
+        guard !open else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            UIFocusSystem.focusSystem(for: self)?.requestFocusUpdate(to: self)
+            UIFocusSystem.focusSystem(for: self)?.updateFocusIfNeeded()
+        }
+    }
+
+    /// While the panel is up, no focus move may land inside the player underneath it.
+    override func shouldUpdateFocus(in context: UIFocusUpdateContext) -> Bool {
+        if infoPanelOpen, let next = context.nextFocusedItem, contains(next) {
+            return false
+        }
+        return super.shouldUpdateFocus(in: context)
+    }
+
+    /// Whether a focus item sits inside this container — its chain of parent environments reaches it.
+    private func contains(_ item: UIFocusEnvironment) -> Bool {
+        var environment: UIFocusEnvironment? = item
+        while let current = environment {
+            if current === self { return true }
+            environment = current.parentFocusEnvironment
+        }
+        return false
     }
 
     /// Pass 29. While the app owns the arrow, the player's own left/right recognizers are
@@ -227,6 +317,15 @@ final class PlayerContainerController: UIViewController {
         if presses.contains(where: { $0.type == .rightArrow }) {
             if frameStep(1) { swallowArrowRelease = true; return }
         }
+        // Pass 108. `onInfoPanel` decides: it opens the panel on a recording or a live channel
+        // and answers false on a camera, whose down click reaches Apple exactly as it did.
+        if presses.contains(where: { $0.type == .downArrow }) {
+            if onInfoPanel() {
+                print("[panel] down click → panel opened")
+                swallowDownRelease = true
+                return
+            }
+        }
         // Pass 38. `onSelectSkip` decides: it acts only while the commercial-skip prompt is
         // on screen and answers false everywhere else, so at every other moment Select
         // reaches Apple's transport exactly as it does today.
@@ -247,6 +346,10 @@ final class PlayerContainerController: UIViewController {
         }
         if swallowSelectRelease, presses.contains(where: { $0.type == .select }) {
             swallowSelectRelease = false
+            return
+        }
+        if swallowDownRelease, presses.contains(where: { $0.type == .downArrow }) {
+            swallowDownRelease = false
             return
         }
         super.pressesEnded(presses, with: event)

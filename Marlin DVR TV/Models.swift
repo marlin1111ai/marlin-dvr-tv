@@ -386,6 +386,26 @@ struct Episode: Decodable, Identifiable {
     let playUrl: String
     let fileLabel: String
     let exists: Bool
+    /// Pass 108: the recording's stored metadata (`RecState.Meta`, `json:"meta,omitempty"`,
+    /// library.go:77), decoded only for the rating the Player's info panel shows. Absent when the
+    /// server has none. `EpisodeMeta` never throws, so this field can never fail an episode.
+    let meta: EpisodeMeta?
+}
+
+/// Pass 108: the one field of the server's `EpisodeMeta` (library.go:52-65) this app reads. The
+/// server appends this same rating to the episode's `tags` unless it is `""` or `"None"`
+/// (library.go:589-591). Decoded leniently on purpose: every screen that reads an `Episode` —
+/// show detail, the shelves, the long-press menu — must decode exactly as it did before this field
+/// existed, whatever shape `meta` arrives in.
+struct EpisodeMeta: Decodable {
+    let rating: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try? decoder.container(keyedBy: CodingKeys.self)
+        rating = try? container?.decodeIfPresent(String.self, forKey: .rating)
+    }
+
+    private enum CodingKeys: String, CodingKey { case rating }
 }
 
 struct ShowInfo: Decodable {

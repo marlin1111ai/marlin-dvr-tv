@@ -11,6 +11,11 @@
 //  card: "Hide this channel" (6f) and "Stop the recording and watch" (6g). "Delete this
 //  recording" on 6e stays inert — Pass 8's step 3 wires the show-detail long-press menu only.
 //
+//  Pass 108: the info panel (`PlayerInfoPanel.swift`). A swipe down or a click down opens it while a
+//  recording or a live channel plays — never a camera — and it sits over everything else the
+//  playing state draws. Menu with it up closes it; Menu again leaves the Player as before. It goes
+//  whenever the Player leaves the playing state, so it is never left standing over a state card.
+//
 
 import SwiftUI
 
@@ -21,6 +26,8 @@ struct PlayerScreen: View {
     @State private var model: PlayerModel
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focused: String?
+    /// Pass 108: the info panel is up.
+    @State private var infoPanelOpen = false
 
     init(request: PlayRequest, api: APIClient, clientName: String, onDismiss: @escaping () -> Void) {
         self.api = api
@@ -37,12 +44,19 @@ struct PlayerScreen: View {
                            ownsArrows: model.isRecording && model.isPaused,
                            ownsSelect: model.commercialPrompt != nil,
                            frameStep: { model.frameStep($0) },
-                           onSelectSkip: { model.skipCommercialBreak() }) { dismiss() }
+                           onSelectSkip: { model.skipCommercialBreak() },
+                           infoPanelOpen: infoPanelOpen,
+                           onInfoPanel: { openInfoPanel() }) { dismiss() }
                     .ignoresSafeArea()
                 hud
                 // Pass 38 step 5: the commercial-skip prompt, over running playback, in the
                 // same ZStack the HUD already uses. Not focusable — the press is claimed.
                 if model.commercialPrompt != nil { CommercialSkipPrompt() }
+                // Pass 108: the info panel, over all of it. Its buttons take focus.
+                if infoPanelOpen {
+                    PlayerInfoPanel(request: model.request, api: api) { infoPanelOpen = false }
+                        .ignoresSafeArea()
+                }
             }
             switch model.phase {
             case .starting: StartingOverlay(model: model)
@@ -55,6 +69,7 @@ struct PlayerScreen: View {
         .ignoresSafeArea()
         .task { await model.start() }
         .onChange(of: model.phase) { _, phase in
+            if phase != .playing { infoPanelOpen = false }
             switch phase {
             case .ended: focusSoon { focused = model.nextEpisode != nil ? "next" : "back" }
             case .failed: focusSoon { focused = "back" }
@@ -68,7 +83,10 @@ struct PlayerScreen: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { dismiss() }
         }
-        .onExitCommand { dismiss() }
+        // Pass 108: with the info panel up, Menu closes the panel and nothing else. The panel's
+        // own `.onExitCommand` is nearer to its focused button and normally takes the press first;
+        // this covers the moment before its focus lands.
+        .onExitCommand { if infoPanelOpen { infoPanelOpen = false } else { dismiss() } }
         // The system may dismiss the cover on Menu before the app sees the press (observed
         // in Pass 6 testing); the session is stopped on any disappearance, never left running.
         .onDisappear { Task { await model.stop() } }
@@ -85,6 +103,14 @@ struct PlayerScreen: View {
                 LiveHUD(model: model)
             }
         }
+    }
+
+    /// Pass 108: a swipe down or a click down. Recordings and live channels only — a camera's down
+    /// click goes to Apple as it always has. True when the press was the panel's.
+    private func openInfoPanel() -> Bool {
+        guard model.phase == .playing, model.isRecording || model.isLive else { return false }
+        infoPanelOpen = true
+        return true
     }
 
     private func dismiss() {

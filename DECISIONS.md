@@ -2515,3 +2515,89 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 108 — the Player's info panel)
+
+- **Owner decisions (2026-09-16), in substance.** While a recording or a live channel plays, **a swipe
+  down on the remote's touch surface, or a click down on its ring, opens the app's own info panel over
+  the video** (today a swipe down does nothing — owner). **Its buttons take focus while it is up.**
+  **Fields:** the channel logo, the show's title, episode name, season and episode, HD and rating tags
+  when the server provides them, and the description — **no channel number**. **Recording:** "Add to
+  season pass"; "Edit pass" when the show already has one. **Live:** "Record", showing "● Recording" or
+  "● Scheduled" when that airing already has that state (as the airing sheet's first control, Pass 49);
+  "Add to pass", "Edit pass" when a pass exists; "Favorite", "Unfavorite" when the channel already is
+  one — **Favorite is live only**. **Live describes and acts on the show airing on the channel now,
+  including after a pause or rewind — "Just show the current show."** **Each button does what the app's
+  existing control of that kind does** (airing sheet, show detail, the Guide's hold), **with the same
+  result messages.**
+- **Foreman calls within those decisions:** a live channel with nothing in the guide shows the channel
+  and only Favorite/Unfavorite; a recording's logo comes from matching its channel text to
+  `GET /api/channels`, and it has no logo if nothing matches; **no "Stop recording" button**; tags are
+  HD and rating only; Menu with the panel up closes the panel, and Menu again leaves the Player as today;
+  screens underneath show a change made from the panel the next time they are opened.
+- **The first attempt at this pass stopped before any code**, and the stop is why the click down is in
+  the decisions: XCUITest on tvOS presses remote buttons and cannot swipe (`XCUIRemote.h` has
+  `pressButton:` only; every swipe in `XCUIElement.h:176-208` is inside `#if !TARGET_OS_TV`), and
+  nothing said whether a click down opens the panel. **The harness opens it with `remote.press(.down)`;
+  the swipe is code-traced only.**
+- **Pass 38's instruction not to be the first focusable view over a running `AVPlayerViewController` is
+  superseded by the owner's decision that the panel's buttons take focus.** Recorded, not re-asked.
+- **What was built.** `PlayerInfoPanel.swift` (new) is the panel. `PlayerHost.swift` catches the click
+  down in `pressesBegan` — a new `.downArrow` branch beside, not inside, the frame-step and Select
+  branches, swallowing the press and its release — and the swipe with a `UISwipeGestureRecognizer`
+  **added to the container's own view, not inside `playerController.view`**, with no press types and
+  recognising simultaneously, so it is outside the tree `armArrowOwnership` and `armSelectOwnership` walk;
+  **their code is byte-identical**. While the panel is up the container refuses focus moves into the
+  player; when it closes, focus is asked back. `PlayerScreen.swift` holds the panel's state, draws it
+  last over the playing state, opens it for recordings and live only (**never a camera**, whose click
+  down reaches Apple as before), closes it on any phase change away from playing, and on Menu closes it
+  instead of dismissing. `Models.swift` gains `Episode.meta`, decoded only for `rating` and **unable to
+  throw**, so every screen that decodes an episode decodes exactly as before.
+- **Mirrored, not called — none of those screens was edited.** Record mirrors `AiringSheet.record()`;
+  the live pass button `AiringSheet.recordSeries()` and its editor block; the recording's pass button
+  `ShowDetailScreen.recordSeries()` and its editor block; Favorite `ChannelActionsMenu.apply()`. The
+  result messages are theirs word for word, including "This show already has a series pass — use Edit
+  series pass." beside a button that reads "Edit pass", because the decision is the same messages.
+  Called unchanged: the `APIClient` calls, both `matchingPass` statics, `AiringSheet.friendly`,
+  `WriteError.text`, `StateChip`, `EditSeriesPassScreen`, `GuideChannelTile.artFeedPath`.
+  `AiringSheet.swift`, `ShowDetailScreen.swift`, `GuideScreen.swift`, `FavoritesScreen.swift`,
+  `PlayerModel.swift` (and so `restart(at:)`) and `PlaybackSession.swift` have no diff.
+- **How the fields are read, where the decisions left a mechanism.** Live reads `GET /api/guide/now` every
+  time the panel opens and picks the channel out of the whole lineup (the route takes no channel), then
+  `GET /api/passes` and `GET /api/schedule` as the sheet does; an airing that ends with the panel up is
+  replaced by the next, and a message about the ended airing goes with it. Live's HD is the channel's
+  `hd`, the airing sheet's rule; the recording's HD is `"HD"` in `episode.tags`, and its rating
+  `meta.rating` unless `""` or `"None"`, the server's own rule for appending it to `tags`. **"Shows the
+  channel" was built as the logo alone**, with no name. **The panel's position and look — one card across
+  the top at the standard margins — were chosen by this pass**, as Pass 38's prompt was; there is no
+  design for it.
+- **Proven on Home Theater, opening with the click down.** `PlayerInfoPanelUITests`, `launch()`, **TEST
+  SUCCEEDED in 108.363 s**; the app's launch ping `POST /api/clients/<client id>/ping` at
+  `23:00:10.123` in `GET /api/logs`, 2.7 s after the test began. Over *History's Greatest Mysteries* S4
+  E14: the HISTORY logo, the title, "S4 E14 · Who Is D.B. Cooper?", `HD` `TV-PG`, the description, **"Edit
+  pass" with focus on it** and the gold pass line. Over 9001 HISTORY live: *Pawn Stars: Best Of*, "S6 E8 ·
+  The Magic of Vegas", `HD` `TV-PG`, the description, **"Record" focused, "Add to pass", "Unfavorite"** —
+  every value matching the server read before the run, and no `9001` in either panel. Menu closed each
+  panel with playback running and nothing left on screen; Menu again returned to show detail and to
+  Favorites. Six screenshots in `reports/assets/pass108/`.
+- **Code-traced only:** the swipe; the click down while paused on a recording (it reaches `pressesBegan`
+  as the frame-step clicks do); commercial skip and frame stepping with the panel; every button press,
+  its 409 and failure branches, its message and each label's change after it; "● Recording" and
+  "● Scheduled" on the panel; a channel with nothing in the guide; an airing ending with the panel up.
+  **Every write route the panel uses — `POST /api/record`, `POST /api/passes`, `PUT` / `DELETE
+  /api/passes/{id}`, `PUT /api/sources/{id}/lineup/{guid}` — is unconfirmed at the running server,
+  1.9.3**, and rests on the 1.8.1 source.
+- **Known, traced and not changed:** with the commercial-skip prompt up, opening the panel gives Select to
+  the panel's focused button instead of the skip, and on a recording that button can be "Add to season
+  pass". Raised as the report's open question 3.
+- **No write reached the server.** The run window's non-GETs were the launch ping and two play sessions,
+  each opened and closed by the app (the live one on a Philo channel, holding no tuner); nothing was
+  booked, passed, favourited, kept, trashed or marked watched. **Disclosed cost:** the saved position on
+  `5328bb632e76` moved **39 s → 56 s**. No diagnostic was added and no temporary harness made.
+- **Pass 107's verified push SHA is `3377aef`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `3377aefd9f43e76e25259c0079f69ace343e0d93`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass is committed and NOT pushed.** The owner tests on Home Theater first. Its own commit SHA is
+  not written into this entry and cannot be — a commit cannot contain its own SHA — and it lives in the
+  Pass 108 response and in the next pass's entry (DECISIONS.md, 2026-09-11 (Pass 68)).
