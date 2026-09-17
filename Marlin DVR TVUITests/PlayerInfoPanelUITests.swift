@@ -48,6 +48,26 @@
 //    109c  a few seconds later: a different frame — still playing
 //    109d  Menu: the Player gone and show detail back, the resume point further on
 //
+//  **Pass 110 adds `testNoTopCardOnARecordingOrALiveChannel`**, run on its own. The card across the top
+//  of the Player — "History's Greatest Mysteries / S4 E14 · … · 9001 HISTORY / 2:09 of 42:51 / Resume
+//  kept by …" on a recording, the LIVE badge card on a live channel — is gone on both (owner). This checks
+//  for it at every moment the app used to draw it: just after playback starts (it showed for 6 s), while
+//  paused (a recording kept it up for the whole pause), and just after resuming (6 s again). Then Down
+//  still opens the info panel and Up still closes it. It presses no panel button.
+//
+//  **The two methods above cannot pass after Pass 110**, and are left as their passes ran them: both wait
+//  for the recording card's "Resume kept by …" line, and the live half waits for its "LIVE" badge, to know
+//  playback has started. This method knows it from the Starting screen going away instead.
+//
+//    110a  a recording just started: no card
+//    110b  the recording paused: no card (Apple's own transport bar is not the card)
+//    110c  Down over the recording: the info panel
+//    110d  Up: the panel gone, still no card
+//    110e  a live channel just started: no card
+//    110f  the live channel paused: the paused-live screen (6d), which is not the card
+//    110g  Down over the live channel: the info panel
+//    110h  Up: the panel gone, still no card
+//
 
 import XCTest
 
@@ -282,6 +302,209 @@ final class PlayerInfoPanelUITests: XCTestCase {
         log("after Menu: focus \(focusedLabel())")
         shot("109d-menu-left-the-player")
         XCTAssertTrue(back, "Menu did not return to show detail — focus is \(focusedLabel())")
+    }
+
+    // MARK: Pass 110 — no top card on recordings or live channels
+
+    /// Only the Starting screen (6a) draws this, on every kind.
+    private var starting: Bool {
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Press Menu to cancel'")).firstMatch.exists
+    }
+
+    /// The Pass 38 prompt, which owns Select while it is up.
+    private var skipPromptUp: Bool { app.staticTexts["Skip the commercial break"].exists }
+
+    /// Every line the recording card drew that nothing else in the app draws: the "x of y" clock,
+    /// "Prepared to …" and "Resume kept by …".
+    private func recordingCardLines() -> [String] {
+        screenText().filter {
+            $0.hasPrefix("Resume kept by ") || $0.hasPrefix("Prepared to ")
+                || $0.range(of: "^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})? of [0-9]{1,2}:[0-9]{2}(:[0-9]{2})?$", options: .regularExpression) != nil
+        }
+    }
+
+    /// Every text on screen that reads like a line of the live card — the badge ("LIVE" or
+    /// "LIVE · −12 s"), the title line "ch<number> <name>", "… behind live · buffer …" — with where it is.
+    /// The paused-live screen's "LIVE · HELD" and its "title · subtitle" line are not among them.
+    private func liveLookalikes(title: String) -> [(label: String, frame: CGRect)] {
+        app.staticTexts.allElementsBoundByIndex.compactMap { element in
+            let label = element.label
+            guard label == "LIVE" || label.hasPrefix("LIVE · −") || label == title || label.contains(" behind live · buffer ") else { return nil }
+            return (label, element.frame)
+        }
+    }
+
+    /// The live card's lines: lookalikes **in the top half of the screen**, where the card was drawn (60 pt
+    /// from the top, 80 pt from the left). Measured in this pass's first run and kept as the reason: Apple's
+    /// own transport bar carries the same "LIVE" badge and the same "ch9001 HISTORY" title — the item's
+    /// metadata — along the bottom of the screen, and keeps them in the accessibility tree while hidden, so
+    /// a text-only check read them at every step although no card was drawn (screenshots 110e and 110h of
+    /// that run). Text alone cannot tell the two apart at the live edge; position can.
+    private func liveCardLines(title: String) -> [String] {
+        let screenMidY = app.frame.midY
+        return liveLookalikes(title: title)
+            .filter { !$0.frame.isEmpty && $0.frame.midY < screenMidY }
+            .map { "\($0.label) @ y \(Int($0.frame.minY))" }
+    }
+
+    private func describeLookalikes(_ title: String) -> String {
+        liveLookalikes(title: title).map { "\"\($0.label)\" @ x \(Int($0.frame.minX)) y \(Int($0.frame.minY))" }.joined(separator: ", ")
+    }
+
+    /// Apple's transport clock texts, "05:16" and the like — read, never relied on alone.
+    private func clockTexts() -> [String] {
+        screenText().filter { $0.range(of: "^-?[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?$", options: .regularExpression) != nil }
+    }
+
+    /// Playback has started once the Starting screen has come and gone.
+    private func waitForPlayback(_ what: String) -> Bool {
+        sleep(2)
+        let gone = waitFor(120) { !starting }
+        log("\(what): Starting screen gone \(gone)")
+        return gone
+    }
+
+    private func waitOutSkipPrompt() {
+        guard skipPromptUp else { return }
+        log("the skip prompt is up — waiting it out rather than pressing Select")
+        _ = waitFor(10) { !skipPromptUp }
+    }
+
+    func testNoTopCardOnARecordingOrALiveChannel() {
+        // ================= a recording =================
+        openFromHome("Recordings")
+        XCTAssertTrue(app.staticTexts[shelvesNote].waitForExistence(timeout: 40), "the Recordings shelves did not appear")
+        sleep(3)
+        guard openShow(Self.show) else { return XCTFail("could not open \(Self.show)") }
+        let play = focusedLabel()
+        log("show detail focus, the control about to be pressed: \"\(play)\"")
+        XCTAssertTrue(play.hasPrefix("Resume") || play == "Play newest", "focus is not on a play control: \(play)")
+        remote.press(.select)
+        XCTAssertTrue(waitForPlayback("recording"), "the recording never left the Starting screen")
+
+        // Just started — the card used to show for 6 s here.
+        sleep(1)
+        var card = recordingCardLines()
+        log("recording, just started: card lines \(card); clock texts \(clockTexts()); focus \(focusedLabel())")
+        shot("110a-recording-started-no-card")
+        XCTAssertTrue(card.isEmpty, "the recording card is drawn just after start: \(card)")
+
+        // Paused — the card used to stay up for the whole pause.
+        sleep(3)
+        waitOutSkipPrompt()
+        remote.press(.select)
+        sleep(4)
+        let pausedA = XCUIScreen.main.screenshot()
+        let clockA = clockTexts()
+        sleep(2)
+        let pausedB = XCUIScreen.main.screenshot()
+        let clockB = clockTexts()
+        card = recordingCardLines()
+        let framesStill = pausedA.pngRepresentation == pausedB.pngRepresentation
+        let clockStill = !clockA.isEmpty && clockA == clockB
+        log("recording, paused: frames identical \(framesStill); clock \(clockA) → \(clockB); card lines \(card); text \(screenText())")
+        add(attachment(pausedB, "110b-recording-paused-no-card"))
+        XCTAssertTrue(framesStill || clockStill, "no sign the recording paused — frames identical \(framesStill), clock \(clockA) → \(clockB)")
+        XCTAssertTrue(card.isEmpty, "the recording card is drawn while paused: \(card)")
+
+        // Resumed — the card used to show for 6 s again.
+        remote.press(.select)
+        sleep(2)
+        card = recordingCardLines()
+        let resumedA = XCUIScreen.main.screenshot()
+        sleep(3)
+        let resumedB = XCUIScreen.main.screenshot()
+        log("recording, resumed: frames moving \(resumedA.pngRepresentation != resumedB.pngRepresentation); card lines \(card) / \(recordingCardLines())")
+        XCTAssertTrue(card.isEmpty && recordingCardLines().isEmpty, "the recording card is drawn after resuming")
+        XCTAssertNotEqual(resumedA.pngRepresentation, resumedB.pngRepresentation, "the recording did not resume")
+
+        // Down opens the panel; Up closes it.
+        remote.press(.down)
+        XCTAssertTrue(waitFor(20) { panelUp }, "Down did not open the panel over the recording")
+        sleep(3)
+        log("recording panel up — title \(panelText("infoPanel.title") ?? "none") · button \(panelButton("infoPanel.pass") ?? "none") · focus \(focusedLabel())")
+        shot("110c-recording-panel-up")
+        remote.press(.up)
+        XCTAssertTrue(waitFor(10) { !panelUp }, "Up did not close the panel over the recording")
+        sleep(2)
+        card = recordingCardLines()
+        log("recording after Up: panel up \(panelUp); card lines \(card); focus \(focusedLabel())")
+        shot("110d-recording-panel-closed-no-card")
+        XCTAssertTrue(card.isEmpty, "the recording card is drawn after the panel closed: \(card)")
+
+        remote.press(.menu)
+        let backToShow = waitFor(20) {
+            let f = focusedLabel()
+            return f.hasPrefix("Resume") || f == "Play newest" || f == "Edit series pass" || f == "Record the series"
+        }
+        log("recording, after Menu: focus \(focusedLabel())")
+        XCTAssertTrue(backToShow, "Menu did not return to show detail — focus is \(focusedLabel())")
+
+        // ================= a live channel =================
+        goHome()
+        openFromHome("Favorites")
+        XCTAssertTrue(app.staticTexts[favoritesNote].waitForExistence(timeout: 40), "Favorites did not appear")
+        sleep(4)
+        let row = focusedLabel()
+        let parts = (row.components(separatedBy: ", ").first ?? "").components(separatedBy: " · ")
+        let liveTitle = parts.count == 2 ? "ch\(parts[0]) \(parts[1])" : ""
+        log("Favorites focus, the channel about to be played: \"\(row)\" → the live card's title would read \"\(liveTitle)\"")
+        XCTAssertFalse(liveTitle.isEmpty, "could not read the channel off the Favorites row: \(row)")
+        remote.press(.select)
+        XCTAssertTrue(waitForPlayback("live"), "the live channel never left the Starting screen")
+
+        // Just started — the live card used to show for 6 s here.
+        sleep(1)
+        card = liveCardLines(title: liveTitle)
+        log("live, just started: card lines \(card); lookalikes anywhere: \(describeLookalikes(liveTitle)); screen midY \(Int(app.frame.midY)); focus \(focusedLabel())")
+        shot("110e-live-started-no-card")
+        XCTAssertTrue(card.isEmpty, "the live card is drawn just after start: \(card)")
+
+        // Paused — the paused-live screen (6d) comes up; it is not the card and stays.
+        sleep(3)
+        remote.press(.select)
+        let pausedLive = app.staticTexts["Paused"].waitForExistence(timeout: 10)
+        sleep(2)
+        card = liveCardLines(title: liveTitle)
+        log("live, paused: paused-live screen \(pausedLive); card lines \(card); lookalikes anywhere: \(describeLookalikes(liveTitle)); text \(screenText())")
+        shot("110f-live-paused-no-card")
+        XCTAssertTrue(pausedLive, "the live channel did not pause")
+        XCTAssertTrue(card.isEmpty, "the live card is drawn while paused: \(card)")
+
+        // Resumed — the live card used to show for 6 s again.
+        remote.press(.select)
+        let resumedLive = waitFor(10) { !app.staticTexts["Paused"].exists }
+        sleep(1)
+        card = liveCardLines(title: liveTitle)
+        log("live, resumed: paused screen gone \(resumedLive); card lines \(card); lookalikes anywhere: \(describeLookalikes(liveTitle))")
+        XCTAssertTrue(resumedLive, "the live channel did not resume")
+        XCTAssertTrue(card.isEmpty, "the live card is drawn after resuming: \(card)")
+
+        // Down opens the panel; Up closes it.
+        remote.press(.down)
+        XCTAssertTrue(waitFor(25) { panelUp }, "Down did not open the panel over the live channel")
+        sleep(4)
+        log("live panel up — title \(panelText("infoPanel.title") ?? "none") · record \(panelButton("infoPanel.record") ?? "none") · favorite \(panelButton("infoPanel.favorite") ?? "none") · focus \(focusedLabel())")
+        shot("110g-live-panel-up")
+        remote.press(.up)
+        XCTAssertTrue(waitFor(10) { !panelUp }, "Up did not close the panel over the live channel")
+        sleep(2)
+        card = liveCardLines(title: liveTitle)
+        log("live after Up: panel up \(panelUp); card lines \(card); lookalikes anywhere: \(describeLookalikes(liveTitle)); focus \(focusedLabel())")
+        shot("110h-live-panel-closed-no-card")
+        XCTAssertTrue(card.isEmpty, "the live card is drawn after the panel closed: \(card)")
+
+        remote.press(.menu)
+        let backToFavorites = waitFor(20) { focusedLabel().contains(" · ") }
+        log("live, after Menu: focus \(focusedLabel())")
+        XCTAssertTrue(backToFavorites, "Menu did not return to Favorites — focus is \(focusedLabel())")
+    }
+
+    private func attachment(_ screenshot: XCUIScreenshot, _ name: String) -> XCTAttachment {
+        let a = XCTAttachment(screenshot: screenshot)
+        a.name = name
+        a.lifetime = .keepAlways
+        return a
     }
 
     private func recordingPanel() {

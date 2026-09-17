@@ -2649,3 +2649,59 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass is committed and NOT pushed.** The owner tests the swipe up on Home Theater first. Its own
   commit SHA is not written into this entry and cannot be — a commit cannot contain its own SHA — and it
   lives in the Pass 109 response and in the next pass's entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 110 — the Player's top info card removed on recordings and live channels)
+
+- **Owner decision (2026-09-16), his words, about the card in his photo: "now that we added the new thing
+  this is not needed".** The card is the one across the top of the Player over a recording, reading in his
+  photo "History's Greatest Mysteries" / "S4 E14 · Who Is D.B. Cooper? · 9001 HISTORY" / "2:09 of 42:51" /
+  "Resume kept by D/S Apple TV". **Remove it on recordings and live channels.** Foreman's call: cameras have
+  no info panel, so wherever the card appears on a camera, it stays.
+- **What was removed, in `PlayerScreen.swift` only.** The card was two views chosen in one place,
+  `PlayerScreen.hud`: `RecordingHUD` (frame 6c) for a recording and `LiveHUD` (frame 6b) for everything else.
+  The dispatch now draws `LiveHUD` **for cameras only** — which reach it by exactly the values they did before,
+  never being live or a recording — and **`RecordingHUD` is deleted**. `LiveHUD` itself is byte-identical.
+- **On a recording**, gone: the title; the episode line with "9001 HISTORY"; "x of y"; "Resume kept by …";
+  and two lines his photo does not show and the file route never draws in practice — "Prepared to … Jumping
+  past that point restarts playback there …" and the notice slot, which nothing sets on a recording.
+- **On a live channel**, gone with the card, none of it in his photo: **the LIVE badge** ("LIVE", or "LIVE ·
+  −12 s" behind the edge); **the "ch9001 HISTORY" title line**; **the "Pawn Stars · until 12:03 AM"
+  subtitle**; **"12 s behind live · buffer 1 min"**; and **"The pause point left the buffer — resumed at the
+  oldest point still available."** (`PlayerModel.swift:351`), **which the card was the only place to draw** —
+  the model still sets it and still re-seeks; only its text is no longer shown.
+- **Not the card, and not changed**: the **paused-live screen (6d)**, with its top-left "LIVE · HELD  ch9001
+  HISTORY · Pawn Stars · until …" over the centred "Paused"; and **Apple's own transport bar**, which draws the
+  item's title and subtitle from its metadata — on a recording "History's Greatest Mysteries" over "S4 E14 ·
+  Who Is D.B. Cooper? · 9001 HISTORY" — whenever it appears. The metadata is set in `PlayerModel.swift`,
+  do-not-touch here. **Both are raised as open questions 1 and 2 of the report, not built.**
+- **Untouched:** `PlayerModel.swift`, `PlaybackSession.swift`, `PlayerHost.swift`, `PlayerInfoPanel.swift`,
+  the commercial-skip prompt, the Starting, Failure and Expired states, and the camera path.
+- **Proven on Home Theater.** `PlayerInfoPanelUITests` gains `testNoTopCardOnARecordingOrALiveChannel`, run on
+  its own with `launch()`: **TEST SUCCEEDED in 125.267 s**; the app's launch ping `POST
+  /api/clients/<client id>/ping` at `23:33:10.077` in `GET /api/logs`, 2.2 s after the suite began. On a
+  recording and on a live channel, **no card just after start, while paused, or after resuming** — the
+  recording's pause shown real by identical captures and Apple's clock standing at 02:38, the live pause by
+  the paused-live screen — and **Down still opened the info panel and Up closed it** on both. Nine screenshots
+  in `reports/assets/pass110/`.
+- **The first run failed on its live half, and the app was right.** It read "LIVE" and "ch9001 HISTORY" at
+  every step; its screenshots showed **no card at the top**, the two strings being **Apple's transport bar at
+  the bottom**, which stays in the accessibility tree while hidden. **Nothing in the app was changed**; the
+  harness's live check now also requires a card line to lie in the top half of the screen, and logs every
+  lookalike with its position — at every step of the second run they were at y 757 and 802, the bottom.
+  Disclosed as two device runs where the pass asked for one.
+- **Consequences recorded, not changed:** `ResumeRewindUITests` (Pass 96) can no longer read the recording's
+  position, which it took from the card's "x of y"; the Pass 108 and Pass 109 methods of
+  `PlayerInfoPanelUITests` cannot pass, because both wait for the card to know playback has started.
+- **Code-traced only:** cameras still drawing the card; the live notice no longer shown; the live card after a
+  rewind or fast-forward; Pass 109's swipe up.
+- **No write reached the server.** Each run's non-GETs were the launch ping and two play sessions opened and
+  closed; the saved position on `5328bb632e76` moved from about 2:11 to about 2:47. No diagnostic was added.
+- **Pass 109's verified commit is `8186090`**, local and unpushed. Before this pass changed anything,
+  `git fetch origin`, then `git rev-parse main` read `81860906e26521cfebc5452188ba1c698dddaac0`,
+  `git rev-parse origin/main` and `git ls-remote origin main` both read
+  `3377aefd9f43e76e25259c0079f69ace343e0d93`, `git rev-list --left-right --count main...origin/main` was
+  `2 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass is committed and NOT pushed.** The owner tests it on Home Theater first, together with Pass
+  109's swipe up. Its own commit SHA is not written into this entry and cannot be — a commit cannot contain
+  its own SHA — and it lives in the Pass 110 response and in the next pass's entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).

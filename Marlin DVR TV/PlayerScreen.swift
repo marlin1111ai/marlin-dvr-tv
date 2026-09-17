@@ -16,6 +16,9 @@
 //  playing state draws. Menu with it up closes it; Menu again leaves the Player as before. It goes
 //  whenever the Player leaves the playing state, so it is never left standing over a state card.
 //
+//  Pass 110 (owner, 2026-09-16): the card across the top — frame 6c on recordings, 6b on live
+//  channels — is no longer drawn for either; the info panel replaces it. Cameras keep 6b. See `hud`.
+//
 
 import SwiftUI
 
@@ -92,16 +95,18 @@ struct PlayerScreen: View {
         .onDisappear { Task { await model.stop() } }
     }
 
+    /// Pass 110 (owner, 2026-09-16 — "now that we added the new thing this is not needed"): the card
+    /// across the top is gone on recordings and live channels, where the info panel now carries what it
+    /// showed. **Cameras keep it** — they have no info panel (foreman's call) — and reach `LiveHUD`
+    /// exactly as before: a camera is never live, so it never takes the first branch, and it is never a
+    /// recording, so the old `else` sent it here too. The paused-live overlay (6d) is not the card and is
+    /// unchanged.
     @ViewBuilder
     private var hud: some View {
         if model.isPaused && model.isLive {
             PausedLiveOverlay(model: model)
-        } else if model.hudVisible || model.notice != nil {
-            if model.isRecording {
-                RecordingHUD(model: model)
-            } else {
-                LiveHUD(model: model)
-            }
+        } else if model.isCamera, model.hudVisible || model.notice != nil {
+            LiveHUD(model: model)
         }
     }
 
@@ -252,52 +257,8 @@ struct LiveHUD: View {
     }
 }
 
-// MARK: 6c — Recording HUD (dc:927-950)
-
-struct RecordingHUD: View {
-    let model: PlayerModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(model.request.title)
-                .font(.nocturne(44, .medium))
-                .tracking(-0.01 * 44)
-                .foregroundStyle(Nocturne.text)
-            if !model.request.subtitle.isEmpty {
-                Text(model.request.subtitle)
-                    .font(.nocturne(Nocturne.TextSize.body))
-                    .foregroundStyle(Nocturne.neutral400)
-            }
-            HStack(spacing: 34) {
-                if model.duration > 0 {
-                    Text("\(PlayerTime.clock(model.position)) of \(PlayerTime.clock(model.duration))")
-                        .foregroundStyle(Nocturne.neutral300)
-                }
-                if !model.fullyPrepared, model.preparedTo > 0 {
-                    Text("Prepared to \(PlayerTime.clock(model.preparedTo)). Jumping past that point restarts playback there — a second or two of buffering, not an error.")
-                        .foregroundStyle(Nocturne.neutral500)
-                        .lineLimit(2)
-                }
-                Text("Resume kept by \(model.clientName)")
-                    .foregroundStyle(Nocturne.neutral500)
-            }
-            .font(.nocturne(Nocturne.TextSize.floor))
-            if let notice = model.notice {
-                Text(notice)
-                    .font(.nocturne(Nocturne.TextSize.floor))
-                    .foregroundStyle(Nocturne.neutral200)
-            }
-        }
-        .padding(.vertical, 24)
-        .padding(.horizontal, 32)
-        .frame(maxWidth: 1500, alignment: .leading)
-        .background(Nocturne.surface.opacity(0.86), in: RoundedRectangle(cornerRadius: Nocturne.Radius.lg, style: .continuous))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.top, Nocturne.Layout.marginVertical)
-        .padding(.leading, Nocturne.Layout.marginHorizontal)
-        .transition(.opacity)
-    }
-}
+// MARK: 6c — Recording HUD (dc:927-950): removed in Pass 110 by owner decision; the info panel
+// (`PlayerInfoPanel.swift`) carries the recording's title and episode now.
 
 // MARK: Pass 38 — the commercial-skip prompt (no approved design; built to the app's look)
 
