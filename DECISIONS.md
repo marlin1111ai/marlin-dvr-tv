@@ -2351,3 +2351,42 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   Theater first — it is the one path that writes. Its own commit SHA is not written into this entry
   and cannot be — a commit cannot contain its own SHA — and it lives in the Pass 103 response and in
   the next pass's entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 104 — Pass 103 accepted and pushed)
+
+- **Owner acceptance: A1 was tested on Home Theater on 2026-09-16 and accepted — "all checked and
+  good"** (owner, 2026-09-16), said after working through the test steps Pass 103's response gave
+  him. That covers show detail's series pass button as Pass 103 built it: **"Record the series"**
+  when the server holds no pass for the title, **"Edit series pass"** once it does, opening the same
+  `EditSeriesPassScreen` the Guide and Manage DVR open, with the airing sheet's flow, its 409
+  handling, its result text and its gold `◆ Series pass · …` line under the buttons.
+- **What his words do and do not settle, kept apart on purpose.** He said the steps checked out; he
+  did not itemise which he took, and **this pass measured nothing** — it sent no request to the
+  server, touched neither Apple TV and changed no code. So the paths Pass 103 could not prove
+  without writing to his DVR — **the "Record the series" press itself, the 409 branch, the failure
+  branch, and the button's change after an add or a delete** — are covered by **the owner's
+  acceptance by eye**, exactly as Pass 49's two chip renderings are, and **not** by any measurement
+  this project holds. Nothing here claims more than "all checked and good".
+- **Pass 103's verified commit is `8ab78a9`**, and **this pass pushes it** together with its own
+  notebook commit, as a fast-forward from `22066d5`. Before this pass changed anything,
+  `git fetch origin` then `git rev-parse main` read
+  `8ab78a908c479ac4f1fe4af77c400db67de87b89`, `git rev-parse origin/main` and
+  `git ls-remote origin main` both read `22066d54a36c68c218f4f3ca2ab1dc810075ef7b` (Pass 102),
+  `git rev-list --left-right --count main...origin/main` was `1 0` — so Pass 103 alone was waiting —
+  and `git status --porcelain` showed only `?? icon-source/`.
+- **No app-target file, test-target file or project file was changed in this pass.** The binary the
+  owner accepted is Pass 103's, and the binary pushed is the same one. Home Theater has run it since
+  the Pass 103 harness installed and launched it at 21:06:56 on 2026-09-16.
+- **Pass 103's open questions are neither closed nor re-raised by this acceptance.** They stand
+  exactly as its report left them: the running server answering **1.9.2** where the notebook still
+  records 1.9.1 (and its log reporting `1.9.3 is published`); show detail not reloading after the
+  Player closes (Pass 8 Open Question 6); `Resume S0 E0 · 1 min in`; a pass created here carrying no
+  channel, as one created from the sheet does; and **Down from the last Continue watching card going
+  nowhere**, measured on a screen Pass 103 did not touch.
+- **The bedroom Apple TV is still on `4396d84`.** This batch is now proven on Home Theater, so the
+  standing rule — *"whenever we done doing updates and they a proven always update the bedroom"* —
+  falls due; the owner directed in this pass that it be **brought up next**, and both Apple TVs were
+  named do-not-touch here, so nothing was installed.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
