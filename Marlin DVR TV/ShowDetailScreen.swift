@@ -10,8 +10,29 @@
 //
 //  Sweep 4, step 3: click and hold an episode opens EpisodeActionsMenu — Keep, Favorite,
 //  Mark unwatched, Delete. The row redraws from the `episodeView` the server returns, and a
-//  trashed episode leaves the list (the counts and the size line follow it). "Series pass"
-//  stays inert: this pass wires the airing sheet's series pass only (Pass 8 scope lock).
+//  trashed episode leaves the list (the counts and the size line follow it).
+//
+//  Pass 103 (inventory item A1): the button that sat inert since Pass 8 is now the airing
+//  sheet's series-pass control, reached from a show instead of an airing. The owner's decision
+//  (2026-09-16) is that it behaves exactly as the sheet's does — "Record the series" with no
+//  pass, "Edit series pass" once there is one, the same route, the same editor and the same
+//  result text under the buttons — so the flow here mirrors `AiringSheet.recordSeries()`
+//  (`AiringSheet.swift:371-395`) and `AiringSheet`'s editor block (`:137-157`) line for line,
+//  and `EditSeriesPassScreen` and `AiringSheet.friendly` are called unchanged. There is no
+//  `recordMode: "new"` warning, because the sheet has none (Pass 8 Open Question 3, still open
+//  for both screens).
+//
+//  Two deliberate differences from the sheet, both because a show is not an airing:
+//   · **No `onScheduleChanged()`.** The sheet re-reads `GET /api/schedule` after the write to
+//     refresh the Guide's ● / ◆ marks and its own first control. This screen draws nothing from
+//     the schedule and has no airing state, so there is nothing to refresh and no read is made.
+//     The result text is unaffected — `countLabel` comes from the POST's own `passView`.
+//   · **The match is on the title alone.** `AiringSheet.matchingPass(in:program:)` needs a
+//     `Program`; a show has none. Of the three rules it applies (`:340-350`) only two can bear
+//     on a title-only subject — the `"title:<lower>"` id the server derives for a listing with
+//     no `seriesId`, and the pass title — and those two are exactly what the server itself
+//     applies to fill `ShowResponse.pass` (`library.go:659-664`). So `matchingPass(in:showTitle:)`
+//     below is that pair, and `AiringSheet.swift` is not touched.
 //
 //  Pass 31: that write changes the library the Recordings shelves behind this screen are
 //  drawn from, and they had no way of knowing. `onLibraryChanged` tells them, so the owner
@@ -88,6 +109,12 @@ struct ShowDetailScreen: View {
     @FocusState private var focused: String?
     @State private var resumeTick = 0   // re-read the resume store after the Player closes
     @State private var menuEpisode: Episode?
+    // Pass 103, the sheet's own four (`AiringSheet.swift:57-61`), minus the airing's `job`.
+    @State private var pass: PassView?
+    @State private var editingPass: PassView?
+    @State private var busy: String?
+    @State private var message: String?
+    @State private var failed = false
 
     init(api: APIClient, show: ShowSummary, onPlay: @escaping (PlayRequest) -> Void, onLibraryChanged: @escaping () -> Void) {
         self.api = api
@@ -95,6 +122,10 @@ struct ShowDetailScreen: View {
         self.onLibraryChanged = onLibraryChanged
         _model = State(initialValue: ShowDetailModel(api: api, show: show))
     }
+
+    /// The title the screen draws, which is also the one the server matched to fill
+    /// `ShowResponse.pass` and the one `createPass` derives `"title:<lower>"` from.
+    private var showTitle: String { model.detail?.title ?? model.show.title }
 
     /// The most recently saved position among this show's episodes (frame 5d "Resume S9 E11 · 22 min in").
     private var resume: (episode: Episode, entry: ResumeStore.Entry)? {
@@ -108,7 +139,7 @@ struct ShowDetailScreen: View {
                 leftColumn
                 episodes
             }
-            .disabled(menuEpisode != nil)
+            .disabled(menuEpisode != nil || editingPass != nil)
             if let menuEpisode {
                 EpisodeActionsMenu(
                     episode: menuEpisode,
@@ -121,11 +152,42 @@ struct ShowDetailScreen: View {
                     onClose: closeMenu
                 )
             }
+            // Pass 103: the one editor a pass is reached through from anywhere — the same screen
+            // the Guide's "Edit series pass" opens, through the sheet (`AiringSheet.swift:137`),
+            // and the same one Manage DVR opens. It carries its own `.onExitCommand`
+            // (`EditSeriesPassScreen.swift:134`), so Menu closes it and not this screen, exactly
+            // as `EpisodeActionsMenu` above already does.
+            if let editingPass {
+                EditSeriesPassScreen(
+                    pass: editingPass,
+                    api: api,
+                    onChanged: { updated in
+                        pass = updated
+                        self.editingPass = updated
+                    },
+                    onDeleted: {
+                        pass = nil
+                        self.editingPass = nil
+                        message = "Series pass deleted."
+                        failed = false
+                        focusSoon { focused = "pass" }
+                    },
+                    onClose: {
+                        self.editingPass = nil
+                        focusSoon { focused = "pass" }
+                    }
+                )
+            }
         }
         .defaultFocus($focused, resume != nil ? "resume" : "newest")
         .task {
             await model.load()
             focusSoon { focused = resume != nil ? "resume" : "newest" }
+            // After `load()`, so the match uses the title the server itself answered with. The
+            // button reads "Record the series" until this returns — the sheet's own behaviour
+            // (`AiringSheet.swift:161-163`), and a press inside that window is what the 409
+            // branch of `recordSeries()` exists to catch.
+            await loadPass()
         }
         .onAppear { resumeTick += 1 }
         .onChange(of: hold.holds) { _, _ in handleHold() }
@@ -133,7 +195,7 @@ struct ShowDetailScreen: View {
 
     /// A hold opens the actions menu for the focused episode; anything else is left alone.
     private func handleHold() {
-        guard menuEpisode == nil, let focus = focused,
+        guard menuEpisode == nil, editingPass == nil, let focus = focused,
               let episode = model.episodes.first(where: { $0.id == focus }) else { return }
         hold.armSwallow()
         menuEpisode = episode
@@ -192,9 +254,19 @@ struct ShowDetailScreen: View {
                 }
                 .buttonStyle(BareButtonStyle())
                 .focused($focused, equals: "newest")
-                inert("Series pass", id: "pass")
+                // Pass 103. One control with two labels, not two controls — the sheet's own
+                // reason (`AiringSheet.swift:258-259`): swapping the view would drop focus the
+                // moment the pass is created.
+                action(pass == nil ? "Record the series" : "Edit series pass", id: "pass") {
+                    if let pass {
+                        editingPass = pass
+                    } else {
+                        await recordSeries()
+                    }
+                }
             }
             .padding(.top, 6)
+            passFooter
             if let error = model.error {
                 ErrorLine(text: error)
             }
@@ -205,14 +277,106 @@ struct ShowDetailScreen: View {
         .focusSection()
     }
 
-    private func inert(_ title: String, id: String) -> some View {
+    /// The sheet's button helper (`AiringSheet.swift:285-294`) at this screen's own size: the
+    /// row of two in frame 5d is not the sheet's row of three, so `size` stays
+    /// `Nocturne.TextSize.secondary` and `flexible` stays off, as "Play newest" beside it is.
+    private func action(_ title: String, id: String, run: @escaping () async -> Void) -> some View {
         Button {
-            // "Series pass" here is not in Pass 8's steps (the airing sheet's is); it stays inert.
+            guard busy == nil else { return }
+            Task { await run() }
         } label: {
-            InertActionButton(title: title, primary: false, focused: focused == id, size: Nocturne.TextSize.secondary)
+            InertActionButton(title: busy == id ? "Working…" : title,
+                              primary: false,
+                              focused: focused == id,
+                              size: Nocturne.TextSize.secondary)
         }
         .buttonStyle(BareButtonStyle())
         .focused($focused, equals: id)
+    }
+
+    /// The server's answer to the last write, or the pass this show already has — the sheet's
+    /// footer (`AiringSheet.swift:298-321`) without its Conflict line, which belongs to an
+    /// airing's job and this screen has none. Directly under the buttons, as the sheet has it.
+    @ViewBuilder
+    private var passFooter: some View {
+        if let message {
+            Text(message)
+                .font(.nocturne(Nocturne.TextSize.floor))
+                .foregroundStyle(failed ? Nocturne.neutral200 : Nocturne.accent200)
+                .lineLimit(2)
+        } else if let pass {
+            // `.lineLimit(2)`, where the sheet's same line is `.lineLimit(1)`. The sheet draws it
+            // across a 1400 pt card; this column is 520 pt, and the first run on Home Theater
+            // photographed it cut to "◆ Series pass · 5 recordings scheduled · all episod…". The
+            // text is the sheet's, unchanged — only the room it is given differs, and it matches
+            // the message line above, which is already `.lineLimit(2)` in both screens.
+            Text("◆ Series pass · \(pass.countLabel) · \(pass.recordMode == "all" ? "all episodes" : "new episodes")")
+                .font(.nocturne(Nocturne.TextSize.floor))
+                .foregroundStyle(GuideMark.gold)
+                .lineLimit(2)
+        }
+    }
+
+    // MARK: The series pass (Pass 103)
+
+    /// Does the server already hold a pass for this show? One `GET /api/passes`, matched on the
+    /// title — see the file header for why that is the whole test here, and why
+    /// `ShowResponse.pass` (the matching pass *title*, `Models.swift:407`) is not what is used:
+    /// opening the editor needs the `PassView` itself, and one read answering both questions
+    /// beats two sources for one fact.
+    private func loadPass() async {
+        do {
+            let all = try await api.passes()
+            pass = Self.matchingPass(in: all, showTitle: showTitle)
+            if let pass {
+                print("[show] pass for \"\(showTitle)\": \(pass.id) \(pass.countLabel)")
+            }
+        } catch {
+            print("[show] passes: \(error)")
+        }
+    }
+
+    static func matchingPass(in passes: [PassView], showTitle: String) -> PassView? {
+        let title = showTitle.lowercased()
+        let derived = "title:" + title
+        return passes.first { $0.seriesId.lowercased() == derived || $0.title.lowercased() == title }
+    }
+
+    /// "Record the series" — `AiringSheet.recordSeries()` (`:371-395`) with the show's title in
+    /// place of the airing's and no `seriesId` to pass on, which is the case `createPass` already
+    /// handles: it sends none and the server derives `"title:<lower>"` from the title
+    /// (`ServerWrites.swift:192-197`, passes.go:718-725).
+    ///
+    /// **`POST /api/passes` is unconfirmed at the running server** — it is a write, so Pass 102
+    /// never called it and neither did Pass 103, and the newest source readable is the 1.8.1 clone
+    /// (`reports/2026-09-16-pass102-a1-a5-recon.md` §0). The running server answered **1.9.2** on
+    /// `GET /api/status` the day this was written, where the notebook still records the 1.9.1 Pass
+    /// 101 measured. The app has sent this route from the sheet since Pass 9, which is why the 409
+    /// branch is written the way it is — not why the route is trusted.
+    private func recordSeries() async {
+        busy = "pass"
+        failed = false
+        message = nil
+        do {
+            let created = try await api.createPass(title: showTitle, seriesId: nil)
+            pass = created
+            message = "Series pass created · \(created.countLabel)"
+            focused = "pass"
+        } catch let error as APIError where error.httpStatus == 409 {
+            // Never the raw 409, and never a dead end: reload and say what is true now, so the
+            // button is already "Edit series pass" by the time the sentence is read.
+            await loadPass()
+            failed = false
+            message = pass == nil
+                ? "This show already has a series pass."
+                : "This show already has a series pass — use Edit series pass."
+            print("[show] pass 409, reloaded: \(pass?.id ?? "not found")")
+        } catch {
+            failed = true
+            message = AiringSheet.friendly(error, fallback: "The server could not create the series pass.")
+            print("[show] pass failed: \(error)")
+        }
+        busy = nil
     }
 
     private var episodes: some View {

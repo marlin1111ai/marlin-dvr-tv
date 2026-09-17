@@ -2277,3 +2277,77 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 103 — A1: show detail's series pass button)
+
+- **Owner decision (2026-09-16), which closed Pass 102's open question 5.** Pass 102 recorded that
+  *"**Does A1's button become 'Edit series pass' when a pass exists**, as the airing sheet's does?
+  Not settled anywhere"*, and Pass 103 stopped at that gate before writing any code. His answer, in
+  substance: show detail's button reads **"Record the series"** when the show has no series pass,
+  and pressing it does **exactly what the airing sheet's "Record the series" does — same flow, same
+  screens, same route, same result text, shown under show detail's buttons the way the sheet shows
+  it**. Once the show has a pass the button reads **"Edit series pass"** and opens **the same editor
+  the Guide's "Edit series pass" opens**. The button **follows the show's pass state the way the
+  airing sheet's does, including after an add or a delete**. **No `recordMode: "new"` warning** —
+  the sheet has none, so Pass 8 Open Question 3 stays open for both screens.
+- **Built, in `ShowDetailScreen.swift` and nowhere else.** One control with two labels, not two
+  controls, for the sheet's own reason (`AiringSheet.swift:258-259`): swapping the view would drop
+  focus the moment the pass is created. No pass → `recordSeries()`, a copy of
+  `AiringSheet.recordSeries()`, calling `createPass` and showing "Series pass created · *n*
+  recordings scheduled"; the **409 is never shown raw** — the passes are re-read and the sentence
+  names Edit series pass, by which time the button already says it. Has a pass → `EditSeriesPassScreen`,
+  the one editor a pass is reached through from the Guide (via the sheet) and from Manage DVR. The
+  sheet's footer came with it: the write's result, or the gold `◆ Series pass · n recordings
+  scheduled · all/new episodes`. **`AiringSheet.swift` and `EditSeriesPassScreen.swift` were called
+  unchanged and not edited**, and neither was the project file — the targets are synchronised
+  folders, so the new harness needed no project change.
+- **Three places a show is not an airing, recorded rather than glossed.** (a) **No
+  `onScheduleChanged()`**: the sheet re-reads `GET /api/schedule` after its write to refresh the
+  Guide's marks, and show detail draws nothing from the schedule, so that read is not made and the
+  result text is unaffected — `countLabel` comes from the POST's own answer. (b) **The match is on
+  the title alone**: `AiringSheet.matchingPass(in:program:)` needs a `Program` and a show has none,
+  so rather than fabricate one, the two of its three rules that can bear on a title-only subject were
+  written here — and they are exactly what the server applies to fill `ShowResponse.pass`
+  (`library.go:659-664`). (c) **`ShowResponse.pass` is not what the button reads**: it is the pass
+  *title*, and opening the editor needs the `PassView`, so one `GET /api/passes` answers both.
+- **One disclosed deviation from "the way the sheet shows it":** the gold footer is `.lineLimit(2)`
+  where the sheet's is `.lineLimit(1)`. The sheet has a 1400 pt card; show detail's column is 520 pt,
+  and the first passing run photographed the line cut to "… · all episod…". **The text is the
+  sheet's, unchanged** — only the room it is given differs.
+- **Proven on Home Theater, and the larger half is not.** Run-verified: a show with no pass draws
+  "Record the series" and no ◆ line; a show with a pass draws "Edit series pass" and the gold line
+  carrying the server's own numbers; the press opens the editor focused on its first row; Menu
+  returns with the button, the footer and the pass unchanged. **Code-traced only: the "Record the
+  series" press itself, the 409 branch, the failure branch, the button's change after an add, and
+  its change after a delete** — every one of those needs a write on the owner's DVR, and **this pass
+  sent none**. The harness photographs "Record the series" and never presses it, and presses nothing
+  inside the editor, so "leaving it saves and deletes nothing" rests on nothing having been sent.
+- **No write of any kind reached the server.** The app's only non-GET in the run was its own launch
+  ping, found in `GET /api/logs` at `21:07:02.866`, 2.1 s after the suite started — one launch, one
+  ping, the Pass 92 check. **Three POSTs appear in the same log window and none is this app's**:
+  `POST /api/comskip/redetect` and `POST /api/guide/refresh` are routes the app does not call
+  anywhere, and `POST /api/record` at 21:08:03 landed **after the test process ended** and came from
+  the owner's own web UI, which was open throughout (it also read `GET /api/settings`, which this app
+  never requests).
+- **`POST /api/passes` is still unconfirmed at the running server**, as Pass 102 said — it is a
+  write, so this pass did not call it either. **And the running server is now 1.9.2, not the 1.9.1
+  Pass 101 measured**: `GET /api/status` answered `1.9.2` today and the server's own log carries
+  `1.9.3 is published; this server runs 1.9.2`. **COLD-START's *The server* line and the Pass 101
+  entry were not edited** — a server-version line is not one of the three COLD-START edits this pass
+  names — and it is raised as open question 1 of the report instead.
+- **The first device run failed on navigation and the diagnosis is kept**, because it is a fact about
+  a screen this pass did not touch: **Down from the last Continue watching card goes nowhere.** That
+  shelf holds 5 cards and the shelves below hold 4, each row keeps its own horizontal scroll offset,
+  so from the 5th card tvOS finds no candidate below and refuses the move; the harness's log shows
+  four Downs and ten Rights as no-ops. The harness now returns to the left-hand column before every
+  Down. **Nothing on the Recordings screen was changed.**
+- **The findings are in `reports/2026-09-16-pass103-a1-series-pass.md`**, with the four screenshots
+  in `reports/assets/pass103/`.
+- **Pass 102's verified push SHA is `22066d5`.** Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `22066d54a36c68c218f4f3ca2ab1dc810075ef7b`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass is committed and NOT pushed.** The owner tests the "Record the series" press on Home
+  Theater first — it is the one path that writes. Its own commit SHA is not written into this entry
+  and cannot be — a commit cannot contain its own SHA — and it lives in the Pass 103 response and in
+  the next pass's entry (DECISIONS.md, 2026-09-11 (Pass 68)).
