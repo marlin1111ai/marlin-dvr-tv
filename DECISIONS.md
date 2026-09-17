@@ -2601,3 +2601,51 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass is committed and NOT pushed.** The owner tests on Home Theater first. Its own commit SHA is
   not written into this entry and cannot be — a commit cannot contain its own SHA — and it lives in the
   Pass 108 response and in the next pass's entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-16 (Pass 109 — swipe up or click up closes the Player's info panel)
+
+- **Owner acceptance: Pass 108 was tested on Home Theater and accepted. His words: "all good"** (owner,
+  2026-09-16). Recorded verbatim and **nothing is claimed beyond them** — in particular they are not taken
+  as a measurement of any path Pass 108 recorded as code-traced: the swipe down, the click down while
+  paused on a recording, commercial skip and frame stepping with the panel, and every button press.
+- **Owner decision (2026-09-16): with the info panel up, a swipe up on the remote's touch surface, or a
+  click up on its ring, closes the panel, the same as Menu does. Menu is unchanged.**
+- **What was built — `PlayerInfoPanel.swift` only, +101 / −0.** Both ways call `onClose`, the one call the
+  panel's `.onExitCommand` makes, so an Up closes the panel by exactly Menu's path. **The click up** is a
+  move command caught by `.onMoveCommand` on the panel's card, acting on `.up` only; nothing focusable
+  sits above the panel's controls and the Player's container refuses focus back into the video while the
+  panel is up (Pass 108), so the Up moves nothing and the command is the whole of it. **The swipe up** is
+  a `UISwipeGestureRecognizer` — up, indirect touches, no press types, cancelling nothing, recognising
+  simultaneously — **put on the window by a zero-size probe in the panel's background and taken off when
+  the panel leaves**, `RemoteHoldDetector`'s pattern; it is on the window, not the Player's container,
+  because the panel's focused button is not inside that container.
+- **Neither acts while the pass editor is open over the panel**: the move command is on the card, which
+  the editor is a sibling of, and the swipe checks that no editor is open. In the editor Up keeps moving
+  between its rows, as wherever the editor is opened, and Menu closes the editor first, as before. **This
+  is the reading taken of "the same as Menu does"** where the editor, not the panel, is in front — built,
+  not asked, and raised as open question 1 of the report.
+- **`PlayerHost.swift`, `PlayerScreen.swift`, `Models.swift`, `PlayerModel.swift`,
+  `PlaybackSession.swift`, `AiringSheet.swift`, `ShowDetailScreen.swift`, `GuideScreen.swift`,
+  `FavoritesScreen.swift` and `EditSeriesPassScreen.swift` have no diff**, and every line Pass 108 wrote in
+  `PlayerInfoPanel.swift` is unchanged.
+- **Proven on Home Theater — the click up on a recording.** `PlayerInfoPanelUITests` gains
+  `testUpClosesThePanelOverARecording`, run on its own with `launch()`: **TEST SUCCEEDED in 47.040 s**; the
+  app's launch ping `POST /api/clients/<client id>/ping` at `23:15:26.072` in `GET /api/logs`, 3.7 s
+  after the suite began. Down opened the panel over *History's Greatest Mysteries* S4 E14 with focus on
+  "Edit pass"; **Up closed it** and focus went back to the player, not to show detail; **the recording was
+  still playing** — the recording HUD a pause brings back stayed down, and two full-screen captures 4 s
+  apart differed, showing different shots; Menu then left the Player as before. Four screenshots in
+  `reports/assets/pass109/`.
+- **Code-traced only:** the swipe up (XCUITest cannot swipe on tvOS); Up inside the editor; Up over a live
+  channel's panel and over its "Loading…" line.
+- **No write reached the server.** The run's non-GETs were the launch ping and one play session opened
+  and closed. The saved position on `5328bb632e76` moved forward about the 22 s it played. No diagnostic
+  was added and no temporary harness made.
+- **Pass 108's verified commit is `b3ec4ea`**, local and unpushed. Before this pass changed anything,
+  `git fetch origin`, then `git rev-parse main` read `b3ec4ea94d35dc1b887ae750b088c6a8685542e1`,
+  `git rev-parse origin/main` and `git ls-remote origin main` both read
+  `3377aefd9f43e76e25259c0079f69ace343e0d93`, `git rev-list --left-right --count main...origin/main` was
+  `1 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass is committed and NOT pushed.** The owner tests the swipe up on Home Theater first. Its own
+  commit SHA is not written into this entry and cannot be — a commit cannot contain its own SHA — and it
+  lives in the Pass 109 response and in the next pass's entry (DECISIONS.md, 2026-09-11 (Pass 68)).

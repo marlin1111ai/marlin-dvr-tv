@@ -47,8 +47,22 @@
 //  for it. It is built to the app's look: the Nocturne surface across the top of the screen at the
 //  standard 60 / 80 pt margins, the way the airing sheet and the Player's own HUDs are drawn.
 //
+//  Pass 109 (owner decision, 2026-09-16): **with the panel up, a swipe up on the touch surface or a
+//  click up on the ring closes it, the same as Menu does.** Menu is unchanged. Both reach `onClose`,
+//  the one call Menu's `.onExitCommand` makes:
+//   · The **click up** is a move command, so `.onMoveCommand` on the card catches it while focus is on
+//     one of the panel's own controls. Nothing focusable sits above them, and the Player's container
+//     refuses focus back into the video while the panel is up (Pass 108), so an Up here moves nothing.
+//   · The **swipe up** gets a `UISwipeGestureRecognizer` of its own, installed on the window only for as
+//     long as the panel is on screen (`SwipeUpDetector`, the `RemoteHoldDetector` pattern). It is on the
+//     window because the panel's focused button is not inside the Player's container, where Pass 108's
+//     swipe-down recognizer lives.
+//  **Neither acts while the pass editor is open over the panel.** There Up moves between the editor's
+//  rows, as it does wherever the editor is opened, and Menu closes the editor first, as before.
+//
 
 import SwiftUI
+import UIKit
 
 struct PlayerInfoPanel: View {
     let request: PlayRequest
@@ -160,6 +174,13 @@ struct PlayerInfoPanel: View {
         ZStack(alignment: .top) {
             card
                 .disabled(editingPass != nil)
+                // Pass 109: a click up closes the panel. On the card, not the root, so an Up inside the
+                // editor — a sibling of the card — stays the editor's own row-to-row move.
+                .onMoveCommand { direction in
+                    guard direction == .up, editingPass == nil else { return }
+                    print("[panel] click up → closed")
+                    onClose()
+                }
                 .padding(.top, Nocturne.Layout.marginVertical)
                 .padding(.horizontal, Nocturne.Layout.marginHorizontal)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -191,6 +212,15 @@ struct PlayerInfoPanel: View {
         }
         .focusSection()
         .onExitCommand { onClose() }
+        // Pass 109: a swipe up closes the panel — but not from inside the editor.
+        .background {
+            SwipeUpDetector {
+                guard editingPass == nil else { return }
+                print("[panel] swipe up → closed")
+                onClose()
+            }
+            .frame(width: 1, height: 1)
+        }
         .task {
             focusSoon { focused = firstFocusID }
             if isLive {
@@ -612,4 +642,75 @@ private struct PanelChannelLogo: View {
     private var initials: some View {
         InitialsTile(initials: channel.initials, logoBg: channel.logoBg, size: size, fontSize: size * 26 / 82)
     }
+}
+
+// MARK: Pass 109 — the swipe up
+
+/// A zero-size view that puts one swipe-up recognizer on the window while it is on screen, and takes it
+/// off again when it leaves — `RemoteHoldDetector`'s pattern (`RemoteHold.swift:89-153`). The panel puts
+/// it in its background, so the recognizer exists exactly as long as the panel does.
+private struct SwipeUpDetector: UIViewRepresentable {
+    let onSwipeUp: () -> Void
+
+    func makeUIView(context: Context) -> SwipeUpProbeView {
+        SwipeUpProbeView(onSwipeUp: onSwipeUp)
+    }
+
+    func updateUIView(_ view: SwipeUpProbeView, context: Context) {
+        view.onSwipeUp = onSwipeUp
+    }
+
+    static func dismantleUIView(_ view: SwipeUpProbeView, coordinator: ()) {
+        view.uninstall()
+    }
+}
+
+private final class SwipeUpProbeView: UIView, UIGestureRecognizerDelegate {
+    var onSwipeUp: () -> Void
+    private var recognizer: UISwipeGestureRecognizer?
+    private weak var installedOn: UIWindow?
+
+    init(onSwipeUp: @escaping () -> Void) {
+        self.onSwipeUp = onSwipeUp
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if installedOn != nil, installedOn !== window { uninstall() }
+        guard let window, recognizer == nil else { return }
+        // Touches only, no press type: the click up is the card's move command, and this must never
+        // claim a press from anything else on the screen.
+        let swipe = UISwipeGestureRecognizer(target: self, action: #selector(swiped(_:)))
+        swipe.direction = .up
+        swipe.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        swipe.allowedPressTypes = []
+        swipe.cancelsTouchesInView = false
+        swipe.delaysTouchesBegan = false
+        swipe.delaysTouchesEnded = false
+        swipe.delegate = self
+        window.addGestureRecognizer(swipe)
+        recognizer = swipe
+        installedOn = window
+    }
+
+    func uninstall() {
+        if let recognizer { installedOn?.removeGestureRecognizer(recognizer) }
+        recognizer = nil
+        installedOn = nil
+    }
+
+    @objc private func swiped(_ gesture: UISwipeGestureRecognizer) {
+        guard gesture.state == .ended else { return }
+        onSwipeUp()
+    }
+
+    /// It only watches: focus movement and every other recognizer keep every touch they would have had.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 }

@@ -37,6 +37,17 @@
 //  resume the build already running on the television. The run is only believed once the app's launch
 //  ping is found in `GET /api/logs` at the run's timestamp.
 //
+//  **Pass 109 adds `testUpClosesThePanelOverARecording`**, run on its own: the same recording, the panel
+//  opened with `remote.press(.down)` and closed with **`remote.press(.up)`** — the click up — and then
+//  the proof that the recording is still playing: the Player is still up, the recording HUD that a pause
+//  would bring back is not, and two screenshots taken seconds apart differ. It presses no panel button,
+//  and the swipe up is code-traced only for the same reason the swipe down was.
+//
+//    109a  the panel up over the recording, focus on its button
+//    109b  after Up: the panel gone, the recording on screen
+//    109c  a few seconds later: a different frame — still playing
+//    109d  Menu: the Player gone and show detail back, the resume point further on
+//
 
 import XCTest
 
@@ -203,6 +214,74 @@ final class PlayerInfoPanelUITests: XCTestCase {
         recordingPanel()
         goHome()
         livePanel()
+    }
+
+    /// Pass 109: the click up closes the panel, the same as Menu, and the recording plays on.
+    func testUpClosesThePanelOverARecording() {
+        openFromHome("Recordings")
+        XCTAssertTrue(app.staticTexts[shelvesNote].waitForExistence(timeout: 40), "the Recordings shelves did not appear")
+        sleep(3)
+        guard openShow(Self.show) else { return XCTFail("could not open \(Self.show)") }
+
+        let play = focusedLabel()
+        log("show detail focus, the control about to be pressed: \"\(play)\"")
+        XCTAssertTrue(play.hasPrefix("Resume") || play == "Play newest", "focus is not on a play control: \(play)")
+        remote.press(.select)
+
+        let hud = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Resume kept by'")).firstMatch
+        XCTAssertTrue(hud.waitForExistence(timeout: 120), "the recording never started playing: \(screenText())")
+        sleep(9)
+        log("recording playing; HUD up \(hud.exists); focus before Down: \(focusedLabel())")
+
+        // ---- Down opens the panel ----
+        remote.press(.down)
+        XCTAssertTrue(waitFor(20) { panelUp }, "Down did not open the panel over the recording: \(screenText())")
+        sleep(3)
+        let focusInPanel = focusedLabel()
+        log("panel up — title: \(panelText("infoPanel.title") ?? "none") · pass button: \(panelButton("infoPanel.pass") ?? "none") · focus: \(focusInPanel)")
+        shot("109a-panel-up")
+        XCTAssertEqual(panelButton("infoPanel.pass"), focusInPanel, "the panel's button did not take focus")
+
+        // ---- Up closes it ----
+        remote.press(.up)
+        XCTAssertTrue(waitFor(10) { !panelUp }, "Up did not close the panel")
+        sleep(2)
+        let afterUp = focusedLabel()
+        let firstFrame = XCUIScreen.main.screenshot()
+        let hudAfterUp = hud.exists
+        log("after Up: panel up \(panelUp), focus \(afterUp), recording HUD up \(hudAfterUp)")
+        let a = XCTAttachment(screenshot: firstFrame)
+        a.name = "109b-after-up-panel-closed"
+        a.lifetime = .keepAlways
+        add(a)
+        XCTAssertFalse(afterUp.hasPrefix("Resume") || afterUp == "Play newest" || afterUp == "Edit series pass",
+                       "Up left the Player instead of only closing the panel — focus is on show detail: \(afterUp)")
+        XCTAssertNotEqual(afterUp, focusInPanel, "focus is still on the panel's button")
+        // A pause brings the recording HUD back and keeps it up (`PlayerModel.timeControlChanged`).
+        XCTAssertFalse(hudAfterUp, "the recording HUD is up after Up — the recording looks paused")
+
+        // ---- still playing: the picture moves ----
+        sleep(4)
+        let secondFrame = XCUIScreen.main.screenshot()
+        let b = XCTAttachment(screenshot: secondFrame)
+        b.name = "109c-seconds-later-still-playing"
+        b.lifetime = .keepAlways
+        add(b)
+        let moved = firstFrame.pngRepresentation != secondFrame.pngRepresentation
+        log("two frames 4 s apart: \(firstFrame.pngRepresentation.count) and \(secondFrame.pngRepresentation.count) bytes, identical \(!moved); HUD up \(hud.exists); panel up \(panelUp)")
+        XCTAssertTrue(moved, "the two frames are identical — the recording is not playing")
+        XCTAssertFalse(hud.exists, "the recording HUD came up — the recording looks paused")
+        XCTAssertFalse(panelUp, "the panel came back")
+
+        // ---- Menu leaves the Player, as before ----
+        remote.press(.menu)
+        let back = waitFor(20) {
+            let f = focusedLabel()
+            return f.hasPrefix("Resume") || f == "Play newest" || f == "Edit series pass" || f == "Record the series"
+        }
+        log("after Menu: focus \(focusedLabel())")
+        shot("109d-menu-left-the-player")
+        XCTAssertTrue(back, "Menu did not return to show detail — focus is \(focusedLabel())")
     }
 
     private func recordingPanel() {
