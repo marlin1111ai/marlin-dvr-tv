@@ -194,6 +194,32 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 111.** **Home Theater runs Pass 110's app code (`8c3e213`)** — installed
+by the Pass 110 harness, and no app-target file has changed since. **The bedroom Apple TV is still on
+`c0fce4a`**: this batch is proven, so the standing rule above falls due and **the bedroom is brought up
+next**.
+
+Pass 111 is a notebook-and-push pass. It records the owner's acceptance of **Passes 109 and 110** on Home
+Theater — **"ok looks good"** (owner, 2026-09-16), said after the test steps for both — and pushes Passes
+108–110. **No app-target file, test-target file, project file, `design/` file or report was changed,
+neither Apple TV was touched, and no request of any kind was sent to the server.**
+
+- **What the acceptance covers, and what it does not.** It covers Pass 109's swipe-up / click-up close and
+  Pass 110's removal of the top card on recordings and live channels, as built. **Nothing beyond "ok looks
+  good" is claimed**: it does not convert either pass's code-traced paths into measurements, and it answers
+  none of Pass 110's open questions — the paused-live screen (6d), Apple's own transport bar showing the
+  item's title and subtitle with the channel number, the live "pause point left the buffer" notice that is no
+  longer drawn, and the harnesses that read the removed card.
+- **Pass 108 was accepted earlier** — "all good" — recorded in Pass 109's entry.
+- **Pushed:** `b3ec4ea` (Pass 108), `8186090` (Pass 109), `8c3e213` (Pass 110) and this pass's own commit, as
+  a fast-forward from `3377aef` (Pass 107).
+- **Pass 110's verified commit is `8c3e213`.**
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 111 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 110, described its own state correctly when written and
+is kept as history.
+
 **Passes 108, 109 and 110 are committed and NOT pushed.** The owner tests Pass 110 on Home Theater first,
 **together with Pass 109's swipe up**. **Home Theater already runs the Pass 110 build**: its harness installed
 and launched it at 23:33:07 on 2026-09-16. **The bedroom Apple TV does not — it is still on `c0fce4a`**,

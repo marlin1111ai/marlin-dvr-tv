@@ -2705,3 +2705,29 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   109's swipe up. Its own commit SHA is not written into this entry and cannot be — a commit cannot contain
   its own SHA — and it lives in the Pass 110 response and in the next pass's entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-16 (Pass 111 — Passes 109 and 110 accepted and pushed)
+
+- **Owner acceptance: Passes 109 and 110 were tested on Home Theater and accepted. His words, after the test
+  steps for both: "ok looks good"** (owner, 2026-09-16). Recorded verbatim and **nothing is claimed beyond
+  them**. They cover Pass 109 — a swipe up or a click up closes the Player's info panel — and Pass 110 — the
+  card across the top of the Player removed on recordings and live channels, cameras keeping it. They are
+  **not** taken as a measurement of any path either pass recorded as code-traced, and they answer none of
+  Pass 110's open questions — the paused-live screen, Apple's own transport bar with the item's title and
+  subtitle, the live pause-point notice, and the harnesses that read the removed card all stand as recorded.
+- **Pass 108 was already accepted** — "all good" — in Pass 109's entry.
+- **Pushed by this pass:** Pass 108's `b3ec4ea`, Pass 109's `8186090` and Pass 110's `8c3e213`, together with
+  this pass's own notebook commit, **as a fast-forward from `3377aef`** (Pass 107), which stays an ancestor.
+  Nothing forced, rebased or amended.
+- **No app-target file, test-target file, project file, `design/` file or report was changed in this pass**,
+  neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **The bedroom Apple TV is still on `c0fce4a`.** This batch is now proven on Home Theater, so the standing
+  rule — *"whenever we done doing updates and they a proven always update the bedroom"* — falls due and it is
+  **brought up next**; both Apple TVs were do-not-touch here, so nothing was installed.
+- **Before this pass changed anything,** `git fetch origin` then `git rev-parse main` read
+  `8c3e213c4ba77c082ff8cefa51216d4672af2480`, `git rev-parse origin/main` and `git ls-remote origin main`
+  both read `3377aefd9f43e76e25259c0079f69ace343e0d93`, `git rev-list --left-right --count
+  main...origin/main` was `3 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
