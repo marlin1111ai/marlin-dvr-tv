@@ -38,7 +38,7 @@ Current state only — one line per screen and one per standing fact, each citin
 
 ### The server
 
-- **The server is marlin-dvr 1.9.1**, measured from `GET /api/status` on 2026-09-16 (Pass 101). It superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
+- **The server is marlin-dvr 1.9.3**, as `GET /api/status` answered on 2026-09-16 in Passes 107 and 108 (recorded in Pass 113). It supersedes the 1.9.1 measured from `GET /api/status` on 2026-09-16 (Pass 101), which superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
 - Three server facts this app depends on: **`GET /api/library/trash` exists** (1.6.0) and Manage DVR → Trash is built on it (Pass 33); **automatic pruning is gone server-side — a series pass never trashes anything on its own**, so the keep rule in the Edit series pass screen no longer causes deletions by itself (owner, 2026-09-07; Pass 34); **the single-file MP4 playback route exists** — `POST /api/play/sessions` with `"format":"file"`, served at `GET /api/play/file/{id}/video.mp4` — new in 1.8.0 (Pass 42).
 - **`HLS-CLIENT-API.md` in the marlin-dvr repo is behind their server**: byte-unchanged across the whole 1.8.0 delivery, its header still says 1.7.0, and `"file"` is not listed anywhere in it; §2.3 of `reports/2026-09-08-pass41-single-file-route-recon.md` is the only written description of that route, read from their Go source (Pass 41).
 - **The reference clone `~/Xcode/marlin-dvr-reference` has `HEAD` and `origin/main` both at `eb0c098`**, a checked-out tree at 1.8.1, so their sources and notebook can be read out of it directly; server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the checkout (Pass 72; still `eb0c098` at Pass 85).
@@ -193,6 +193,29 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 113.** **Both Apple TVs run `f2cc252`'s app code** — Home Theater since the
+Pass 110 harness installed that code, the bedroom since Pass 112 — so the standing bedroom rule above is
+satisfied and the two televisions match.
+
+Pass 113 is a notebook pass. It records Pass 112's install, the owner's word on the bedroom Apple TV, and the
+server's version. **No app-target file, test-target file, project file, `design/` file or report was
+changed, neither Apple TV was touched, and no request of any kind was sent to the server.**
+
+- **Pass 112, install only, no commit.** "Master Bedroom ATV" built from `f2cc252` by Pass 54's method into
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` and installed with
+  `xcrun devicectl device install app`, both first try. The device reads **Marlin DVR TV, Version 1.0,
+  Bundle Version 1**. **Passes 108–109's strings are in the built binary and Pass 110's removed card lines
+  are not.**
+- **Owner (2026-09-16), on the bedroom Apple TV: "all good".** Nothing is claimed beyond those words.
+- **The server is marlin-dvr 1.9.3**, as `GET /api/status` answered in Passes 107 and 108; *The server*
+  above now says so, superseding Pass 101's 1.9.1.
+- **Pass 111's verified push SHA is `f2cc252`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 113 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 111, described its own state correctly when written and
+is kept as history.
 
 **Nothing is unpushed as of Pass 111.** **Home Theater runs Pass 110's app code (`8c3e213`)** — installed
 by the Pass 110 harness, and no app-target file has changed since. **The bedroom Apple TV is still on

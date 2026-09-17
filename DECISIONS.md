@@ -2731,3 +2731,25 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-16 (Pass 113 — the bedroom install recorded, and the server at 1.9.3)
+
+- **Pass 112 brought the bedroom Apple TV to `f2cc252`, install only, and made no commit.** "Master Bedroom
+  ATV" was built from `f2cc252` by **Pass 54's method** into
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` and installed with
+  `xcrun devicectl device install app`, **both first try**. The device reads **Marlin DVR TV, Version 1.0,
+  Bundle Version 1**. **Passes 108–109's strings are in the built binary and Pass 110's removed card lines
+  are not.** **Both Apple TVs now run `f2cc252`'s app code.**
+- **Owner (2026-09-16), his words, on the bedroom Apple TV: "all good".** Recorded verbatim; nothing is
+  claimed beyond it.
+- **The server is marlin-dvr 1.9.3**, as `GET /api/status` answered in **Passes 107 and 108**. It supersedes
+  **Pass 101's 1.9.1**, and `COLD-START.md`'s *The server* line is brought to it in this pass.
+- **No app-target file, test-target file, project file, `design/` file or report was changed in this pass**,
+  neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Pass 111's verified push SHA is `f2cc252`.** Before this pass changed anything, `git fetch origin` then
+  `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `f2cc252e8f8833a9b2fa0073bdb1853f45144868`, `git rev-list --left-right --count main...origin/main` was
+  `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
