@@ -194,6 +194,8 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Pass 116 is accepted and pushed.** Owner (2026-09-20), his words, after testing it on Home Theater: **"tested and working"** — nothing is claimed beyond them. Its commit **`814e3bd`** was pushed as a fast-forward from `bc0c766` and verified three ways, so **nothing is unpushed but this line's own commit, which is pushed with it**; Home Theater runs that build, **the bedroom Apple TV is still on `f2cc252`'s app code, and with this batch proven the standing rule brings it up next**. The paragraph below was written before the acceptance and is kept as history.
+
 **Pass 116 is committed and NOT pushed.** The owner tests it on Home Theater first. **Home Theater already
 runs the Pass 116 build** — its harness installed it on 2026-09-20. **The bedroom Apple TV does not — it is
 still on `f2cc252`'s app code** and was not touched; the standing rule above brings it up once this is proven.

@@ -2929,3 +2929,4 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's one commit is NOT pushed — the owner tests first.** Its SHA is not written into this entry, and
   cannot be — a commit cannot contain its own SHA. It lives in the pass response and in the next pass's
   notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+- **Owner acceptance (2026-09-20), his words, after testing Pass 116 on Home Theater: "tested and working".** Recorded verbatim; nothing is claimed beyond them, and the paths the report's §7 lists as code-traced stay code-traced. **Pass 116's commit `814e3bd` was then pushed as a fast-forward from `bc0c766`, never forced**; after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read `814e3bd78bcb3b82c53ed83f91b85a4e02fbef21`. This line is its own commit, made after that push, which is why it can name the SHA.
