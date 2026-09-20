@@ -194,6 +194,33 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
 
 ## Next step
 
+**Nothing is unpushed as of Pass 117.** **Both Apple TVs run `1895327`'s app code** — Home Theater since the
+Pass 116 harness installed it, the bedroom since this pass — **so the standing bedroom rule above is satisfied
+and the two televisions match.**
+
+Pass 117 is an install-and-notebook pass: the standing rule falling due after Pass 116's acceptance. **No
+app-target file, test-target file, project file, `design/` file or report was changed, and Home Theater was
+not touched.**
+
+- **The install.** "Master Bedroom ATV" built from `1895327` by Pass 54's method into
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` and installed with
+  `xcrun devicectl device install app`, **both first try**. The device reads **Marlin DVR TV, Version 1.0,
+  Bundle Version 1**, and **Pass 116's strings are in the built binary** (`Marlin DVR TV.debug.dylib`).
+- **The launch.** The first attempt was refused because **the television was asleep** — tvOS forbids a
+  foreground launch then, while `devicectl` still lists the device as connected — and the pass stopped until
+  the owner woke it. The second succeeded: **launch ping `08:36:05.254`**, from a client id that is neither
+  Home Theater's nor the owner's browser's. **Wake the bedroom Apple TV before any pass that launches on it.**
+- **Nothing beyond the launch was checked there**: the Guide's live redraw has run on Home Theater only.
+- **Still open from Pass 116**, all the owner's: a row that comes back under the fold is not seen until the
+  list scrolls; every Guide open reads the guide twice; only the Guide listens; and every path in that
+  report's §7 is code-traced only.
+- **Pass 116's verified push SHA is `1895327`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 117 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 116's acceptance commit, described its own state correctly when
+written and is kept as history.
+
 **Pass 116 is accepted and pushed.** Owner (2026-09-20), his words, after testing it on Home Theater: **"tested and working"** — nothing is claimed beyond them. Its commit **`814e3bd`** was pushed as a fast-forward from `bc0c766` and verified three ways, so **nothing is unpushed but this line's own commit, which is pushed with it**; Home Theater runs that build, **the bedroom Apple TV is still on `f2cc252`'s app code, and with this batch proven the standing rule brings it up next**. The paragraph below was written before the acceptance and is kept as history.
 
 **Pass 116 is committed and NOT pushed.** The owner tests it on Home Theater first. **Home Theater already

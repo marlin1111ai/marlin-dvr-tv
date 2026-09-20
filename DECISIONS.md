@@ -2930,3 +2930,41 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   cannot be — a commit cannot contain its own SHA. It lives in the pass response and in the next pass's
   notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
 - **Owner acceptance (2026-09-20), his words, after testing Pass 116 on Home Theater: "tested and working".** Recorded verbatim; nothing is claimed beyond them, and the paths the report's §7 lists as code-traced stay code-traced. **Pass 116's commit `814e3bd` was then pushed as a fast-forward from `bc0c766`, never forced**; after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read `814e3bd78bcb3b82c53ed83f91b85a4e02fbef21`. This line is its own commit, made after that push, which is why it can name the SHA.
+
+## 2026-09-20 (Pass 117 — bedroom Apple TV brought up to Pass 116)
+
+- **The standing rule fell due and is satisfied.** Pass 116 was accepted on Home Theater — "tested and working"
+  (owner, 2026-09-20) — so, by *"whenever we done doing updates and they a proven always update the bedroom"*,
+  **"Master Bedroom ATV" was brought to `1895327`'s app code. Both Apple TVs now run it.**
+- **Pass 116's verified push SHA is `1895327`** — its acceptance commit, on top of the build's `814e3bd`. Before
+  this pass did anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read `1895327c65bdc6192b0dcb53dd96753ba318e411`,
+  `git rev-list --left-right --count main...origin/main` was `0 0`, and `git status --porcelain` showed only
+  `?? icon-source/`.
+- **The install, by Pass 54's method.** `xcodebuild … -destination 'platform=tvOS,name=Master Bedroom ATV'
+  -allowProvisioningUpdates -derivedDataPath ~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom build`
+  from `HEAD 1895327` with no tracked change — **`** BUILD SUCCEEDED **`, exit 0**, signed with `tvOS Team
+  Provisioning Profile: com.marlin1111.MarlinDVRTV` — then `xcrun devicectl device install app --device
+  "Master Bedroom ATV"` — **`App installed`, exit 0. Both first try.**
+- **What was confirmed.** The television reports **Marlin DVR TV · Version 1.0 · Bundle Version 1**
+  (`devicectl device info apps`), and the built `Info.plist` agrees. Those numbers identify no build, so the
+  build was tied to its code: **eight of `ServerEvents.swift`'s and the Guide listener's strings are in the
+  built `Marlin DVR TV.debug.dylib`** — `[events] connected`, `[events] retry in`, `this server has no GET
+  /api/events`, `neither a comment nor one of the two words`, `a re-read is running; one more follows it`,
+  `the redraw waits for it to close`, `the re-read a server notice asked for failed`, `/api/events` — and none
+  in the 92 KB main executable, which in a Debug build is only the launcher.
+- **The one launch, and one failure before it.** The first `devicectl device process launch` (08:14:09) was
+  refused — **"System is asleep - foreground app launch forbidden"** — with `devicectl` still listing the
+  television as connected; no line reached the server's log. **The pass stopped there, with no retry, until the
+  owner said it was awake.** The launch at 08:36:04 then succeeded, and **the launch ping is
+  `08:36:05.254 POST /api/clients/<client id>/ping 200`**, 1.25 s later, among Home's six opening reads. The
+  log carries no address, so the ping's client id was compared, unprinted, with the day's others: it is
+  neither Home Theater's nor the owner's browser's.
+- **Nothing beyond a launch was checked on the bedroom television.** The Guide was not opened there and no
+  notice was sent to it; that Pass 116 works on it rests on its being the same code, not on a run.
+- **No app-target file, test-target file, project file, `design/` file or report was changed.** Home Theater
+  was not touched. The server received nothing from this pass but reads of its log, which it does not log, and
+  the bedroom app's own launch requests.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
