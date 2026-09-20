@@ -2968,3 +2968,77 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-20 (Pass 118 — closing pass)
+
+- **Owner's calls (2026-09-20), verbatim: "a a  3 they were tested and passed".** Recorded as he wrote them;
+  the reading below is the foreman's, relayed with them, and **nothing is claimed beyond his words**.
+- **Pass 116 open item 1 — a row that comes back below the visible part of the list is seen only when the
+  list scrolls — is accepted as built** (the first "a").
+- **Pass 116 open item 2 — every Guide open reads the guide twice, and on All Channels the stream connects
+  about 5.5 s after the Guide opens — is accepted as built** (the second "a").
+- **The corner cases in Pass 116's report §7 are closed by the owner's acceptance in those words — "they were
+  tested and passed" — and not by any measurement this project holds.** A notice during a re-read, a notice
+  under the airing sheet, the hold menu or the collections overlay, a focused row disappearing, a deleted
+  pick, the favourite overrides clearing and the app's own favourite echo, a renumber, a notice behind the
+  Player, a double `channels`, a server stop and a pre-1.10.0 404 on the television **were code-traced only
+  when they were built and remain so in this project's evidence**; his testing is his report.
+- **"Only the Guide listens" (Pass 115 question 6, Pass 116 open item 3) is closed by his earlier words: "im
+  just concerned with the guide and collections".** No other screen is to listen.
+- **Pass 115's questions 7–9 are closed.** 7: a harness was used (Pass 116). 8: COLD-START's line that
+  `HLS-CLIENT-API.md` "still says 1.7.0" is corrected in this pass against a GitHub read at `0fa05e1` — the
+  header says 1.10.0 and the file runs to §12, **and it still does not mention the single-file route
+  anywhere**, so Pass 41 open question 7.6 stands. 9: the HDHomeRun's device ID in earlier reports was
+  information; history is never rewritten.
+- **Pass 117's verified push SHA is `f38639b`.** Before this pass changed anything, `git fetch origin` then
+  `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `f38639b872febfeb90e7b816643d5707f64bc088`, `git rev-list --left-right --count main...origin/main` was
+  `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **The sweep (step 3) found the notebook far from empty, and the pass stopped there before writing "nothing
+  open" anywhere.** Beyond what the bullets above close, about ninety items were still recorded as open with
+  no owner call behind them, and four lines of `COLD-START.md` were stale against this file. The list, with
+  `file:line` for each, is in the Pass 118 response; it was put to the owner rather than decided.
+- **Owner's call (2026-09-20), answering that list "with option a" — relayed by the foreman, and recorded in
+  the words it arrived in, which are not a verbatim quotation of his:** *"everything still open in
+  COLD-START.md's "Known and unfixed" and "Raised for marlin-dvr", the Pass 99 inventory's B, C and E, the Pass
+  100–110 open questions you listed, and the never-expanded pointers is closed — accepted as built or deferred
+  — and none of it is raised again unless the owner asks for it by name."*
+- **What that call covers, by section and not item by item:** `COLD-START.md`'s *Known and unfixed*; its
+  *Built but never exercised against the live server* block; its *Raised for the marlin-dvr project* section;
+  its *Open questions* section and the question lists of `reports/2026-09-05-pass1-plumbing.md`,
+  `…pass2-server-recon.md` and `…pass3-hls-client-recon.md` it pointed at; the "standing candidates" pointer
+  to the Pass 9 and Pass 10 reports' Open Questions; `reports/2026-09-16-pass99-unfinished-inventory.md` groups
+  **B** (smaller known defects), **C** (questions waiting on the owner) and **E** (belonging to marlin-dvr) —
+  group A was closed in Passes 99–106 and group D is deferred by his own earlier word; and the Open Questions
+  of the Pass 100, 102, 103, 107, 108, 109 and 110 reports. **Closed means accepted as built or deferred. It
+  does not mean measured**: every path those sections record as code-traced, never exercised or unexplained is
+  exactly as unmeasured as it was, and `COLD-START.md` now says so under *Closed by the owner's call of
+  2026-09-20* so that none is mistaken for proven.
+- **The provisioning profile expires on 2027-09-07** (`2027-09-07T03:40:41Z`) — read in this pass from the
+  `embedded.mobileprovision` inside the build Pass 117 installed on the bedroom Apple TV, `tvOS Team
+  Provisioning Profile: com.marlin1111.MarlinDVRTV`. It answers the inventory's B20, "when that is has not
+  been checked", and is recorded in `COLD-START.md`'s device line. Home Theater's own copy was not read; its
+  build of the same day was signed against the same named profile.
+- **`COLD-START.md` was rewritten to hand over with nothing open** (step 5), from 1,071 lines to 219. *Known
+  and unfixed* became *Closed by the owner's call of 2026-09-20*, its facts kept and its open wording gone;
+  *Raised for the marlin-dvr project* became *Server behaviour this project measured — recorded, never acted
+  on, and closed*; *Open questions* reads **None**; *Next step* is one short current statement. **Four stale
+  lines were corrected against this file:** resume by seeking *is* built (Pass 96); Pass 41's 7.2 *was*
+  settled by the owner (the Pass 95 entry); the wrong "Record this airing" control *was* closed by Pass 49;
+  and the evidence-harness list now names `ShowDetailSeriesPassUITests`, `PlayerInfoPanelUITests` and
+  `GuideLiveRedrawUITests`. The Guide line's "both raised" now reads accepted.
+- **Nothing was thrown away.** By Pass 89's rule, the 27 superseded *Next step* paragraphs of Passes 88–117
+  (873 lines) and the four open sections as they stood (HEAD lines 83–194) were **moved into
+  `COLD-START-HISTORY.md` byte-for-byte** — checked: both blocks are present verbatim, the history file's
+  diff is 995 insertions and **0 deletions**, and the only lines of the old brief found in neither file are the
+  five edited in place, which git keeps.
+- **Leftovers of Passes 115–117 were deleted** (step 4): 55 files, 32 MB, in the session scratchpad — raw
+  consoles, harness logs, exported screenshots, the Mac test rig and the GitHub reads — the deletion shown. The
+  DerivedData folders stay: `build/p116`, `build/p116-sim` and
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom`. `~/Xcode/marlin-dvr-reference` does not exist.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or report was
+  changed.** Neither Apple TV was touched. The server received nothing from this pass; the one network read was
+  `HLS-CLIENT-API.md` from GitHub at `0fa05e1`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
