@@ -2773,3 +2773,89 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-19 (Pass 115 — live channel and collection notices, read-only recon)
+
+- **Owner decision (2026-09-19), his words: "I don't need it on my computer if he can read it off of
+  GitHub".** **This project no longer keeps a local clone of marlin-dvr.** The builder reads server files
+  straight from `github.com/marlin1111ai/marlin-dvr` **at a commit the pass names**, and leaves no lasting
+  copy of that repo on this Mac. **It supersedes the 2026-09-05 line at the top of this file** — *"read-only
+  reference via a local clone at `~/Xcode/marlin-dvr-reference`"* — of which "read-only" and "never edited
+  from this project" still stand and the clone does not.
+- **The old clone was removed from this Mac on 2026-09-19, not by this project.** The first issue of this
+  pass found `~/Xcode/marlin-dvr-reference` missing — the only trace a `marlin-dvr-reference.zip`, 195 MB,
+  dated 09:18 that morning, in the owner's Proton Drive — and stopped. A second issue authorised a fresh
+  clone; it landed on `878dac2`, not the pinned `0fa05e1` (three records-only commits later, none touching a
+  `.go` file or `HLS-CLIENT-API.md`), and stopped again. That clone was gone before the third issue began;
+  **the builder deleted nothing.** Neither stopped issue wrote to this repo.
+- **Owner's ask, verbatim:** "Marlin DVR server 1.10.0 is installed on Unraid (192.168.1.250:8090). It now
+  announces channel and collection changes live. See HLS-CLIENT-API.md §12 in ~/Xcode/marlin-dvr-reference
+  (pull it first; latest commit 0fa05e1).
+  - GET /api/events is a server-sent event stream. Each event's data is the word `channels` or
+    `collections`. No replay.
+  - When `channels` arrives, re-read GET /api/channels. When `collections` arrives, re-read GET
+    /api/collections. My call: a channel change sends `channels` only, so decide on your side whether to
+    re-read both lists on any notice.
+  - On reconnect, re-read both lists (missed notices are not replayed).
+  - Goal: the Guide redraws on screen when I change a channel or collection on the server, without backing
+    out and back in.
+  Guide listings, recordings and passes already update fine; nothing changes there."
+- **Nothing was built.** No app-target file, test-target file, project file, `design/` file or `icon-source/`
+  file was changed, no build was made, neither Apple TV was touched, and **no write of any kind was sent to
+  the server** — four GETs: `/api/status`, `/api/events` held 30 s, `/api/channels`, `/api/collections`.
+  `GET /api/settings` was not read.
+- **The server files were read from GitHub at `0fa05e13927b202df469a430789df9c9683c73c4`** with `gh api`,
+  the commit confirmed on the remote by the API (`git ls-remote` shows tips only, and the tip had moved to
+  `878dac2`), the fetched bytes matching the remote's blob SHAs. They sat in the session scratchpad and were
+  **deleted before the report was written, with the deletion shown.**
+- **The running server answers 1.10.0.** `GET /api/events` is `200`, `text/event-stream`, HTTP/1.1, chunked;
+  30 seconds gave exactly 26 bytes — `: connected` and one `: keepalive`, bare `\n` line endings, no `data:`
+  line because nothing changed. From source: a notice is one `data: channels` or `data: collections` line
+  and a blank line, **no `event:`, `id:` or `retry:`**; keep-alive every 15 s; **the server never closes the
+  stream except by stopping, and then with no goodbye**; **no client limit**, a 64-notice buffer per
+  connection that drops silently when full; no replay. `notify` is called in nine places — six `channels`
+  (`sources.go:733`, `:779`, `:804`, `:892`, `:936`, `:1042`), three `collections` (`collections.go:126`,
+  `:174`, `:200`) — and **every `file:line` in the contract's §12 is correct.** One action can send
+  `channels` twice; **this app's own favourite write is `sources.go:1042` and will echo back as `channels`.**
+- **The Guide never reads `GET /api/channels`.** Its rows, their order and the channel cell's number, name,
+  logo and favourite all arrive inside `GET /api/guide`, which embeds the whole channel in every row
+  (`guide.go:713`; `Models.swift:126-138`). Its only read of `GET /api/collections` is the overlay's, and the
+  pick is checked against the server only then. **So for the Guide a `channels` notice means re-reading
+  `GET /api/guide`**; a `collections` notice means `GET /api/collections` and `reconcile()` first, then
+  `GET /api/guide`; a reconnect means both. **Re-reading both on any notice changes nothing the owner could
+  see** — it is a choice about one code path against one spare request. The app's decoders match the running
+  server's answers field by field (the Swift decoder was not run).
+- **`favouriteOverrides` is never cleared** — its comment says "until the next fetch" and no fetch touches it
+  (`GuideScreen.swift:253-262`) — so a channel favourited from the Guide masks any later server-side change
+  to that channel until the Guide is left.
+- **An in-place redraw already exists** — `reloadForCollection()`, which never moves the window. A surviving
+  focused row keeps focus; a focused row that disappears has no repair today for a channel cell; the
+  collection pick survives and a deleted pick reverts silently; the airing sheet and the hold menu hold
+  copies, and the hazard is their Menu restoring focus to a cell that has gone — the hazard Pass 79 met by
+  doing nothing under an overlay, which a one-shot notice cannot simply copy; `load()` blanks an open
+  collections overlay's rows while it reads; the Guide stays alive and would redraw unseen behind the Player.
+- **The app holds no long-lived connection today**, and `APIClient` cannot serve a stream: it awaits the whole
+  body. A reader needs `URLSession.bytes(for:)`, a status check before reading (a pre-1.10.0 server answers
+  404), its own `URLSession` as the file route has, and a reconnect loop whose every successful connect is the
+  re-read moment. Deployment target tvOS 18.0; `NSAllowsLocalNetworking` already covers it. Three platform
+  defaults it leans on are from Apple's documentation and were not verified.
+- **The plan is three files — a new `ServerEvents.swift`, a quiet `refresh()` in `GuideCollections.swift`,
+  and the listener, the focus rule and the `favouriteOverrides` clear in `GuideScreen.swift` — no project-file
+  edit, and one Home Theater run that needs the owner at the admin page.** It has one unavoidable side effect,
+  stated in the report: rows and listings are one response, so a notice also refreshes the listings and marks
+  at that moment by the existing mechanism.
+- **Nine points are raised for the owner, none decided here**: that his rule names `GET /api/channels` and the
+  Guide reads `GET /api/guide`; a notice under an overlay; where focus goes when its row disappears; a deleted
+  pick reverting in front of him; whether anything is drawn with no server or an old one; that only the Guide
+  listens; harness or by eye; that COLD-START's "`HLS-CLIENT-API.md` still says 1.7.0" is out of date (its
+  header says 1.10.0 at `0fa05e1`), left unedited because `"file"` was not checked; and that the HDHomeRun's
+  device ID is already in this repo's earlier reports.
+- **The findings are in `reports/2026-09-19-pass115-events-recon.md`**, app lines read at HEAD
+  `861e50e4d95af65ae1a8661097bd41297750ec76`.
+- **Pass 114's verified push SHA is `861e50e`.** Before this pass changed anything, `git fetch origin` then
+  `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `861e50e4d95af65ae1a8661097bd41297750ec76`, `git rev-list --left-right --count main...origin/main` was
+  `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).

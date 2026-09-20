@@ -9,7 +9,7 @@ Marlin DVR TV is a tvOS app (SwiftUI) and a client of the Marlin DVR server — 
 - This folder: `~/Xcode/Marlin DVR TV` — the Xcode project, the notebook (this file, DECISIONS.md, reports/), and the git repo. The only writable tree.
 - Standing rules: `CLAUDE.md` at the project root — the builder's standing rules and a pointer to this notebook. Never project state; the notebook stays the record (DECISIONS.md, 2026-09-09 (Pass 57)).
 - Repo: `git@github.com:marlin1111ai/marlin-dvr-tv.git` (branch `main`).
-- Server reference clone: `~/Xcode/marlin-dvr-reference` — a read-only clone of marlin-dvr. Never edited, never pushed, never run from.
+- Server source: **no local clone is kept.** The builder reads marlin-dvr's files straight from `github.com/marlin1111ai/marlin-dvr` **at a commit the pass names** (`gh api` on `repos/marlin1111ai/marlin-dvr/contents/<path>?ref=<sha>` worked first time in Pass 115), and leaves no lasting copy of that repo on this Mac. Read-only, never edited, never pushed, never run from. The owner's words: "I don't need it on my computer if he can read it off of GitHub" (DECISIONS.md, 2026-09-19 (Pass 115)). `~/Xcode/marlin-dvr-reference` no longer exists and is not to be recreated.
 - Server URL: http://192.168.1.250:8090/ (Marlin DVR on Unraid). Not touched by this project's tooling.
 - Approved design: `design/` — the Claude Design export (`Marlin DVR TV.dc.html`, Nocturne design system, `ATV-DVR.zip`). Read-only; never edited. The screens are built to it (DECISIONS.md, 2026-09-05 (design)).
 
@@ -38,10 +38,10 @@ Current state only — one line per screen and one per standing fact, each citin
 
 ### The server
 
-- **The server is marlin-dvr 1.9.3**, as `GET /api/status` answered on 2026-09-16 in Passes 107 and 108 (recorded in Pass 113). It supersedes the 1.9.1 measured from `GET /api/status` on 2026-09-16 (Pass 101), which superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
+- **The server is marlin-dvr 1.10.0**, as `GET /api/status` answered on 2026-09-19 (Pass 115). **1.10.0 announces channel and collection changes live on `GET /api/events`** — a server-sent event stream whose every notice is the one word `channels` or `collections`, with a keep-alive comment every 15 s and no replay (contract §12; `reports/2026-09-19-pass115-events-recon.md`). **The app does not listen to it yet.** It supersedes the 1.9.3 read on 2026-09-16 in Passes 107 and 108 (recorded in Pass 113), which superseded the 1.9.1 measured from `GET /api/status` on 2026-09-16 (Pass 101), which superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
 - Three server facts this app depends on: **`GET /api/library/trash` exists** (1.6.0) and Manage DVR → Trash is built on it (Pass 33); **automatic pruning is gone server-side — a series pass never trashes anything on its own**, so the keep rule in the Edit series pass screen no longer causes deletions by itself (owner, 2026-09-07; Pass 34); **the single-file MP4 playback route exists** — `POST /api/play/sessions` with `"format":"file"`, served at `GET /api/play/file/{id}/video.mp4` — new in 1.8.0 (Pass 42).
 - **`HLS-CLIENT-API.md` in the marlin-dvr repo is behind their server**: byte-unchanged across the whole 1.8.0 delivery, its header still says 1.7.0, and `"file"` is not listed anywhere in it; §2.3 of `reports/2026-09-08-pass41-single-file-route-recon.md` is the only written description of that route, read from their Go source (Pass 41).
-- **The reference clone `~/Xcode/marlin-dvr-reference` has `HEAD` and `origin/main` both at `eb0c098`**, a checked-out tree at 1.8.1, so their sources and notebook can be read out of it directly; server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the checkout (Pass 72; still `eb0c098` at Pass 85).
+- **There is no reference clone any more; the last server commit read is `0fa05e1`** (`0fa05e13927b202df469a430789df9c9683c73c4`, source at 1.10.0), read straight from GitHub in Pass 115 under the rule in *Where things live*. The old clone — `eb0c098`, a tree at 1.8.1 (Pass 72; still there at Pass 85) — was removed from this Mac on 2026-09-19, not by this project; earlier reports' server `file:line` citations were read at the commit each report names and stay as written. Server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the source (Pass 72).
 
 ### Foundation, packaging and the two Apple TVs
 
@@ -193,6 +193,41 @@ compensated for in the app.
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
 
 ## Next step
+
+**Nothing is unpushed as of Pass 115.** **Both Apple TVs still run `f2cc252`'s app code**, untouched by this
+pass, so the two televisions match.
+
+Pass 115 is a read-only recon for the owner's ask of 2026-09-19 — **the Guide should redraw on screen when
+a channel or collection changes on the server, without backing out and back in** — now that **the server is
+1.10.0 and announces those changes on `GET /api/events`**. **Nothing was built.** No app-target file,
+test-target file, project file or `design/` file was changed, neither Apple TV was touched, and the server
+received four GETs and no write. `reports/2026-09-19-pass115-events-recon.md`.
+
+- **The next step is the owner's: nine questions in that report stand between the plan and a build**, the
+  first two deciding its shape — his rule names `GET /api/channels`, **which the Guide never reads** (its
+  rows and every channel fact on them come inside `GET /api/guide`), and what a notice should do while the
+  airing sheet, the hold menu or the collections overlay is open.
+- **What the recon found, in brief.** A notice is one `data: channels` or `data: collections` line; the
+  stream never closes except when the server stops, with no goodbye and no replay. For the Guide, `channels`
+  means re-reading `GET /api/guide`; `collections` means `GET /api/collections` and the pick's `reconcile()`
+  first, then `GET /api/guide`; a reconnect means both; re-reading both on every notice changes nothing he
+  could see. The in-place redraw already exists (`reloadForCollection()`) and never moves the window.
+  **`favouriteOverrides` is never cleared**, which would mask one kind of channel change. The app holds no
+  long-lived connection today and `APIClient` cannot serve one.
+- **The plan is three files and no project-file edit** — a new `ServerEvents.swift`, a quiet `refresh()` in
+  `GuideCollections.swift`, and the listener in `GuideScreen.swift` — **and one Home Theater run that needs
+  the owner at the server's admin page**, since the builder cannot change anything there.
+- **Owner decision (2026-09-19): no local clone of marlin-dvr is kept any more** — "I don't need it on my
+  computer if he can read it off of GitHub". *Where things live* and *The server* above now say so; the last
+  server commit read is `0fa05e1`. This pass was issued three times before it ran: the old clone had been
+  removed from this Mac, and a freshly authorised clone landed three records-only commits past the pinned
+  SHA (DECISIONS.md, 2026-09-19 (Pass 115)).
+- **Pass 114's verified push SHA is `861e50e`.** This pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA
+(DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 115 response and belongs in the next pass's
+entry. The paragraph below, written by Pass 114, described its own state correctly when written and
+is kept as history.
 
 **Nothing is unpushed as of Pass 114.** **Both Apple TVs still run `f2cc252`'s app code**, untouched by this
 pass, so the two televisions match.
