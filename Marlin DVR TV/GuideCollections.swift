@@ -90,6 +90,24 @@ final class GuideCollectionsModel {
         loading = false
     }
 
+    /// Pass 116: the quiet re-read a server notice asks for. The same read and the same
+    /// `reconcile()` as `load()`, and **it touches neither `loading` nor `failed`** — those two
+    /// belong to the overlay, which swaps its rows for a loading line while `loading` is true
+    /// (`CollectionsMenu`'s `else if model.loading`), and this read is not the overlay's. It runs with the Guide on screen and no
+    /// overlay up, so a rename shows on the header button and a deleted pick reverts to All
+    /// Channels, by the rule below, without the overlay ever being opened.
+    ///
+    /// A failure changes nothing here and is printed, loudly: the pick and the list stay as they
+    /// were, and the overlay's own `load()` reads again the next time it opens.
+    func refresh() async {
+        do {
+            collections = try await api.collections()
+            reconcile()
+        } catch {
+            print("[collections] ERROR: the re-read a server notice asked for failed: \(error)")
+        }
+    }
+
     /// A saved id the server no longer has reverts to All Channels silently, and the key is
     /// cleared. This matters more than it looks: the server answers an **unknown** filter by
     /// applying no predicate at all and returning every visible channel, not an error and not

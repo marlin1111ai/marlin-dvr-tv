@@ -32,6 +32,13 @@
 //  a half hour the clock has already left, advances it to the new current half hour with the same
 //  single write to `windowStart` that "+12h", "↩ Now" and a Pass 77 nudge use. A window scrolled
 //  ahead is never moved. The beat is a `.task` on this screen, so it stops when the screen does.
+//  Pass 116: the Guide redraws when the owner changes a channel or a collection on the server
+//  (owner, 2026-09-19: "all i want is when i do something in the server it gets refelcted on the atv
+//  right away"). A second `.task` listens to `GET /api/events` through `ServerEvents` for as long as
+//  this screen exists; every notice, every connect and every reconnect re-reads `GET /api/collections`
+//  and then `GET /api/guide` at the window and the collection already showing, so nothing moves —
+//  see `serverRedraw`. The channel cell's number, name, logo and favourite all arrive inside the
+//  guide's rows, which is why `GET /api/channels` is not part of it.
 //
 
 import SwiftUI
@@ -198,6 +205,15 @@ final class GuideModel {
         await fetch(from: windowStart)
     }
 
+    /// Pass 116: the server said its channels or its collections changed. The same in-place
+    /// refetch as a collection pick — the window the Guide is already showing, the collection it is
+    /// already showing — so nothing moves. **When the rows land, the server's favourite wins**: the
+    /// overrides this screen wrote are dropped in the same turn the new rows are stored, not before
+    /// it, so a ★ this Apple TV has just set does not blink off while its own notice is answered.
+    func reloadForNotice() async {
+        await fetch(from: windowStart, serverWins: true)
+    }
+
     func snapToNow() async {
         now = Date()
         let start = nowHalfHour
@@ -205,7 +221,7 @@ final class GuideModel {
         if start < fetchStart || start + Self.windowSeconds > fetchEnd { await fetch(from: start) }
     }
 
-    private func fetch(from start: Int) async {
+    private func fetch(from start: Int, serverWins: Bool = false) async {
         do {
             async let guide = api.guide(start: start, slots: Self.fetchSlots, filter: collections.selectedId)
             async let schedule = api.schedule()
@@ -216,6 +232,8 @@ final class GuideModel {
             // which duplicate ids break: keep the first occurrence and drop the rest.
             var seen = Set<String>()
             rows = g.channels.filter { seen.insert($0.id).inserted }
+            // Pass 116: see `reloadForNotice()`.
+            if serverWins { favouriteOverrides = [:] }
             fetchStart = g.start
             fetchEnd = g.start + g.slots * Self.slotSeconds
             endOfListings = !rows.contains { $0.blocks.contains { $0.program != nil } }
@@ -306,6 +324,17 @@ struct GuideScreen: View {
     /// Pass 77: when the focus engine last stepped focus rightward inside a row. `gridMoved` reads
     /// it to tell a Right press the engine consumed from one it refused.
     @State private var engineSteppedRightAt = Date.distantPast
+    /// Pass 116: a redraw the server asked for is running. A notice that arrives meanwhile does not
+    /// start a second one beside it; it is owed, and runs the moment this one ends.
+    @State private var redrawing = false
+    /// Pass 116: a notice arrived that has not been answered yet — because a redraw was already
+    /// running, or because one of this screen's overlays was up. **It is never dropped**: it is
+    /// answered when the running redraw ends or the moment the overlay closes.
+    @State private var redrawOwed = false
+    /// Pass 116: the last cell of the grid that had focus, programme cell or channel cell. It is
+    /// where an overlay hands focus back to, so it is what a redraw that waited for that overlay
+    /// has to check is still there. (`lastCell` above is programme cells only.)
+    @State private var lastGridFocus: String?
 
     /// The focus id of a channel cell in the left column.
     static func channelFocusID(_ channel: MergedChannel) -> String { "ch:\(channel.id)" }
@@ -451,8 +480,26 @@ struct GuideScreen: View {
             }
             print("[guide] clock stopped after \(beats) beat(s)")
         }
+        // Pass 116: the server's change notices. A `.task` of its own, tied to this screen's
+        // lifetime exactly as the clock above is: the stream opens when the Guide appears and the
+        // cancellation that ends this task when the Guide leaves is what closes it. It waits for
+        // the first load to land so that a connect can never race `loadNow()` for the window.
+        .task {
+            while !model.loaded {
+                guard (try? await Task.sleep(for: .milliseconds(50))) != nil else { return }
+            }
+            for await event in ServerEvents().events() {
+                serverSaid(event)
+            }
+            print("[guide] stopped listening to the server")
+        }
+        .onChange(of: overlayOpen) { _, open in
+            // The moment the sheet, the hold menu or the collections drop-down closes.
+            if !open && redrawOwed { serverRedraw("the overlay closed", afterOverlay: true) }
+        }
         .onChange(of: focused) { old, new in
             if let new, new.contains("@") { lastCell = new }
+            if let new, new.contains("@") || new.hasPrefix("ch:") { lastGridFocus = new }
             // Pass 77: a step rightward inside one row is how a Right press the focus engine
             // consumed is told apart from one it refused. See `gridMoved`.
             if Self.isRightwardStep(from: old, to: new) { engineSteppedRightAt = Date() }
@@ -605,6 +652,102 @@ struct GuideScreen: View {
         }
         let landing = cells.first?.id ?? firstCellID ?? "collections"
         print("[guide] roll · \(held) left the window, focus to \(landing)")
+        focusSoon { focused = landing }
+    }
+
+    // MARK: Pass 116 — the Guide redraws when the server's channels or collections change
+
+    /// True while the airing sheet, the hold menu or the collections drop-down is up. The three
+    /// guards `gridMoved` and `beat` take, as one value, so that its change can be watched.
+    private var overlayOpen: Bool { model.sheet != nil || channelMenu != nil || collectionsOpen }
+
+    /// The stream said something. **Every event is answered the same way** (foreman, 2026-09-20):
+    /// a `channels` notice, a `collections` notice, the first connect and every reconnect each
+    /// re-read `GET /api/collections` and `GET /api/guide`. `GET /api/channels` is never sent — the
+    /// Guide does not draw from it (Pass 115 §4.3).
+    private func serverSaid(_ event: ServerEvent) {
+        switch event {
+        case .connected: serverRedraw("connected")
+        case .notice(let notice): serverRedraw(notice.rawValue)
+        }
+    }
+
+    /// Redraw in place, now or as soon as it can be done.
+    ///
+    /// **No notice is coalesced away.** One that arrives while a re-read is running is owed, and
+    /// one more re-read follows the running one — it starts after the notice arrived, so it cannot
+    /// miss what the notice was about. **One that arrives under an overlay waits for it**, for the
+    /// reason `beat` gives: a change underneath could leave the overlay's own Menu handing focus
+    /// back to a cell that no longer exists. A beat can simply skip, because another comes in a
+    /// minute; a notice comes once, so it is remembered in `redrawOwed` and answered by the
+    /// `.onChange(of: overlayOpen)` in `body` the moment the overlay closes.
+    ///
+    /// The order inside is fixed: the collections first, because `reconcile()` is what turns a pick
+    /// the server has deleted back into All Channels, and the server answers an unknown filter with
+    /// every visible channel rather than an error (sources.go:371-373) — read the other way round,
+    /// the grid would fill with every channel under a button still naming the dead collection.
+    private func serverRedraw(_ reason: String, afterOverlay: Bool = false) {
+        if redrawing {
+            redrawOwed = true
+            print("[guide] server: \(reason) — a re-read is running; one more follows it")
+            return
+        }
+        if overlayOpen {
+            redrawOwed = true
+            print("[guide] server: \(reason) — an overlay is open; the redraw waits for it to close")
+            return
+        }
+        redrawing = true
+        Task {
+            var reason = reason
+            // An overlay had the focus, so this screen's own `focused` is nil on the way out of
+            // one; what it hands focus back to is the grid cell it was opened from.
+            var held = focused ?? (afterOverlay ? lastGridFocus : nil)
+            repeat {
+                redrawOwed = false
+                await collections.refresh()
+                await model.reloadForNotice()
+                print("[guide] server: \(reason) -> re-read · \(collections.buttonLabel) · rows=\(model.rows.count) · \(model.windowLabel)\(model.error.map { " · ERROR: \($0)" } ?? "")")
+                settleFocusAfterRedraw(held)
+                reason = "a notice that arrived during the re-read"
+                held = focused
+            } while redrawOwed && !overlayOpen
+            redrawing = false
+        }
+    }
+
+    /// Whether a focus id of the grid still names something drawn. Anything that is not the grid's
+    /// — the collections button, a header pill — is never taken away by a redraw.
+    private func gridFocusExists(_ id: String) -> Bool {
+        if id.hasPrefix("ch:") { return model.rows.contains { Self.channelFocusID($0.channel) == id } }
+        guard let key = Self.cellKey(id) else { return true }
+        guard let row = model.rows.first(where: { $0.channel.id == key.channel }) else { return false }
+        return model.cells(for: row).contains { $0.id == id }
+    }
+
+    /// Focus after a redraw (foreman, 2026-09-20): it stays on the same programme when that
+    /// survives, and when its row is gone it goes to `firstCellID`, this screen's fallback
+    /// everywhere else. A programme that has left a row that is still there goes to that row's
+    /// leftmost cell, which is Pass 77's rule and what a roll does.
+    ///
+    /// **Nothing is written unless something of the grid's lost its view.** With the remote in the
+    /// rail this screen's `focused` is nil and `held` was nil, so there is nothing to repair; and
+    /// while the Player is up — `hold.suspended`, which `ContentView` sets for exactly that — no
+    /// focus is written underneath it at all.
+    private func settleFocusAfterRedraw(_ held: String?) {
+        guard !hold.suspended else { return }
+        let lost: String
+        if let now = focused {
+            guard !gridFocusExists(now) else { return }
+            lost = now
+        } else if let held, !gridFocusExists(held) {
+            lost = held
+        } else {
+            return
+        }
+        let row = (Self.cellKey(lost)?.channel).flatMap { channel in model.rows.first { $0.channel.id == channel } }
+        let landing = row.flatMap { model.cells(for: $0).first?.id } ?? firstCellID ?? "collections"
+        print("[guide] server: \(lost) is gone from the grid, focus to \(landing)")
         focusSoon { focused = landing }
     }
 

@@ -1,0 +1,12 @@
+# testReconnectReReadsBoth — launch(), under a test session. Harness lines:
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testReconnectReReadsBoth]' started.
+P116 00:14:44.209 LAUNCHED with launch()
+P116 00:15:09.207 STANDING before Home: focus=["9:KSAL Show"] window=Sun Sep 20 · 12:00 – 2:00 AM pick=All Channels
+P116 00:15:09.495 SHOT 116d-before-home
+P116 00:15:29.500 HOME pressed
+P116 00:16:44.743 RETURN
+P116 00:17:08.595 STANDING after coming back: focus=["9:KSAL Show"] window=Sun Sep 20 · 12:00 – 2:00 AM pick=All Channels
+P116 00:17:08.841 SHOT 116e-back-from-home
+P116 00:17:58.847 DONE
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testReconnectReReadsBoth]' passed (206.893 seconds).
+** TEST EXECUTE SUCCEEDED **

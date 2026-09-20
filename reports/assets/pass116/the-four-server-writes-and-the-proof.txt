@@ -1,0 +1,55 @@
+=== CHANGE 1 — sent 07:50:29.928
+> PUT /api/sources/philo/lineup/6105
+> {"name":"TLC LIVE"}
+< HTTP/1.1 200 OK
+< Cache-Control: no-store
+< Content-Type: application/json
+< Date: Sun, 20 Sep 2026 11:50:29 GMT
+< Content-Length: 52
+< 
+< {"name":"TLC LIVE","hidden":false,"favorite":false}
+
+=== CHANGE 2 — sent 07:50:51.300
+> PUT /api/collections/col-1789211011169
+> {"channelIds":["philo:6044","philo:6101","philo:6110","philo:6106","philo:6112","philo:6105","philo:6107","philo:6111","philo:6113"]}
+< HTTP/1.1 200 OK
+< Cache-Control: no-store
+< Content-Type: application/json
+< Date: Sun, 20 Sep 2026 11:50:51 GMT
+< Content-Length: 1456
+< 
+< {"id":"col-1789211011169","name":"History","icon":"ph-stack","channelIds":["philo:6044","philo:6101","philo:6110","philo:6106","philo:6112","philo:6105","philo:6107","philo:6111","philo:6113"],"channels":[{"id":"philo:6044","initials":"HI","isDead":false,"isLive":true,"logoBg":"#1f7a45","name":"HISTORY","number":"6044","source":"Philo"},{"id":"philo:6101","initials":"DI","isDead":false,"isLive":true,"logoBg":"#6b6f7a","name":"DISCOVERY","number":"6101","source":"Philo"},{"id":"philo:6110","initials":"SC","isDead":false,"isLive":true,"logoBg":"#1f7a45","name":"SCIENCE","number":"6110","source":"Philo"},{"id":"philo:6106","initials":"TR","isDead":false,"isLive":true,"logoBg":"#b45309","name"
+
+=== REVERT 1 — sent 07:53:21.833
+> PUT /api/sources/philo/lineup/6105
+> {"name":""}
+< HTTP/1.1 200 OK
+< Cache-Control: no-store
+< Content-Type: application/json
+< Date: Sun, 20 Sep 2026 11:53:21 GMT
+< Content-Length: 34
+< 
+< {"hidden":false,"favorite":false}
+
+=== REVERT 2 — sent 07:53:38.560
+> PUT /api/collections/col-1789211011169
+> {"channelIds":["philo:6044","philo:6101","philo:6110","philo:6106","philo:6112","philo:6105","philo:6107","philo:6111","philo:6113","philo:6108"]}
+< HTTP/1.1 200 OK
+< Cache-Control: no-store
+< Content-Type: application/json
+< Date: Sun, 20 Sep 2026 11:53:38 GMT
+< Content-Length: 1595
+< 
+< {"id":"col-1789211011169","name":"History","icon":"ph-stack","channelIds":["philo:6044", "philo:6101", "philo:6110", "philo:6106", "philo:6112", "philo:6105", "philo:6107", "philo:6111", "philo:6113", "philo:6108"],"count":10,"channels":[ …10 resolved members, none dead: True… ]}
+
+=== PROOF OF THE ORIGINAL STATE — GETs at 07:56:12
+> GET /api/channels   (the two channels touched or named, selected fields)
+< {"id": "philo:6105", "number": "6105", "origNumber": "6105", "name": "TLC", "origName": "TLC", "hidden": false, "favorite": false}
+< {"id": "philo:6108", "number": "6108", "origNumber": "6108", "name": "DIY", "origName": "DIY", "hidden": false, "favorite": false}
+< count: 236
+> GET /api/sources/philo/lineup   (row 6105)
+< {"guid": "6105", "number": "6105", "name": "TLC", "mappedNumber": "6105", "mappedName": "TLC", "hidden": false, "favorite": false}
+> GET /api/collections   (History)
+< {"id": "col-1789211011169", "name": "History", "icon": "ph-stack", "channelIds": ["philo:6044", "philo:6101", "philo:6110", "philo:6106", "philo:6112", "philo:6105", "philo:6107", "philo:6111", "philo:6113", "philo:6108"], "count": 10}
+< channelIds identical to the list read at 07:48:39 before any write: True  · dead members: 0
+< collections: [('Local', 12), ('History', 10), ('SY-FY', 69)]

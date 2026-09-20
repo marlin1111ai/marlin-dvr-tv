@@ -1,0 +1,15 @@
+# Home Theater, 2026-09-20. App launched 00:58:22 by: xcrun devicectl device process launch --device "Home Theater" --console --terminate-existing com.marlin1111.MarlinDVRTV
+# The app's own print lines, in order, ids redacted; [hold]/[rail]/nudge lines left in.
+[collections] restored col-1789211011169 “History”
+[hold] press recognizer installed on the window
+[client] ping ok: id=<client id> name=<device name> app=Marlin DVR TV 1.0 type=Apple TV os=tvOS 26.6 ip=<ip>
+[rail] entered on home, restoring to guide
+[events] connected
+[guide] server: connected -> re-read · History · rows=10 · Sun Sep 20 · 12:30 – 2:30 AM
+[guide] roll -> Sun Sep 20 · 1:00 – 3:00 AM · fetch=1789878600
+[events] lost: The request timed out. after 102 s · 0 notice(s) · 3 comment line(s) · 0 blank line(s)
+[events] retry in 2.0 seconds
+[events] connected
+[guide] server: connected -> re-read · History · rows=10 · Sun Sep 20 · 1:00 – 3:00 AM
+[rail] entered on home, restoring to guide
+[guide] collection All Channels rows=236 refocus=hdhr-<device id>:2.1@1789880400

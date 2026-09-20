@@ -1,0 +1,26 @@
+00:20:01.224 SERVER conn #1
+00:20:01.251 CLIENT [events] connected
+00:20:01.274 CLIENT LISTENER got connected
+00:20:03.279 CLIENT [events] channels
+00:20:03.304 CLIENT [events] collections
+00:20:03.325 CLIENT LISTENER got notice(readertest.ServerNotice.channels)
+00:20:03.344 CLIENT LISTENER got notice(readertest.ServerNotice.collections)
+00:20:04.286 CLIENT [events] ERROR: a line that is neither a comment nor one of the two words: “data: bogus”
+00:20:05.241 SERVER conn #1 ended by the server
+00:20:05.298 CLIENT [events] lost: the server ended the stream after 4 s · 2 notice(s) · 2 comment line(s) · 0 blank line(s)
+00:20:05.324 CLIENT [events] retry in 2.0 seconds
+00:20:07.375 SERVER conn #2
+00:20:07.418 CLIENT [events] ERROR: GET /api/events: HTTP 503
+00:20:07.445 CLIENT [events] retry in 5.0 seconds
+00:20:12.509 SERVER conn #3
+00:20:12.555 CLIENT [events] ERROR: GET /api/events: HTTP 503
+00:20:12.578 CLIENT [events] retry in 10.0 seconds
+00:20:23.005 SERVER conn #4
+00:20:23.005 SERVER conn #4 goes silent now
+00:20:23.036 CLIENT [events] connected
+00:20:23.063 CLIENT LISTENER got connected
+00:21:09.045 CLIENT [events] lost: The request timed out. after 45 s · 0 notice(s) · 1 comment line(s) · 0 blank line(s)
+00:21:09.071 CLIENT [events] retry in 2.0 seconds
+00:21:11.013 SERVER conn #5
+00:21:11.055 CLIENT [events] ERROR: GET /api/events: HTTP 404 — this server has no GET /api/events; it is older than 1.10.0
+00:21:11.080 CLIENT [events] retry in 60.0 seconds

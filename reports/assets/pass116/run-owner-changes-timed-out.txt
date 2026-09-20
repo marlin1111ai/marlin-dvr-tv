@@ -1,0 +1,60 @@
+# testOwnerChangesAreDrawnWithoutLeavingTheGuide, run of 00:31 — TIMED OUT: the owner was not at the admin page. Harness lines:
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testOwnerChangesAreDrawnWithoutLeavingTheGuide]' started.
+P116 00:31:35.750 LAUNCHED with launch()
+P116 00:31:47.484 FOUND the pick at “History”
+P116 00:32:01.538 PARK focus=["9:Outrageous Births: Tales From the Crib"] parkedRowY=779.5
+P116 00:32:02.129 STANDING before: focus=["9:Outrageous Births: Tales From the Crib"] window=Sun Sep 20 · 12:30 – 2:30 AM pick=History
+P116 00:32:02.166 BEFORE 6105=“TLC, 6105” 6108 exists=true
+P116 00:32:02.419 SHOT 116a-before-history-focus-on-discovery-life
+P116 00:32:02.419 READY — the owner renames 6105 to TLC LIVE and takes 6108 DIY out of History; no remote press from here on
+P116 00:33:02.948 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:34:03.443 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:35:03.985 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:36:04.483 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:37:04.989 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:38:05.477 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:39:05.997 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:40:06.567 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:41:07.090 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:42:07.600 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:43:08.087 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:44:08.635 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:45:09.198 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:46:09.737 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:47:10.225 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:48:10.760 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:49:11.287 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:50:11.830 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:51:12.355 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:52:12.845 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:53:13.329 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:54:13.827 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:55:14.339 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 00:56:14.834 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+Marlin DVR TV/Marlin DVR TVUITests/GuideLiveRedrawUITests.swift:244: error: -[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testOwnerChangesAreDrawnWithoutLeavingTheGuide] : failed - never seen within 1500 s: 6105 reads TLC LIVE
+Marlin DVR TV/Marlin DVR TVUITests/GuideLiveRedrawUITests.swift:244: error: -[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testOwnerChangesAreDrawnWithoutLeavingTheGuide] : failed - never seen within 1500 s: 6108 DIY has left History
+P116 00:57:02.804 AFTER 6105=“TLC, 6105” 6108 exists=true
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testOwnerChangesAreDrawnWithoutLeavingTheGuide]' failed (1531.387 seconds).
+** TEST EXECUTE FAILED **
+
+# Server log for its window (seq 985-1663), art and another client's video ranges left out:
+# total=1663 returned=1663 first_seq=1 last_seq=1663
+   986 00:31:31.596 INFO HTTP GET /api/events 200
+   988 00:31:34.739 INFO HTTP POST /api/clients/<client id>/ping 200
+   989 00:31:34.749 INFO HTTP GET /api/channels 200
+   990 00:31:34.759 INFO HTTP GET /api/cameras 200
+   991 00:31:34.759 INFO HTTP GET /api/library 200
+   992 00:31:34.760 INFO HTTP GET /api/radio 200
+   993 00:31:34.773 INFO HTTP GET /api/guide/now 200
+   994 00:31:34.825 INFO HTTP GET /api/schedule 200
+   996 00:31:40.098 INFO HTTP GET /api/guide 200
+   998 00:31:40.149 INFO HTTP GET /api/schedule 200
+  1008 00:31:40.237 INFO HTTP GET /api/collections 200
+  1009 00:31:40.245 INFO HTTP GET /api/guide 200
+  1010 00:31:40.307 INFO HTTP GET /api/schedule 200
+  1076 00:35:07.291 INFO HTTP GET /api/channels 200
+  1077 00:35:07.363 INFO HTTP GET /api/passes 200
+  1349 00:46:02.386 INFO HTTP DELETE /api/play/sessions/… 200
+  1353 00:46:04.030 INFO HTTP POST /api/play/sessions 200
+  1356 00:46:04.057 INFO HTTP GET /api/library/recordings/84a96ec4d479/commercials 200
+  1647 00:57:02.991 INFO HTTP GET /api/events 200

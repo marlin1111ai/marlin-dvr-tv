@@ -1,0 +1,63 @@
+# testOwnerChangesAreDrawnWithoutLeavingTheGuide — launch(). TEST EXECUTE SUCCEEDED. Harness lines:
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testOwnerChangesAreDrawnWithoutLeavingTheGuide]' started.
+P116 07:46:03.492 LAUNCHED with launch()
+P116 07:46:18.858 FOUND the pick at “All Channels”
+P116 07:46:57.184 PICK “History” has focus after 2 Down press(es)
+P116 07:47:17.506 PARK focus=["9:My 600-Lb. Life: Where Are They Now?"] parkedRowY=779.5
+P116 07:47:17.895 STANDING before: focus=["9:My 600-Lb. Life: Where Are They Now?"] window=Sun Sep 20 · 7:30 – 9:30 AM pick=History
+P116 07:47:17.934 BEFORE 6105=“TLC, 6105” 6108 exists=true
+P116 07:47:18.197 SHOT 116a-before-history-focus-on-discovery-life
+P116 07:47:18.197 READY — the owner renames 6105 to TLC LIVE and takes 6108 DIY out of History; no remote press from here on
+P116 07:48:18.249 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 07:49:18.835 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 07:50:19.403 WAITING for ["6105 reads TLC LIVE", "6108 DIY has left History"]
+P116 07:50:30.184 SEEN 6105 reads TLC LIVE
+P116 07:50:31.959 SHOT 116b-after-the-rename
+P116 07:50:32.203 STANDING after 6105 reads TLC LIVE: focus=["9:My 600-Lb. Life: Where Are They Now?"] window=Sun Sep 20 · 7:30 – 9:30 AM pick=History
+P116 07:50:51.488 SEEN 6108 DIY has left History
+P116 07:50:53.255 SHOT 116c-after-the-removal
+P116 07:50:53.494 STANDING after 6108 DIY has left History: focus=["9:My 600-Lb. Life: Where Are They Now?"] window=Sun Sep 20 · 7:30 – 9:30 AM pick=History
+P116 07:50:54.120 AFTER 6105=“TLC LIVE, 6105” 6108 exists=false
+P116 07:51:16.192 PICK “All Channels” has focus after 0 Down press(es)
+P116 07:51:22.502 RESTORED the pick to “All Channels”
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testOwnerChangesAreDrawnWithoutLeavingTheGuide]' passed (322.296 seconds).
+** TEST EXECUTE SUCCEEDED **
+
+# Server log for the run (seq 3012-3584). Left out: art, other clients' video ranges, and the owner's own browser (static files, /api/chrome, /api/dashboard, its 15 s /api/system + /api/update poll).
+# total=3584 returned=2000 first_seq=1585 last_seq=3584
+  3012 07:46:02.513 INFO HTTP POST /api/clients/<client id>/ping 200
+  3013 07:46:02.513 INFO HTTP GET /api/channels 200
+  3014 07:46:02.515 INFO HTTP GET /api/cameras 200
+  3015 07:46:02.516 INFO HTTP GET /api/library 200
+  3016 07:46:02.523 INFO HTTP GET /api/radio 200
+  3017 07:46:02.590 INFO HTTP GET /api/schedule 200
+  3024 07:46:02.756 INFO HTTP GET /api/guide/now 200
+  3025 07:46:07.804 INFO HTTP GET /api/guide 200
+  3026 07:46:07.826 INFO HTTP GET /api/schedule 200
+  3262 07:46:13.464 INFO HTTP GET /api/collections 200
+  3263 07:46:13.491 INFO HTTP GET /api/guide 200
+  3264 07:46:13.548 INFO HTTP GET /api/schedule 200
+  3279 07:46:16.433 INFO HTTP POST /api/clients/<client id>/ping 200
+  3285 07:46:16.434 INFO HTTP GET /api/settings 200
+  3303 07:46:18.012 INFO HTTP POST /api/clients/<client id>/ping 200
+  3309 07:46:18.014 INFO HTTP GET /api/settings 200
+  3313 07:46:31.901 INFO HTTP GET /api/collections 200
+  3318 07:46:57.452 INFO HTTP GET /api/guide 200
+  3319 07:46:57.506 INFO HTTP GET /api/schedule 200
+  3337 07:48:39.226 INFO HTTP GET /api/channels 200
+  3338 07:48:39.249 INFO HTTP GET /api/sources/philo/lineup 200
+  3339 07:48:39.272 INFO HTTP GET /api/collections 200
+  3344 07:50:29.940 INFO SRC  lineup philo: channel 6105 updated (hidden=false favorite=false)
+  3345 07:50:29.940 INFO HTTP PUT /api/sources/philo/lineup/6105 200
+  3346 07:50:29.962 INFO HTTP GET /api/collections 200
+  3347 07:50:29.990 INFO HTTP GET /api/guide 200
+  3348 07:50:30.045 INFO HTTP GET /api/schedule 200
+  3349 07:50:51.313 INFO SRC  collection updated: History (9 channels)
+  3350 07:50:51.313 INFO HTTP PUT /api/collections/col-1789211011169 200
+  3351 07:50:51.325 INFO HTTP GET /api/collections 200
+  3352 07:50:51.335 INFO HTTP GET /api/guide 200
+  3353 07:50:51.399 INFO HTTP GET /api/schedule 200
+  3355 07:51:06.670 INFO HTTP GET /api/collections 200
+  3356 07:51:16.296 INFO HTTP GET /api/guide 200
+  3357 07:51:16.354 INFO HTTP GET /api/schedule 200
+  3584 07:51:22.732 INFO HTTP GET /api/events 200

@@ -2859,3 +2859,73 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-20 (Pass 116 — the Guide redraws on server channel and collection changes)
+
+- **Owner's words (2026-09-19): "all i want is when i do something in the server it gets refelcted on the atv
+  right away".** Recorded verbatim. It is the goal Pass 115 planned for, and it is built.
+- **Three calls, the foreman's (2026-09-20), which answer Pass 115's open questions 1–6.**
+  **(1)** On any notice, `channels` or `collections`, the Guide re-reads `GET /api/guide` — its current
+  collection and current window — and `GET /api/collections`; **`GET /api/channels` is never sent**; on
+  connect and on every reconnect the same two reads happen; the stream opens when the Guide appears and
+  closes when it leaves; reconnect on Pass 115's numbers. **(2)** The redraw is in place — the window does not
+  move, the pick is kept, a deleted pick reverts to All Channels silently as today; `favouriteOverrides` is
+  cleared on every notice so the server's value wins; **a notice under the airing sheet, the hold menu or the
+  collections overlay waits and runs the moment it closes**; focus stays on the same programme when it
+  survives, and goes to `firstCellID` when its row is gone. **(3)** No notice reaches the server's log as a
+  write; **no notice is coalesced away** — one arriving during a re-read causes one more re-read after it;
+  loud failures, no silent fallback except the reconnect itself. They drop Pass 115 §7's 300 ms collapse of
+  close-together notices, and make the first connect do both reads.
+- **What was built.** A new `ServerEvents.swift` — the stream reader, its own `URLSession` with a 45 s idle
+  timer, retries at 2 s, 5 s, 10 s then 30 s, 60 s on a 404, every successful connect reported, every oddity
+  printed as an ERROR. `refresh()` in `GuideCollections.swift`, the overlay's read without the overlay's
+  `loading` flag. In `GuideScreen.swift` a second `.task` beside the clock's, `serverRedraw` with its owed
+  flag, `settleFocusAfterRedraw`, and `reloadForNotice()`, which drops the favourite overrides in the same turn
+  the new rows land. **No other file changed, the project file included.** Simulator and device builds
+  succeeded with no warning in a touched file.
+- **Owner authorisation (2026-09-20) for four server writes, and only four.** The pass had the owner make the
+  test changes on the admin page; the first attempt waited 25 minutes and nothing was changed — he was not at
+  it. The foreman then relayed: *"Owner's call: he will not make the admin-page changes. Owner authorises you to
+  make exactly these two writes on the server yourself, and their exact reversal, and nothing else: rename
+  channel 6105 "TLC" to "TLC LIVE", then back to "TLC"; remove channel 6108 "DIY" from the History collection,
+  then add it back in the same position."* **Because writing to the server is on `CLAUDE.md`'s do-not-touch
+  list and the words were relayed, the four exact requests were put to the owner and he chose "Yes, send those
+  four" himself before the first was sent.** `PUT /api/sources/philo/lineup/6105` `{"name":"TLC LIVE"}` and
+  `{"name":""}`; `PUT /api/collections/col-1789211011169` without and then with `philo:6108`, last. **It
+  authorised those four and nothing beyond them; the do-not-touch rule stands as it was.** A GET of each at
+  07:56:12 reads exactly what it read before the first write. One residue the API can neither show nor remove,
+  told to him beforehand: the Philo lineup file may keep an empty override entry for 6105.
+- **Proven on Home Theater.** `launch()`, launch ping `07:46:02.513`, TEST EXECUTE SUCCEEDED, no remote press
+  after READY: the rename was written at `07:50:29.940` and the app's `GET /api/collections` and
+  `GET /api/guide` are in the server's log at `.962` and `.990`, the new name on the screen by `07:50:30.184`;
+  the collection change at `07:50:51.313`, the reads at `.325` and `.335`, the row gone by `.488`. **Focus, the
+  window and the pick were identical before and after both. No `GET /api/channels`; nothing but GETs after any
+  notice.** The reversals ran with the app's console attached and it says so itself: `[events] channels`,
+  `[events] collections`, each followed by its re-read.
+- **The reconnect, proven.** Under a test session a 75 s trip to Home does **not** end the stream — one
+  connection lived through it. Launched by `devicectl` outside one, **the server saw the connection close 3.4 s
+  after the Home press**, and on return the console reads `lost: The request timed out` → `retry in 2.0
+  seconds` → `connected`, with both reads in the server's log **2.3 s after returning** (2.2 s the second time).
+  No `scenePhase` hook was built or needed. A healthy stream held one connection for 25 min 23 s.
+- **Pass 115's four platform facts.** `AsyncBytes.lines` drops blank lines — **measured on tvOS and on the
+  Mac**. The 60 s default idle timer, the 7-day default and the per-host connection limit are **no longer
+  relied on** — the reader sets its own 45 s and 7 days and has its own session — and stay unmeasured; the 45 s
+  timer firing on a silent stream is measured on the Mac with the app's own file, not on tvOS.
+- **Traced only, named in the report's §7:** a notice during a re-read; a notice under each overlay; a focused
+  row disappearing; a deleted pick; the favourite overrides clearing and the app's own favourite echo; a
+  renumber; a notice behind the Player; a double `channels`; a server stop; a 404 on the television.
+- **Raised, not decided:** a row that returns under the fold is not seen until the list scrolls; every Guide
+  open now reads the guide twice, and on All Channels the stream connects about 5.5 s after the Guide opens;
+  only the Guide listens. The owner's own browser read `GET /api/settings` at 07:46 — recorded so no later
+  pass takes it for this project's, which has never read it.
+- **Home Theater runs this build. The bedroom Apple TV does not, and was not touched**; the standing rule
+  brings it up once this is proven.
+- **The findings are in `reports/2026-09-19-pass116-guide-live-redraw.md`**, evidence in
+  `reports/assets/pass116/`.
+- **Pass 115's verified push SHA is `bc0c766`.** Before this pass changed anything, `git fetch origin` then
+  `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `bc0c766a67aa45fa742b91af20b0f65f78563a27`, `git rev-list --left-right --count main...origin/main` was
+  `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's one commit is NOT pushed — the owner tests first.** Its SHA is not written into this entry, and
+  cannot be — a commit cannot contain its own SHA. It lives in the pass response and in the next pass's
+  notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).

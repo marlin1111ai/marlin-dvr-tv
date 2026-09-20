@@ -1,0 +1,35 @@
+# testTripToHomeWithTheConsoleAttached — app launched by devicectl. Harness lines:
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testTripToHomeWithTheConsoleAttached]' started.
+P116 00:58:48.104 ATTACHING to the process devicectl launched — no launch(), no activate()
+P116 00:58:59.975 STANDING before Home: focus=["9:Pawn Stars"] window=Sun Sep 20 · 12:30 – 2:30 AM pick=History
+P116 00:59:19.981 HOME pressed
+P116 01:00:35.227 RETURN
+P116 01:00:48.916 STANDING after coming back: focus=["9:Pawn Stars"] window=Sun Sep 20 · 1:00 – 3:00 AM pick=History
+P116 01:00:49.160 SHOT 116j-back-from-home-console-attached
+P116 01:01:50.611 PICK “All Channels” has focus after 0 Down press(es)
+P116 01:01:56.914 RESTORED the pick to “All Channels”
+P116 01:01:56.915 DONE
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testTripToHomeWithTheConsoleAttached]' passed (194.092 seconds).
+** TEST EXECUTE SUCCEEDED **
+
+# Server log, seq 1677 on, HTTP/SRC/SYS, art and another client's video ranges left out:
+# total=2017 returned=2000 first_seq=18 last_seq=2017
+  1678 00:58:23.213 INFO HTTP POST /api/clients/<client id>/ping 200
+  1679 00:58:23.217 INFO HTTP GET /api/radio 200
+  1680 00:58:23.218 INFO HTTP GET /api/cameras 200
+  1681 00:58:23.218 INFO HTTP GET /api/library 200
+  1682 00:58:23.218 INFO HTTP GET /api/channels 200
+  1684 00:58:23.287 INFO HTTP GET /api/guide/now 200
+  1685 00:58:23.289 INFO HTTP GET /api/schedule 200
+  1693 00:58:52.439 INFO HTTP GET /api/guide 200
+  1694 00:58:52.504 INFO HTTP GET /api/schedule 200
+  1706 00:58:52.613 INFO HTTP GET /api/collections 200
+  1707 00:58:52.623 INFO HTTP GET /api/guide 200
+  1708 00:58:52.689 INFO HTTP GET /api/schedule 200
+  1720 00:59:23.369 INFO HTTP GET /api/events 200
+  1741 01:00:37.479 INFO HTTP GET /api/collections 200
+  1742 01:00:37.504 INFO HTTP GET /api/guide 200
+  1743 01:00:37.561 INFO HTTP GET /api/schedule 200
+  1768 01:01:40.936 INFO HTTP GET /api/collections 200
+  1771 01:01:50.756 INFO HTTP GET /api/guide 200
+  1772 01:01:50.762 INFO HTTP GET /api/schedule 200

@@ -1,0 +1,78 @@
+# testPutBacksWithTheConsoleAttached — app launched 07:51:45 by devicectl --console. TEST EXECUTE SUCCEEDED. Harness lines:
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testPutBacksWithTheConsoleAttached]' started.
+P116 07:51:58.392 ATTACHING to the process devicectl launched — no launch(), no activate()
+P116 07:52:13.890 FOUND the pick at “All Channels”
+P116 07:52:52.615 PICK “History” has focus after 2 Down press(es)
+P116 07:53:10.849 PARK focus=["9:My 600-Lb. Life: Where Are They Now?"] parkedRowY=873.5
+P116 07:53:11.178 STANDING before: focus=["9:My 600-Lb. Life: Where Are They Now?"] window=Sun Sep 20 · 7:30 – 9:30 AM pick=History
+P116 07:53:11.212 BEFORE 6105=“TLC LIVE, 6105” 6108 exists=false
+P116 07:53:11.469 SHOT 116f-before-the-put-backs
+P116 07:53:11.469 READY — the owner renames 6105 back to TLC and puts 6108 DIY back in History; no remote press from here on
+P116 07:53:22.193 SEEN 6105 reads TLC again
+P116 07:53:23.965 SHOT 116g-after-the-name-is-back
+P116 07:53:24.185 STANDING after 6105 reads TLC again: focus=["9:My 600-Lb. Life: Where Are They Now?"] window=Sun Sep 20 · 7:30 – 9:30 AM pick=History
+P116 07:53:38.850 SEEN 6108 DIY is back in History
+P116 07:53:40.619 SHOT 116h-after-diy-is-back
+P116 07:53:40.855 STANDING after 6108 DIY is back in History: focus=["9:My 600-Lb. Life: Where Are They Now?"] window=Sun Sep 20 · 7:30 – 9:30 AM pick=History
+P116 07:53:41.465 AFTER 6105=“TLC, 6105” 6108 exists=true
+P116 07:53:41.466 HOME pressed
+P116 07:54:56.706 RETURN
+P116 07:55:10.131 SHOT 116i-back-from-home-console-leg
+P116 07:55:42.516 PICK “All Channels” has focus after 0 Down press(es)
+P116 07:55:48.824 RESTORED the pick to “All Channels”
+P116 07:55:48.824 DONE
+Test Case '-[Marlin_DVR_TVUITests.GuideLiveRedrawUITests testPutBacksWithTheConsoleAttached]' passed (237.732 seconds).
+** TEST EXECUTE SUCCEEDED **
+
+# The app's own console, [events]/[guide]/[collections]/[client] lines, ids redacted:
+[client] ping ok: id=<client id> name=<device name> app=Marlin DVR TV 1.0 type=Apple TV os=tvOS 26.6 ip=<ip>
+[events] connected
+[guide] server: connected -> re-read · All Channels · rows=236 · Sun Sep 20 · 7:30 – 9:30 AM
+[guide] collection History rows=9 refocus=philo:6044@1789902000
+[events] channels
+[guide] server: channels -> re-read · History · rows=9 · Sun Sep 20 · 7:30 – 9:30 AM
+[events] collections
+[guide] server: collections -> re-read · History · rows=10 · Sun Sep 20 · 7:30 – 9:30 AM
+[events] lost: The request timed out. after 169 s · 2 notice(s) · 7 comment line(s) · 0 blank line(s)
+[events] retry in 2.0 seconds
+[events] connected
+[guide] server: connected -> re-read · History · rows=10 · Sun Sep 20 · 7:30 – 9:30 AM
+[guide] collection All Channels rows=236 refocus=hdhr-<device id>:2.1@1789902000
+
+# Server log for the leg (seq 3585 on), same omissions:
+# total=4086 returned=2000 first_seq=2087 last_seq=4086
+  3585 07:51:46.215 INFO HTTP GET /api/library 200
+  3586 07:51:46.215 INFO HTTP POST /api/clients/<client id>/ping 200
+  3587 07:51:46.218 INFO HTTP GET /api/cameras 200
+  3588 07:51:46.218 INFO HTTP GET /api/channels 200
+  3589 07:51:46.219 INFO HTTP GET /api/radio 200
+  3590 07:51:46.236 INFO HTTP GET /api/guide/now 200
+  3591 07:51:46.285 INFO HTTP GET /api/schedule 200
+  3593 07:52:02.804 INFO HTTP GET /api/guide 200
+  3594 07:52:02.818 INFO HTTP GET /api/schedule 200
+  3830 07:52:08.528 INFO HTTP GET /api/collections 200
+  3831 07:52:08.554 INFO HTTP GET /api/guide 200
+  3832 07:52:08.607 INFO HTTP GET /api/schedule 200
+  3833 07:52:27.044 INFO HTTP GET /api/collections 200
+  3834 07:52:52.888 INFO HTTP GET /api/guide 200
+  3835 07:52:52.939 INFO HTTP GET /api/schedule 200
+  3838 07:53:21.848 INFO SRC  lineup philo: channel 6105 updated (hidden=false favorite=false)
+  3839 07:53:21.848 INFO HTTP PUT /api/sources/philo/lineup/6105 200
+  3840 07:53:21.863 INFO HTTP GET /api/collections 200
+  3841 07:53:21.874 INFO HTTP GET /api/guide 200
+  3842 07:53:21.942 INFO HTTP GET /api/schedule 200
+  3843 07:53:38.575 INFO SRC  collection updated: History (10 channels)
+  3844 07:53:38.575 INFO HTTP PUT /api/collections/col-1789211011169 200
+  3845 07:53:38.587 INFO HTTP GET /api/collections 200
+  3846 07:53:38.600 INFO HTTP GET /api/guide 200
+  3848 07:53:38.674 INFO HTTP GET /api/schedule 200
+  3849 07:53:44.792 INFO HTTP GET /api/events 200
+  3851 07:54:58.889 INFO HTTP GET /api/collections 200
+  3852 07:54:58.926 INFO HTTP GET /api/guide 200
+  3853 07:54:58.972 INFO HTTP GET /api/schedule 200
+  3855 07:55:32.891 INFO HTTP GET /api/collections 200
+  3856 07:55:42.672 INFO HTTP GET /api/guide 200
+  3857 07:55:42.678 INFO HTTP GET /api/schedule 200
+  4084 07:56:12.362 INFO HTTP GET /api/channels 200
+  4085 07:56:12.385 INFO HTTP GET /api/sources/philo/lineup 200
+  4086 07:56:12.407 INFO HTTP GET /api/collections 200
