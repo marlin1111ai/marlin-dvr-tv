@@ -200,7 +200,16 @@ struct PlayerInfoPanel: View {
                         self.editingPass = nil
                         message = "Series pass deleted."
                         failed = false
-                        if let program { Task { job = await scheduleJob(for: program) ?? job } }
+                        // Pass 120 (REVIEW.md S13, owner 2026-09-24): the sheet's fix, mirrored — the
+                        // old booking is kept only when the read fails; a read that no longer lists
+                        // it means the deleted pass took it.
+                        if let program {
+                            Task {
+                                do { job = try await readScheduleJob(for: program) } catch {
+                                    print("[panel] schedule: \(error)")
+                                }
+                            }
+                        }
                         focusSoon { focused = isLive ? "series" : "pass" }
                     },
                     onClose: {
@@ -226,11 +235,11 @@ struct PlayerInfoPanel: View {
             if isLive {
                 await loadLive()
                 focusSoon { if focused == nil || focused == "loading" { focused = firstFocusID } }
+                await followTheAiring()
             } else {
                 await loadRecording()
             }
         }
-        .task(id: program?.end) { await reloadWhenTheAiringEnds() }
     }
 
     private var card: some View {
@@ -480,29 +489,45 @@ struct PlayerInfoPanel: View {
     /// `job(channelId:programStart:)` (`GuideScreen.swift:266-272`, `:249-251`). Nil when there is no
     /// job for the airing or the read fails, and the callers keep what they had, as the sheet does.
     private func scheduleJob(for program: Program) async -> Job? {
-        guard let channel = request.channel else { return nil }
         do {
-            return try await api.schedule().jobs.first { $0.channelId == channel.id && $0.program.start == program.start }
+            return try await readScheduleJob(for: program)
         } catch {
             print("[panel] schedule: \(error)")
             return nil
         }
     }
 
+    /// The same read, with a failure kept apart from "no job for this airing" — which the pass
+    /// delete's re-read needs (Pass 120, REVIEW.md S13).
+    private func readScheduleJob(for program: Program) async throws -> Job? {
+        guard let channel = request.channel else { return nil }
+        return try await api.schedule().jobs.first { $0.channelId == channel.id && $0.program.start == program.start }
+    }
+
     /// "Just show the current show": an airing that ends while the panel is still up is replaced by
     /// the next one. A message about the airing that ended goes with it.
-    private func reloadWhenTheAiringEnds() async {
-        guard isLive, let end = program?.end else { return }
-        let wait = Double(end) - Date().timeIntervalSince1970 + 2
-        try? await Task.sleep(for: .seconds(wait > 0 ? wait : 30))
-        guard !Task.isCancelled else { return }
-        let before = program?.start
-        await loadLive()
-        if program?.start != before {
-            message = nil
-            failed = false
+    ///
+    /// Pass 120 (REVIEW.md S12): this runs inside the panel's own task, after the first read. It was a
+    /// `.task(id: program?.end)` — keyed on a value its own `loadLive()` changes, and changes *before*
+    /// the pass and schedule reads return — so the new airing's `program` cancelled the task that set
+    /// it, those two reads with it: the panel kept the ended show's pass and lost the new airing's
+    /// booking. Nothing here is keyed on `program` now; closing the panel still ends it. As before,
+    /// it follows one airing to the next and stops when a re-read brings back no airing, or the
+    /// same one.
+    private func followTheAiring() async {
+        while isLive, let end = program?.end {
+            let wait = Double(end) - Date().timeIntervalSince1970 + 2
+            try? await Task.sleep(for: .seconds(wait > 0 ? wait : 30))
+            guard !Task.isCancelled else { return }
+            let before = program?.start
+            await loadLive()
+            if program?.start != before {
+                message = nil
+                failed = false
+            }
+            focusSoon { if focused == nil { focused = firstFocusID } }
+            if program?.end == end { return }
         }
-        focusSoon { if focused == nil { focused = firstFocusID } }
     }
 
     // MARK: The writes, each mirroring the control it is named for

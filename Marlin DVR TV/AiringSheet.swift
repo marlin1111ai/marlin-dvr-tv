@@ -40,7 +40,7 @@ struct AiringSelection: Identifiable {
     static func artPath(for title: String) -> String? {
         var c = URLComponents()
         c.path = "/api/art/show"
-        c.queryItems = [URLQueryItem(name: "title", value: title)]
+        c.setServerQueryItems([URLQueryItem(name: "title", value: title)])   // "+" and ";" intact (Pass 120, S10)
         return c.string
     }
 }
@@ -147,7 +147,10 @@ struct AiringSheet: View {
                         self.editingPass = nil
                         message = "Series pass deleted."
                         failed = false
-                        Task { job = await onScheduleChanged() ?? job }
+                        // Pass 120 (REVIEW.md S13): no `?? job`. Every host hands back its previous
+                        // copy when the read fails, so nil here means the server no longer lists
+                        // the booking — the deleted pass took it — and the sheet says so.
+                        Task { job = await onScheduleChanged() }
                         focusSoon { focused = "series" }
                     },
                     onClose: {
@@ -165,8 +168,10 @@ struct AiringSheet: View {
             // Guide's copy is only as fresh as its last fetch — it refreshes when this sheet
             // writes, not on a timer, so a booking that has since started recording would
             // still read "Queued". Ask the schedule what is true now; keep the Guide's copy
-            // if that read fails.
-            job = await onScheduleChanged() ?? selection.job
+            // if that read fails — which the host already does by handing its old copy back, so
+            // there is no `?? selection.job` here: nil after a successful read is a booking
+            // cancelled elsewhere (Pass 120, REVIEW.md S13).
+            job = await onScheduleChanged()
             try? await Task.sleep(for: .milliseconds(60))
             focused = firstFocusID
         }

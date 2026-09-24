@@ -456,7 +456,7 @@ struct TrashItem: Decodable, Identifiable {
     var artPath: String {
         var components = URLComponents()
         components.path = "/api/art/show"
-        components.queryItems = [URLQueryItem(name: "title", value: show)]
+        components.setServerQueryItems([URLQueryItem(name: "title", value: show)])   // "+" and ";" intact (Pass 120, S10)
         return components.string ?? ""
     }
 }

@@ -76,7 +76,8 @@ struct LaterAiring: Identifiable {
         if let icon = program.icon, icon.hasPrefix("http://") || icon.hasPrefix("https://") {
             var c = URLComponents()
             c.path = "/api/art/feed"
-            c.queryItems = [URLQueryItem(name: "u", value: icon), URLQueryItem(name: "title", value: program.title)]
+            // "+" and ";" intact in both values (Pass 120, S10).
+            c.setServerQueryItems([URLQueryItem(name: "u", value: icon), URLQueryItem(name: "title", value: program.title)])
             return c.string
         }
         return AiringSelection.artPath(for: program.title)

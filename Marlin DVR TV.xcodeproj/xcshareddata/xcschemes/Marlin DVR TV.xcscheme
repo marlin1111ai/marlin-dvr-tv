@@ -31,7 +31,8 @@
       shouldAutocreateTestPlan = "YES">
       <Testables>
          <TestableReference
-            skipped = "NO">
+            skipped = "NO"
+            useTestSelectionWhitelist = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "DA00000000000000000000C5"
@@ -39,6 +40,8 @@
                BlueprintName = "Marlin DVR TVUITests"
                ReferencedContainer = "container:Marlin DVR TV.xcodeproj">
             </BuildableReference>
+            <SelectedTests>
+            </SelectedTests>
          </TestableReference>
       </Testables>
    </TestAction>

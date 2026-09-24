@@ -89,10 +89,21 @@ struct FavoritesScreen: View {
             Spacer(minLength: 0)
         }
         .defaultFocus($focused, model.channels.first.map(\.id) ?? "loading")
+        // Pass 120 (REVIEW.md S14): On Now's loop (`OnNowScreen.swift:167-179`) — the same two reads
+        // again every 60 s for as long as the screen exists, the Player's cover included, so a row's
+        // programme and end time — and what a pick hands the Player — are at most about a minute old,
+        // as On Now's are. Focus is set on the first pass only; a reload moves nothing.
         .task {
-            await model.load()
-            let id = model.channels.first?.id
-            focusSoon { focused = id ?? "loading" }
+            var first = true
+            while !Task.isCancelled {
+                await model.load()
+                if first {
+                    first = false
+                    let id = model.channels.first?.id
+                    focusSoon { focused = id ?? "loading" }
+                }
+                try? await Task.sleep(for: .seconds(60))
+            }
         }
         .onExitCommand { onLeave() }
     }

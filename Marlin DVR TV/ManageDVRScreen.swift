@@ -39,7 +39,12 @@ final class ManageModel {
     /// Every trashed recording the server holds, in its own order — newest trashed first.
     private(set) var trash: [TrashItem] = []
     private(set) var loaded = false
-    private(set) var error: String?
+    /// Pass 120 (REVIEW.md S8): the storage, schedule and passes reads each keep their own error,
+    /// the way `trashError` does — nil means the server answered, a string means the last read
+    /// failed and the screen must not claim the list is empty. A later successful read clears it.
+    private(set) var systemError: String?
+    private(set) var scheduleError: String?
+    private(set) var passesError: String?
     /// Why the trash list is empty when it is: nil means the server said so, a string means the
     /// read failed and the screen must not claim the trash is empty.
     private(set) var trashError: String?
@@ -57,22 +62,49 @@ final class ManageModel {
         async let scheduleCall = api.schedule()
         async let passesCall = api.passes()
 
-        do { system = try await systemCall } catch { print("[manage] system: \(error)") }
-        do { schedule = try await scheduleCall } catch {
-            self.error = "\(error)"
+        do {
+            system = try await systemCall
+            systemError = nil
+        } catch {
+            systemError = WriteError.text(error)
+            print("[manage] system: \(error)")
+        }
+        do {
+            schedule = try await scheduleCall
+            scheduleError = nil
+        } catch {
+            scheduleError = WriteError.text(error)
             print("[manage] schedule: \(error)")
         }
-        do { passes = try await passesCall } catch { print("[manage] passes: \(error)") }
+        do {
+            passes = try await passesCall
+            passesError = nil
+        } catch {
+            passesError = WriteError.text(error)
+            print("[manage] passes: \(error)")
+        }
         await refreshTrash()
         loaded = true
     }
 
     func refreshSchedule() async {
-        do { schedule = try await api.schedule() } catch { print("[manage] schedule: \(error)") }
+        do {
+            schedule = try await api.schedule()
+            scheduleError = nil
+        } catch {
+            scheduleError = WriteError.text(error)
+            print("[manage] schedule: \(error)")
+        }
     }
 
     func refreshPasses() async {
-        do { passes = try await api.passes() } catch { print("[manage] passes: \(error)") }
+        do {
+            passes = try await api.passes()
+            passesError = nil
+        } catch {
+            passesError = WriteError.text(error)
+            print("[manage] passes: \(error)")
+        }
     }
 
     /// GET /api/library/trash — one read, kept in the server's order (newest trashed first).
@@ -150,17 +182,17 @@ struct ManageDVRScreen: View {
                     .font(.nocturne(Nocturne.TextSize.floor))
                     .foregroundStyle(Nocturne.neutral600)
             }
-            StorageCard(system: model.system)
+            StorageCard(system: model.system, error: model.systemError)
             if !model.loaded {
                 LoadingLine().focusable().focused($focused, equals: "loading")
             }
             VStack(spacing: 12) {
                 MenuRow(title: "Scheduled Recordings",
-                        state: "\(model.scheduledCount) scheduled",
+                        state: scheduleState,
                         focused: focused == "schedule") { section = .schedule }
                     .focused($focused, equals: "schedule")
                 MenuRow(title: "Your Passes",
-                        state: count(model.passCount, "pass", plural: "passes"),
+                        state: passesState,
                         focused: focused == "passes") { section = .passes }
                     .focused($focused, equals: "passes")
                 MenuRow(title: "Trash",
@@ -169,12 +201,26 @@ struct ManageDVRScreen: View {
                     .focused($focused, equals: "trash")
             }
             .frame(maxWidth: 1400, alignment: .leading)
-            if let error = model.error {
-                ErrorLine(text: error)
+            if let error = model.scheduleError {
+                ErrorLine(text: "Scheduled Recordings could not be read — \(error)")
+            }
+            if let error = model.passesError {
+                ErrorLine(text: "Your Passes could not be read — \(error)")
             }
             Spacer(minLength: 0)
         }
         .defaultFocus($focused, "schedule")
+    }
+
+    /// Pass 120 (REVIEW.md S8): a failed read says so, as `trashState` does, rather than "0".
+    private var scheduleState: String {
+        if model.scheduleError != nil && model.schedule == nil { return "could not read" }
+        return "\(model.scheduledCount) scheduled"
+    }
+
+    private var passesState: String {
+        if model.passesError != nil && model.passes.isEmpty { return "could not read" }
+        return count(model.passCount, "pass", plural: "passes")
     }
 
     /// "4 in trash · 3.80 GB". The size is the listing's own byte counts added up (Pass 33
@@ -193,6 +239,8 @@ struct ManageDVRScreen: View {
 /// Step 2a: how much room is left, from the server's own formatted disk fields.
 struct StorageCard: View {
     let system: SystemInfo?
+    /// Pass 120 (REVIEW.md S8): why `system` is nil, when the read failed.
+    var error: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -205,6 +253,11 @@ struct StorageCard: View {
                     Text("\(system.diskUsed) used · \(system.diskFree) free of \(system.diskTotal)")
                         .font(.nocturne(Nocturne.TextSize.secondary))
                         .foregroundStyle(Nocturne.neutral400)
+                } else if let error {
+                    Text("Could not read the disk space — \(error)")
+                        .font(.nocturne(Nocturne.TextSize.secondary))
+                        .foregroundStyle(Nocturne.neutral400)
+                        .lineLimit(1)
                 } else {
                     Text("Reading the server…")
                         .font(.nocturne(Nocturne.TextSize.secondary))

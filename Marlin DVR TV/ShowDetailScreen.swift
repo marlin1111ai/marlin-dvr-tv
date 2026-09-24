@@ -78,6 +78,15 @@ final class ShowDetailModel {
         } else {
             episodes.remove(at: index)
         }
+        // Pass 120 (REVIEW.md S9): the Player is handed `detail` (`play(_:from:)`), and its
+        // next-episode countdown picks from `detail.episodes` (`PlayRequest.nextEpisode`). So the
+        // same write lands there too, or a deleted episode is offered — and auto-played — as next.
+        if let detail {
+            self.detail = ShowResponse(id: detail.id, title: detail.title, episodes: episodes,
+                                       count: detail.count, trashCount: detail.trashCount,
+                                       showingTrash: detail.showingTrash, art: detail.art,
+                                       info: detail.info, pass: detail.pass, rss: detail.rss)
+        }
     }
 
     /// "41 episodes · 3 unwatched · 128 GB · HGTV" — counted from the visible episodes.

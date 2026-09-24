@@ -243,8 +243,14 @@ final class ShowDetailSeriesPassUITests: XCTestCase {
                         "the pass footer the sheet draws is missing: \(screenText())")
 
         // 3. Pressing it opens the editor — the same screen the Guide's "Edit series pass" opens.
-        XCTAssertTrue(focusSeriesButton(editLabel),
-                      "could not put focus on \"\(editLabel)\" — focus is \(focusedLabel())")
+        //    Pass 120 (REVIEW.md S2): the method stops here if focus is not on "Edit series pass".
+        //    `continueAfterFailure` is true, so a soft check would carry on into the Select — and if
+        //    the show has lost its pass, the button under focus is "Record the series", whose Select
+        //    is `POST /api/passes`.
+        guard focusSeriesButton(editLabel) else {
+            XCTFail("could not put focus on \"\(editLabel)\" — focus is \(focusedLabel()); stopping before any Select")
+            return
+        }
         remote.press(.select)
         XCTAssertTrue(app.staticTexts[editorNote].waitForExistence(timeout: 30),
                       "the editor did not open: \(screenText())")

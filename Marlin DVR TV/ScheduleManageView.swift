@@ -48,14 +48,14 @@ struct ScheduleManageView: View {
                             : "This airing is cancelled. The series pass carries on."
                         Task {
                             await model.refreshSchedule()
-                            focusSoon { focused = firstRowID }
+                            focusSoon { focused = firstRowID ?? "empty" }
                         }
                     },
                     onManagePass: { pass in editingPass = pass },
                     onClose: {
                         let id = selected?.id
                         selected = nil
-                        focusSoon { focused = id }
+                        focusSoon { focused = rowOrFallback(id) }
                     }
                 )
             }
@@ -74,21 +74,21 @@ struct ScheduleManageView: View {
                         Task {
                             await model.refreshPasses()
                             await model.refreshSchedule()
-                            focusSoon { focused = firstRowID }
+                            focusSoon { focused = firstRowID ?? "empty" }
                         }
                     },
                     onClose: { editingPass = nil }
                 )
             }
         }
-        .onAppear { focusSoon { focused = firstRowID } }
+        .onAppear { focusSoon { focused = firstRowID ?? "empty" } }
         .onExitCommand {
             if editingPass != nil {
                 editingPass = nil
             } else if selected != nil {
                 let id = selected?.id
                 selected = nil
-                focusSoon { focused = id }
+                focusSoon { focused = rowOrFallback(id) }
             } else {
                 onLeave()
             }
@@ -96,6 +96,14 @@ struct ScheduleManageView: View {
     }
 
     private var firstRowID: String? { groups.first(where: { !$0.items.isEmpty })?.items.first?.id }
+
+    /// Pass 120 (REVIEW.md S7): the row focus returns to, if a re-read has not taken it away (a
+    /// pass paused from Manage pass can empty the list), else the first row, else the sentence
+    /// that stands in for an empty list — never nothing, or Menu leaves the app.
+    private func rowOrFallback(_ id: String?) -> String {
+        if let id, groups.contains(where: { $0.items.contains { $0.id == id } }) { return id }
+        return firstRowID ?? "empty"
+    }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 26) {
@@ -111,10 +119,19 @@ struct ScheduleManageView: View {
                     .lineLimit(2)
             }
             if groups.allSatisfy(\.items.isEmpty) {
-                Text("Nothing is scheduled. Record an airing from the Guide, or add a series pass.")
+                // Pass 120 (REVIEW.md S7, S8): Trash's rule (`TrashManageView.swift:56-69`). The
+                // sentence is focusable, holding the "empty" focus id, because with no rows it is
+                // the only thing on the screen — without it Menu never reaches `.onExitCommand` and
+                // leaves the app (Pass 33). And a failed read says so instead of "Nothing is
+                // scheduled".
+                Text(model.scheduleError.map { "The schedule could not be read — \($0)" }
+                     ?? "Nothing is scheduled. Record an airing from the Guide, or add a series pass.")
                     .font(.nocturne(Nocturne.TextSize.secondary))
                     .foregroundStyle(Nocturne.neutral500)
                     .padding(.vertical, 20)
+                    .focusable()
+                    .focused($focused, equals: "empty")
+                    .disabled(selected != nil || editingPass != nil)
             }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 26) {
@@ -143,7 +160,7 @@ struct ScheduleManageView: View {
     }
 
     private var subtitle: String? {
-        guard let schedule = model.schedule else { return nil }
+        guard let schedule = model.schedule else { return model.scheduleError == nil ? nil : "could not read" }
         return "\(schedule.count) scheduled · \(schedule.passes) pass\(schedule.passes == 1 ? "" : "es")"
     }
 }

@@ -25,6 +25,22 @@ enum ServerConfig {
     }
 }
 
+extension URLComponents {
+    /// Pass 120 (REVIEW.md S10): `queryItems`, then the two characters `URLComponents` leaves
+    /// literal in a value percent-encoded as well. The server reads every query value with Go's
+    /// `r.URL.Query()` (marlin-dvr at `0fa05e1`, Pass 119 §4), which decodes a literal "+" as a space
+    /// and drops any pair holding a literal ";" — so "A + B" arrived as "A   B" and "A;B" as nothing.
+    /// Neither is ever a separator in the encoded query, so the replacement touches values only.
+    /// Every other byte is `URLComponents`' own encoding, unchanged. The Guide's logo path keeps its
+    /// own Go-style escaper (`GuideChannelTile.artFeedPath`, Pass 86), which is not this.
+    mutating func setServerQueryItems(_ items: [URLQueryItem]) {
+        queryItems = items
+        percentEncodedQuery = percentEncodedQuery?
+            .replacingOccurrences(of: "+", with: "%2B")
+            .replacingOccurrences(of: ";", with: "%3B")
+    }
+}
+
 /// A failed request. `message` is the server's plain-text body for an HTTP error
 /// (the server answers errors with `http.Error`, never JSON — Pass 2 "How the inventory was made").
 struct APIError: Error, LocalizedError, CustomStringConvertible {
@@ -102,7 +118,7 @@ final class APIClient {
         guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false) else {
             throw APIError(kind: .badResponse, message: "cannot build URL", path: path)
         }
-        if !query.isEmpty { components.queryItems = query }
+        if !query.isEmpty { components.setServerQueryItems(query) }
         guard let url = components.url else {
             throw APIError(kind: .badResponse, message: "cannot build URL", path: path)
         }

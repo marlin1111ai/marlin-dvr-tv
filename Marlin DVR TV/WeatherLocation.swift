@@ -21,7 +21,8 @@ import Foundation
 import MapKit   // CLLocationCoordinate2D for the radar map
 
 /// The cached one-shot fix. Written once, on the first successful request; read on every
-/// launch after that so the system prompt appears exactly once.
+/// launch after that so the system prompt appears exactly once. Removed when this app's
+/// location access is Never or restricted (Pass 120, REVIEW.md S4).
 struct LocationFix: Codable, Equatable {
     var latitude: Double
     var longitude: Double
@@ -60,8 +61,9 @@ final class DeviceLocation: NSObject, CLLocationManagerDelegate {
     /// this the screen would sit on "Finding this Apple TV's location…" for ever.
     private static let timeout: Duration = .seconds(25)
     private var timeoutTask: Task<Void, Never>?
-    /// `requestLocation` is only sent once per launch, however many times the authorization
-    /// callback fires.
+    /// `requestLocation` is sent once per attempt, however many times the authorization callback
+    /// fires. A failed or timed-out attempt clears it, so "Try again" asks again (Pass 120,
+    /// REVIEW.md S16); a fix never clears it.
     private var requested = false
 
     override init() {
@@ -83,13 +85,28 @@ final class DeviceLocation: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    private static func dropCache() {
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+    }
+
     // MARK: The one shot
 
     /// Called once when Weather first needs a location. A cached fix short-circuits the
-    /// whole thing — no prompt, no request.
+    /// whole thing — no prompt, no request — unless this app's location access is Never or
+    /// restricted in tvOS Settings: then the saved fix is dropped and nothing uses it (Pass 120,
+    /// REVIEW.md S4).
     func start() {
         if case .ready = state { return }
         if case .asking = state { return }
+
+        switch manager.authorizationStatus {
+        case .denied, .restricted:
+            Self.dropCache()
+            finish(.declined)
+            return
+        default:
+            break
+        }
 
         if let fix = Self.cachedFix {
             state = .ready(fix)
@@ -125,6 +142,7 @@ final class DeviceLocation: NSObject, CLLocationManagerDelegate {
         timeoutTask = Task { [weak self] in
             try? await Task.sleep(for: Self.timeout)
             guard !Task.isCancelled, let self, case .asking = self.state else { return }
+            self.requested = false
             self.state = .failed("This Apple TV did not answer with a location within 25 seconds.")
         }
     }
@@ -142,6 +160,7 @@ final class DeviceLocation: NSObject, CLLocationManagerDelegate {
         case .authorizedWhenInUse, .authorizedAlways:
             if state.fix == nil { requestOnce() }
         case .denied, .restricted:
+            Self.dropCache()
             finish(.declined)
         case .notDetermined:
             break   // the prompt is still up
@@ -166,6 +185,7 @@ final class DeviceLocation: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         // A denial arrives here as kCLErrorDenied on some tvOS builds rather than through
         // the authorization callback; say the honest thing either way.
+        requested = false
         if let clError = error as? CLError, clError.code == .denied {
             finish(.declined)
         } else {

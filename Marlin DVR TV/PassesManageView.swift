@@ -36,7 +36,7 @@ struct PassesManageView: View {
                         Task {
                             await model.refreshPasses()
                             await model.refreshSchedule()
-                            focusSoon { focused = model.passes.first?.id }
+                            focusSoon { focused = model.passes.first?.id ?? "empty" }
                         }
                     },
                     onClose: {
@@ -47,7 +47,7 @@ struct PassesManageView: View {
                 )
             }
         }
-        .onAppear { focusSoon { focused = model.passes.first?.id } }
+        .onAppear { focusSoon { focused = model.passes.first?.id ?? "empty" } }
         .onExitCommand {
             if editing != nil {
                 let id = editing?.id
@@ -73,10 +73,17 @@ struct PassesManageView: View {
                     .lineLimit(1)
             }
             if model.passes.isEmpty {
-                Text("No series passes yet. Open an airing in the Guide and choose Record the series.")
+                // Pass 120 (REVIEW.md S7, S8): Trash's rule (`TrashManageView.swift:56-69`) — focusable
+                // as "empty" so Menu still reaches `.onExitCommand` with no rows (Pass 33), and a
+                // failed read says so instead of "No series passes yet".
+                Text(model.passesError.map { "Your passes could not be read — \($0)" }
+                     ?? "No series passes yet. Open an airing in the Guide and choose Record the series.")
                     .font(.nocturne(Nocturne.TextSize.secondary))
                     .foregroundStyle(Nocturne.neutral500)
                     .padding(.vertical, 20)
+                    .focusable()
+                    .focused($focused, equals: "empty")
+                    .disabled(editing != nil)
             }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 14) {
@@ -97,6 +104,7 @@ struct PassesManageView: View {
 
     private var subtitle: String? {
         let n = model.passes.count
+        if n == 0 && model.passesError != nil { return "could not read" }
         let jobs = model.passes.reduce(0) { $0 + $1.jobCount }
         return "\(n) pass\(n == 1 ? "" : "es") · \(jobs) airing\(jobs == 1 ? "" : "s") queued"
     }

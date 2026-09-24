@@ -3103,3 +3103,97 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
   contain its own SHA. It lives in the pass response and in the next pass's notebook entry
   (DECISIONS.md, 2026-09-11 (Pass 68)).
+
+## 2026-09-24 (Pass 120 — REVIEW.md's twelve SWEEP items built)
+
+- **Pass 119's verified push SHA is `8e68d01`** (`8e68d019561b023f32e0d77b0e7422f453039414`). Before this
+  pass changed anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read that SHA, `git rev-list --left-right --count main...origin/main` was
+  `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **Owner's answers (2026-09-24), "aa", as this pass's prompt relays them:**
+  1. **The sort and the order stand as Pass 119 laid them out.** This sweep comes first. G, S5, S6 and S11
+     follow, each as its own pass, and the owner tests each one before the next.
+  2. **S13 includes the Player info panel's matching line** (`PlayerInfoPanel.swift:203` at Pass 119). This
+     keeps Pass 108's rule that each panel button does what the airing sheet's control does
+     (DECISIONS.md:2530-2532).
+
+  Recorded as they arrived; nothing is claimed beyond them. This answers Pass 119's one open question.
+- **Built — the twelve SWEEP items, in the files Pass 119's report names for each, and no other:**
+  - **S1.** The shared scheme keeps the UI-test target and selects none of its tests
+    (`useTestSelectionWhitelist = "YES"`, an empty `<SelectedTests>`). ⌘U or a bare `xcodebuild test` runs
+    nothing. Every `-only-testing` command still runs the class it names.
+  - **S2.** `ShowDetailSeriesPassUITests` stops before its Select when the focus check fails.
+  - **S4.** With the app's location Never or restricted, `start()` drops the saved fix and declines before it
+    reads the cache.
+  - **S7.** An empty Scheduled Recordings or Your Passes keeps a focusable sentence, as Trash does.
+  - **S8.** A failed storage, schedule or passes read shows its error on the hub and in the list instead of
+    an empty list or "Reading the server…". A later good read clears it. There is no new read.
+  - **S9.** Show detail's Keep or Delete also rewrites the show the Player is handed.
+  - **S10.** "+" and ";" in query values are percent-encoded in `APIClient`'s URL builder, the show-poster
+    builder, Trash's poster builder and On Later's feed-art builder. The Guide's logo escaper was not moved.
+  - **S12.** The info panel's end-of-airing reload runs in the panel's own task. It is no longer a task keyed
+    on the `program` it sets itself.
+  - **S13.** The sheet's delete re-read and its re-read on open keep no stale booking after a successful
+    read. The panel's delete re-read does the same.
+  - **S14.** Favorites reloads every 60 s, as On Now does.
+  - **S15.** A camera card keeps its last picture while the next one loads. `ServerImage` is unchanged.
+  - **S16.** A failed or timed-out location request clears the flag that blocked a retry.
+- **Where the build departed from Pass 119's report — S1.** Pass 119's option A, marking the testable
+  `skipped = "YES"`, was measured and **breaks every recorded run command**. `xcodebuild build-for-testing`
+  then writes a run spec with `"TestConfigurations" => []`, with and without `-only-testing`. The form built
+  instead is in the same single file.
+  - **Its unnamed run spec:** the target with `"OnlyTestIdentifiers" => []`. `man xcodebuild.xctestrun`
+    says of that list, "All other tests will be excluded from the test run."
+  - **Its named route, enumerated on Home Theater without executing:** `-enumerate-tests` with one method
+    named listed that method as the only enabled test and the other 73 as disabled. No launch ping reached the
+    server in that window.
+  - **An unnamed enumeration on the device was not made,** because it would launch the runner with the bundle
+    unfiltered. **The unnamed case is proven from the spec, not measured.**
+- **Found while building, recorded as facts:**
+  - `GET /api/status` answered **1.11.1** on 2026-09-24. The last reading was 1.10.0 on 2026-09-19. What
+    1.11.x changed was not read.
+  - *Hitler's DNA* is now the seventh show, past the shelves' `limit: 6`, so Pass 103's harness cannot reach
+    it and its happy path cannot pass today.
+  - The one camera, Cow Cam, was offline all night ("No route to host" in the server's log).
+- **Records this pass changes, recorded forward and not edited** (the quotes are in the report's §8):
+  - **Pass 13's "a cached fix short-circuits `start()` entirely"** no longer holds under Never or restricted.
+  - **Pass 32's "the `?? job` fallback the sheet's other writes use"** now describes `record()` and
+    `recordSeries()` only.
+  - **Pass 108's "screens underneath show a change … the next time they are opened"** now reads "within
+    about a minute" for Favorites.
+  - Pass 108's mirror records stay true, because the panel got S13's fix too.
+- **The one run.** One invocation on Home Theater, `-only-testing:"Marlin DVR TVUITests/Pass120SweepUITests"`, 01:40:00–02:06:58 on
+  2026-09-24: **TEST SUCCEEDED, 4 tests, 0 failures.**
+  - `GET /api/logs` holds its four launch pings (01:40:08, 01:41:14, 01:42:03 and 01:42:19, one client id) and
+    one live play session (POST 02:04:11, DELETE 02:06:13). There was no other non-GET request in that window.
+  - A `PUT /api/library/recordings/…` at 01:07:29 that trashed *The Food That Built America* S4 E5 came from a
+    different client id, which pinged at 01:02:05. It was not this pass's.
+  - What the run showed:
+    - Home's glance drew weather.
+    - Manage DVR's hub showed real counts and disk figures. Each list opened on its first row, and Menu returned
+      to the hub.
+    - "Tiki + Tierney" opened its airing sheet.
+    - The offline camera showed "no snapshot".
+    - Favorites' DISCOVERY and AHC rows changed 39 s after 02:00, with focus unmoved.
+    - HISTORY's info panel, held across 02:06, went from "Pawn Stars: Best Of" / "Add to pass" to "Pawn
+      Stars" / "Edit pass" / "◆ Series pass · 1 recording scheduled · new episodes".
+    - After the Player closed, the HISTORY row read "Pawn Stars, ends 3:03 AM".
+  - Details, and the screenshots in `reports/assets/pass120/`, are in the report's §5.
+- **Run, traced or not visible, item by item:** 
+  - **Run:** S10 (the "+" half), S12 (the pass half), S14.
+  - **Run on the success or non-empty path only:** S7, S8.
+  - **Run for the regression only:** S4 (location allowed).
+  - **Run for the offline path only:** S15.
+  - **The named route run; the unnamed case proven from the run spec, not measured:** S1.
+  - **Traced:** S2, S9, S13 and S16, and the rest of each item above.
+  - **Not visible on Home Theater:** S1, S2, S8 (while the server answers) and S16 (it holds a saved fix).
+    S7 is not visible while both lists have rows.
+- **Nothing was pushed. The owner tests on Home Theater first.** The bedroom Apple TV was not touched. Under
+  the standing rule, it is brought up once this batch is proven.
+- **No write of any kind went to the server.** Every request this pass made is a GET. In the one run the app
+  also sent its launch pings and the play session for one live channel. Nothing was installed on this Mac. The
+  run put this pass's app build, and its UI-test runner, on Home Theater, as every test run does. marlin-dvr
+  was not cloned or read.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).

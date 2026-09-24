@@ -121,19 +121,17 @@ struct CameraCard: View {
     let snapshotPath: String
     let focused: Bool
 
+    /// Pass 120 (REVIEW.md S15): the last snapshot this card drew. Each refresh changes
+    /// `snapshotPath`, and `AsyncImage` drops its picture the moment its URL changes — so every card
+    /// blinked to the placeholder every 45 s. While the new one loads, this is drawn instead.
+    @State private var lastSnapshot: Image?
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                ServerImage(path: snapshotPath) {
-                    ZStack {
-                        LinearGradient(colors: [Nocturne.neutral800, Nocturne.neutral900], startPoint: .top, endPoint: .bottom)
-                        Text(camera.online ? "snapshot.jpg" : "no snapshot")
-                            .font(.nocturne(Nocturne.TextSize.floor))
-                            .foregroundStyle(Nocturne.neutral600)
-                    }
-                }
-                .frame(height: 330)
-                .clipped()
+                snapshot
+                    .frame(height: 330)
+                    .clipped()
                 Text(camera.online ? "Online" : "Offline")
                     .font(.nocturne(Nocturne.TextSize.floor))
                     .foregroundStyle(Nocturne.neutral200)
@@ -166,5 +164,50 @@ struct CameraCard: View {
         .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
         .focusTreatment(focused, restingRing: Nocturne.hairline)
+    }
+
+    /// `ServerImage`'s own drawing, done here so that view — and its 14 other callers — stay as they
+    /// are: the new snapshot once it has loaded; the last one while it loads, for a camera that is
+    /// online; today's placeholder on the first load, for an offline camera and on a failure, which
+    /// also forgets the last picture so a stale one never comes back.
+    @ViewBuilder
+    private var snapshot: some View {
+        if let url = ServerConfig.resolve(snapshotPath) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    picture(image)
+                        .onAppear { lastSnapshot = image }
+                case .failure:
+                    placeholder
+                        .onAppear { lastSnapshot = nil }
+                default:
+                    // Still loading.
+                    if camera.online, let lastSnapshot {
+                        picture(lastSnapshot)
+                    } else {
+                        placeholder
+                    }
+                }
+            }
+        } else {
+            placeholder
+        }
+    }
+
+    /// Sized by the card's frame, never by the image — `ServerImage`'s `Color.clear` overlay (Pass 6).
+    private func picture(_ image: Image) -> some View {
+        Color.clear
+            .overlay { image.resizable().aspectRatio(contentMode: .fill) }
+            .clipped()
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            LinearGradient(colors: [Nocturne.neutral800, Nocturne.neutral900], startPoint: .top, endPoint: .bottom)
+            Text(camera.online ? "snapshot.jpg" : "no snapshot")
+                .font(.nocturne(Nocturne.TextSize.floor))
+                .foregroundStyle(Nocturne.neutral600)
+        }
     }
 }
