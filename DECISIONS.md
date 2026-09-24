@@ -3042,3 +3042,64 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-24 (Pass 119 — REVIEW.md's should-fix items and the Guide's Left back-step sorted; the privacy findings closed)
+
+- **The audit's push is `33666a2`** (`33666a244c6f0b9e35c61d40904aa9db58eb67a0`), **REVIEW.md alone**:
+  `git show --stat 33666a2` lists one file, `REVIEW.md`, 248 insertions, and its one parent is
+  `e7dc4c8`. It is the whole-project read-only review of 2026-09-23 at `e7dc4c8`.
+- **Pass 118's verified push SHA is `e7dc4c8`** (`e7dc4c88e55b8578aaa1913e2f7e9bcb24ffa566`), read from
+  git: `git rev-parse e7dc4c8` gives that SHA, it is the parent of `33666a2`, and
+  `git merge-base --is-ancestor e7dc4c8 origin/main` succeeds.
+- **Before this pass changed anything**, `git fetch origin` then `git rev-parse main`,
+  `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `33666a244c6f0b9e35c61d40904aa9db58eb67a0`, `git rev-list --left-right --count main...origin/main`
+  was `0 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **Owner's call: REVIEW.md's C1, S3, N23 and N24 are closed.** His words, as this pass's prompt relays
+  them: **"I don't care who going to see that its my network"** and **"make sure he closes that"**.
+  Recorded as they arrived; nothing is claimed beyond them. What the four cover, named by kind and not
+  reproduced here: his home address and the Apple TV's position in the public repo's reports, and his
+  name in the signing identity three reports quote (C1); the server-issued client ids and LAN addresses
+  in three early reports, and the app printing the client id and the Apple TV's LAN address to the
+  console on every launch (S3); the radar and weather screenshots that place the house (N23); and the
+  screenshots of the outdoor camera's picture (N24). **The repository stays public. Nothing is redacted,
+  removed or rewritten — in the current files or in history — and no pass or audit raises any of it
+  again.**
+- **Owner's pick (2026-09-23), answering "a": build the fifteen "should fix" items — S1, S2 and
+  S4–S16 — and item G.** **REVIEW.md's other findings, N1–N22 and N25–N55, were not picked, and are
+  not to be built or re-reported unless he asks for one by name.**
+- **Item G, as the owner decided it on 2026-09-23, his words "go back as it did forward":** while the
+  Guide's window is ahead of the current half hour, a Left press that would otherwise take focus out of
+  the grid into the sidebar instead moves the window back one slot (30 min) — time strip, header and
+  every row together — and focus stays in the grid. The mirror of Pass 77's Right: one slot per press,
+  Pass 77's focus rule mirrored, refetch only by the existing rule. Never earlier than the current half
+  hour; once there, Left goes to the sidebar exactly as today. **When built, it changes what Passes 77
+  and 78 recorded as decided and accepted — "forward only", and Left and a rail trip behaving "exactly
+  as they did" — for that one press**; the quotes are in the report's §3.
+- **The sort, which is what the pass was for.** **SWEEP** (independent, additive): **S1, S2, S4, S7,
+  S8, S9, S10, S12, S13, S14, S15, S16.** **STANDALONE** (a recorded fragile or load-bearing path, or
+  plainly hard): **G** (nothing at HEAD can keep focus in the grid on that Left; the block is unmeasured
+  and may touch Pass 25's `railRestore`), **S5** (the restart path, recorded STANDALONE since Pass 95),
+  **S6** (the Player's seek path), **S11** (`fetch`'s landing lines, which carry Pass 116's accepted
+  "no notice is coalesced away"). REVIEW.md's description holds in part only for S1, S5, S6, S7, S10,
+  S11, S13 and S16, each set out in the report; none fails outright. Found in the recon and recorded:
+  the Guide has two "existing rules" for refetching, and only the two-sided one
+  (`windowStart < fetchStart || windowEnd > fetchEnd`, `tick`/`snapToNow`) works for G's back-step —
+  `nudgeForward` uses the one-sided line, contrary to the Pass 79 entry's wording.
+- **One question waits on the owner, and only S13 turns on it:** whether S13 also fixes the Player
+  info panel's copy of the sheet's delete re-read (`PlayerInfoPanel.swift:203`) — which his Pass 108
+  decision, that each panel button does what the airing sheet's control does, would have it — or fixes
+  the sheet only and records the panel as differing. **No other question passed**: G's own text fixes
+  its trigger (Left on a row's channel cell, the only press that crosses from the grid to the rail),
+  G does not name the Guide's footer, and S5 is answered by his pick.
+- **The findings are in `reports/2026-09-24-pass119-review-should-fix-sort.md`**, read at HEAD
+  `33666a244c6f0b9e35c61d40904aa9db58eb67a0`, in two rounds — eight readers and an independent notebook
+  sweep, then eight verifiers told to refute them — with every quote checked verbatim at its line.
+- **No app-target file, test-target file, project file, `design/` file, `REVIEW.md`, existing report or
+  `icon-source/` file was changed.** Neither Apple TV was touched, nothing was built, and **no request
+  of any kind went to the server**. The only network reads were marlin-dvr's source at `0fa05e1` through
+  `gh api`, printed to the terminal and never written to disk; `~/Xcode/marlin-dvr-reference` does not
+  exist.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot
+  contain its own SHA. It lives in the pass response and in the next pass's notebook entry
+  (DECISIONS.md, 2026-09-11 (Pass 68)).
