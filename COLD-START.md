@@ -210,6 +210,17 @@ call of 2026-09-20 and is not to be raised unless he asks for it by name** (DECI
 
 ## Next step
 
+**Pass 120's sweep is accepted and pushed.** The owner tested it on Home Theater and accepted it on 2026-09-24 — his word, **"good"** — and Pass 121 pushed its commit `dc9b271` together with its own notebook commit, as a fast-forward from `8e68d01`. Nothing is claimed beyond his word: **every path Pass 120 labelled traced stays traced** (DECISIONS.md, 2026-09-24 (Pass 121); `reports/2026-09-24-pass120-sweep-built.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `dc9b271`'s app code — which Pass 121's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then G, S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa"). Each item's files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 120's build**, installed by its one run. **The bedroom Apple TV still runs `1895327`'s app code.** The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 120's commit is `dc9b271`**, pushed by Pass 121; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 121 response and belongs in the next pass's entry.
+
+*Next step as Pass 120 left it (2026-09-24) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 121 was named for `COLD-START.md` and `DECISIONS.md` only, not the history file:*
+
 **Pass 120 (2026-09-24) built the twelve SWEEP items — S1, S2, S4, S7, S8, S9, S10, S12, S13, S14, S15 and S16 — and committed them without pushing.** Each was built in the files Pass 119's report names for it and no other. What each does, what was run and what is traced, and how to see each one on Home Theater are in `reports/2026-09-24-pass120-sweep-built.md`.
 
 - **The owner tests this on Home Theater first.** The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.

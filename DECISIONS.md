@@ -3197,3 +3197,34 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-24 (Pass 121 — Pass 120 accepted and pushed)
+
+- **Owner acceptance (2026-09-24): Pass 120 was tested on Home Theater and accepted. His word, as this pass's
+  prompt relays it: "good".** Recorded verbatim, and **nothing is claimed beyond it**. It is **not** taken as a
+  measurement of any path Pass 120 did not run: **every path Pass 120 labelled traced stays traced** — S2, S9,
+  S13 and S16, the ";" half of S10 and the booking half of S12 — and so does every other label in that entry's
+  *Run, traced or not visible, item by item*: S7 and S8 run on the non-empty and success paths only, S4 run
+  with location allowed only, S15 run with the camera offline only, S1's unnamed case proven from the run
+  spec and not measured. It answers nothing in the Pass 120 report's *What I am least sure of*.
+- **Pushed by this pass:** Pass 120's `dc9b271` (`dc9b271e35982ce8e0b332e1ddea81ac7fcf6cb6`), together with this
+  pass's own notebook commit, **as a fast-forward from `8e68d01`** (Pass 119), which stays an ancestor. Nothing
+  forced, rebased or amended.
+- **Home Theater runs Pass 120's build**, installed by its one run. **The bedroom Apple TV is still on
+  `1895327`'s app code.** This batch is now proven on Home Theater, so the standing rule — *"whenever we done
+  doing updates and they a proven always update the bedroom"* — falls due and it is **brought up next**; both
+  Apple TVs were do-not-touch here, so nothing was installed.
+- **After the bedroom, G, S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass
+  120's "aa").
+- **`COLD-START.md`'s server line already reads 1.11.1** — Pass 120 wrote it, as `GET /api/status` answered on
+  2026-09-24 — so it was not changed. Only *Next step* was changed in that file, with Pass 120's paragraph kept
+  beneath it, labelled.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or report was
+  changed in this pass**, neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Before this pass changed anything,** `git fetch origin` then `git rev-parse main` read
+  `dc9b271e35982ce8e0b332e1ddea81ac7fcf6cb6`, `git rev-parse origin/main` and `git ls-remote origin main` both
+  read `8e68d019561b023f32e0d77b0e7422f453039414`, `git rev-list --left-right --count main...origin/main` was
+  `1 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
