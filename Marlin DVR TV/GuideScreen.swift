@@ -39,6 +39,14 @@
 //  and then `GET /api/guide` at the window and the collection already showing, so nothing moves —
 //  see `serverRedraw`. The channel cell's number, name, logo and favourite all arrive inside the
 //  guide's rows, which is why `GET /api/channels` is not part of it.
+//  Pass 122: Left goes back as Right went forward (owner, 2026-09-23: "go back as it did forward").
+//  While the window is ahead of the current half hour, a Left press on a row's channel cell — the
+//  one press that would take focus out of the grid into the rail — moves the window back one slot
+//  instead, and focus stays on that channel cell; at the current half hour Left reaches the rail as
+//  it always has. For that one press this supersedes "Forward only" above. Neither `.onMoveCommand`
+//  nor a press recognizer on the window can stop the focus engine carrying that press into the rail
+//  (measured on Home Theater, Pass 122), so the press is caught by where focus goes — see
+//  `backStepCatcher`.
 //
 
 import SwiftUI
@@ -170,6 +178,28 @@ final class GuideModel {
         guard next <= limit else { return false }
         windowStart = next
         if windowEnd > fetchEnd { await fetch(from: windowStart) }
+        return true
+    }
+
+    /// Pass 122: one Left press on a row's channel cell moves the window **back one slot** while it is
+    /// ahead of the current half hour (owner, 2026-09-23: "go back as it did forward") — the mirror of
+    /// `nudgeForward()`, so the time strip, every row and the header move together for the same reason.
+    ///
+    /// **Never earlier than the current half hour**, read from the wall clock at the press as
+    /// `snapToNow()` reads it, because `now` can be up to a minute behind it; this keeps `tick()`'s
+    /// ground truth, that `windowStart` is only ever the current half hour or ahead of it. **The
+    /// refetch is the two-sided rule** `tick()` and `snapToNow()` use: the one-sided line
+    /// `nudgeForward()` uses can never fire going backward, and a step below `fetchStart` — after the
+    /// 45th nudge, a second "+12h", a collection pick or a server notice made while ahead — needs one.
+    ///
+    /// Returns true when the window actually moved.
+    @discardableResult
+    func nudgeBack() async -> Bool {
+        now = Date()
+        let previous = windowStart - Self.slotSeconds
+        guard previous >= nowHalfHour else { return false }
+        windowStart = previous
+        if windowStart < fetchStart || windowEnd > fetchEnd { await fetch(from: windowStart) }
         return true
     }
 
@@ -425,6 +455,8 @@ struct GuideScreen: View {
                 // screen's root `ZStack` and found all 22 move commands arrived at this one and
                 // none at the root. A handler on the root sees nothing.
                 .onMoveCommand { direction in gridMoved(direction) }
+                // Pass 122: outside the `ScrollView`, which would clip it. See `backStepCatcher`.
+                .overlay(alignment: .topLeading) { backStepCatcher }
                 legend
                     .padding(.top, 16)
             }
@@ -503,6 +535,8 @@ struct GuideScreen: View {
             // Pass 77: a step rightward inside one row is how a Right press the focus engine
             // consumed is told apart from one it refused. See `gridMoved`.
             if Self.isRightwardStep(from: old, to: new) { engineSteppedRightAt = Date() }
+            // Pass 122: the focus engine took a Left off a channel cell on to the catcher.
+            if new == Self.backStepID { backStep(from: old) }
         }
         .onChange(of: hold.holds) { _, _ in handleHold() }
         .onExitCommand {
@@ -606,6 +640,67 @@ struct GuideScreen: View {
             let landing = cells.first?.id ?? firstCellID ?? "collections"
             print("[guide] nudge -> \(model.windowLabel) · fetch=\(model.fetchStart) · \(id) left the window, focus to \(landing)")
             focusSoon { focused = landing }
+        }
+    }
+
+    // MARK: Pass 122 — Left at a row's channel cell moves the window back one slot (item G)
+
+    /// The focus id of the back-step catcher. It is neither a programme cell id nor a channel cell id,
+    /// so `lastCell`, `lastGridFocus`, `isRightwardStep`, `handleHold` and the redraw's focus repair
+    /// all pass over it.
+    static let backStepID = "back-step"
+
+    /// True while the catcher is drawn: the window is ahead of the current half hour, a channel cell
+    /// has focus — or the catcher itself does, for the moment it takes to hand focus back — and none
+    /// of this screen's overlays is up. At the current half hour it is not drawn at all, so Left from a
+    /// channel cell reaches the rail exactly as it always has.
+    private var backStepCatcherOn: Bool {
+        guard model.loaded, !model.isAtNow, !overlayOpen, let focused else { return false }
+        return focused.hasPrefix("ch:") || focused == Self.backStepID
+    }
+
+    /// An invisible focusable strip, 16 pt wide, in the gap between the rail and the channel column.
+    ///
+    /// **Why a strip and not a handler — measured on Home Theater in Pass 122.** Left from a channel
+    /// cell reaches the grid's `.onMoveCommand` only **after** focus has landed in the rail and
+    /// `ScreenShell.railRestore` has run — 3–12 ms later, on every crossing. A press recognizer on the
+    /// window sees the press 16–31 ms **before** focus moves, and neither a tap recognizer nor a
+    /// zero-length long press — which began, and took the press away from `.onMoveCommand` — stopped
+    /// the focus engine carrying focus into the rail. What the engine does obey is geometry: this
+    /// strip is nearer to a channel cell than any rail entry, so the engine lands on it instead, and
+    /// `backStep(from:)` hands focus straight back — 7 ms and 13 ms in that run — without the rail
+    /// ever having focus.
+    @ViewBuilder
+    private var backStepCatcher: some View {
+        if backStepCatcherOn {
+            Color.clear
+                .frame(width: 16)
+                .frame(maxHeight: .infinity)
+                .focusable()
+                .focusEffectDisabled()
+                .focused($focused, equals: Self.backStepID)
+                .offset(x: -28)
+        }
+    }
+
+    /// Focus landed on the catcher: a Left press on channel cell `old`. Focus goes straight back to that
+    /// cell — which a back-step never takes out of the window, so this is Pass 77's rule, "stays while
+    /// it is in the window", mirrored — and the window steps back one slot.
+    private func backStep(from old: String?) {
+        guard let old, old.hasPrefix("ch:") else {
+            // Not reachable by design: the catcher is drawn only while a channel cell has focus.
+            let landing = lastGridFocus ?? firstCellID ?? "collections"
+            print("[guide] back-step: the catcher was reached from \(old ?? "nothing"), not a channel cell — focus to \(landing), window unchanged")
+            Task { focused = landing }
+            return
+        }
+        Task {
+            focused = old
+            if await model.nudgeBack() {
+                print("[guide] back-step -> \(model.windowLabel) · fetch=\(model.fetchStart) · focus stays on \(old)")
+            } else {
+                print("[guide] back-step refused at \(model.windowLabel) — the window is at the current half hour")
+            }
         }
     }
 

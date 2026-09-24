@@ -3228,3 +3228,90 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-24 (Pass 122 — the Guide's Left back-step, item G)
+
+- **Pass 121's verified push SHA is `6950e2a`** (`6950e2a2d5d6bff80cd732f9d7645de530564531`). Before this
+  pass changed anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read that SHA, and `git status --porcelain` showed only `?? icon-source/`.
+- **The bedroom Apple TV was brought up to Pass 120's code after Pass 121 — install only, no commit, and no
+  pass number of its own.** "Master Bedroom ATV" was built from `6950e2a`, with no tracked change, by **Pass
+  117's method**: `xcodebuild … -destination 'platform=tvOS,name=Master Bedroom ATV' -allowProvisioningUpdates
+  -derivedDataPath ~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom build` — **`** BUILD SUCCEEDED
+  **`, exit 0**, signed with `tvOS Team Provisioning Profile: com.marlin1111.MarlinDVRTV`, no Xcode component
+  or platform install asked for — then `xcrun devicectl device install app --device "Master Bedroom ATV"` —
+  **`App installed`, exit 0**. Both first try. The television reads **Marlin DVR TV · Version 1.0 · Bundle
+  Version 1** (`devicectl device info apps`), as the built `Info.plist` does. **Three strings Pass 120 added —
+  "Could not read the disk space", "Scheduled Recordings could not be read" and "Your Passes could not be
+  read" — are in the built `Marlin DVR TV.debug.dylib`**; each first appears in `dc9b271`, none exists at
+  `1895327`, and the app code of `dc9b271` and `6950e2a` is identical. **It was not launched.** **Both Apple
+  TVs then ran Pass 120's code**, which is the standing rule satisfied for that batch.
+- **Item G, built** — the owner's decision of 2026-09-23, his words **"go back as it did forward"**
+  (DECISIONS.md, 2026-09-24 (Pass 119)): while the Guide's window is ahead of the current half hour, **a Left
+  press on a row's channel cell — the press that would otherwise take focus out of the grid into the rail —
+  moves the window back one slot (30 min)**, the time strip, the header and every row together, and **focus
+  stays on that channel cell**. One slot per press; never earlier than the current half hour; **at the
+  current half hour Left reaches the rail exactly as before.**
+- **Step 2, measured before building — the Guide's own handler never sees that press in time, and no press
+  handler can stop it, but the Guide can keep focus in the grid by geometry.** A disclosed `[probe]`
+  diagnostic in `GuideScreen.swift`, in four arms over two builds on Home Theater, each launched with its
+  console by `devicectl` and driven by a temporary harness (clicks; XCUITest cannot swipe):
+  - **Nothing in the way (O):** on every crossing into the rail — ten across all arms — `ScreenShell`'s own
+    `[rail] entered …` printed first, then the Guide's focus went nil, and the grid's `.onMoveCommand`
+    arrived **3–12 ms after that**.
+  - **A tap recognizer on the window for Left (R):** it saw the press **16–31 ms before** focus moved, never
+    recognized, and focus went to the rail.
+  - **A zero-length long press on the window (L):** it **began** at press-down and took the press away from
+    `.onMoveCommand` — no move command reached the grid — and **focus still went to the rail**. The focus
+    engine moves on its own, whatever the app does with the press.
+  - **A focusable strip (C):** a 16 pt invisible strip in the gap between the rail and the channel column,
+    drawn only while a channel cell has focus and the window is ahead. **The engine chose it over the rail,
+    and focus was handed straight back to the channel cell in 7 ms and 13 ms, with no `[rail] entered`
+    line** — the rail was never focused.
+
+  **So `ScreenShell.swift` and `RailView.swift` were not needed and are byte-identical.** The diagnostic was
+  reverted with `git checkout --` — `GuideScreen.swift` back to HEAD's blob `f32e7be` — and its harness
+  deleted, before step 3 was written. The diagnostic and its harness carried the label "Pass 121" by mistake;
+  its exact diff is in the report.
+- **What was built — `GuideScreen.swift` alone, +95 / −0.** `GuideModel.nudgeBack()`, the mirror of
+  `nudgeForward()`: the floor is the current half hour read from the wall clock at the press, as `snapToNow()`
+  reads it, so `windowStart` stays the current half hour or ahead of it, which `tick()` relies on (Pass 79);
+  **the refetch is the two-sided rule `tick()` and `snapToNow()` use**, the only one of the Guide's two that
+  can fire going backward (Pass 119). The strip exactly as measured, `backStepCatcher`, in an overlay of the
+  grid's `ScrollView`, drawn by `backStepCatcherOn` — loaded, not at now, no overlay up, a channel cell (or the
+  strip) focused. `backStep(from:)` hands focus back and steps. **Pass 77's focus rule mirrored**: the focused
+  item is the channel cell, which never leaves the window, so focus stays on it. Not changed: `gridMoved`,
+  `fetch` (S11), Menu, ↩ Now, +12h, the collection filter, the Pass 116 redraw, the footer. Build warnings: the
+  two pre-existing ones.
+- **Proven on Home Theater.** `GuideBackStepUITests` (new), `launch()`, one method, run by
+  `-only-testing:"Marlin DVR TVUITests/GuideBackStepUITests"`: **`** TEST EXECUTE SUCCEEDED **`, 1 test, 0
+  failures**, 10:13:05–10:14:04; **launch ping `10:13:11.061 POST /api/clients/<client id>/ping 200`**.
+  Four Right nudges took the window from 10:00 to 12:00; two Lefts along the row reached "FNC, 6073" with the
+  window unmoved; **four Lefts on that channel cell stepped it 12:00 → 11:30 → 11:00 → 10:30 → 10:00, the
+  header and the strip's first column with it, focus on "FNC, 6073" after each**; at 10:00 the strip read
+  "10:00 AM · now" and ↩ Now was gone; **one more Left reached the rail with the ring on Guide.** No
+  `GET /api/guide` after the Guide's two opening reads — every step stayed inside the fetched range. It was the
+  second run of the harness: the first, at 10:09, passed identically while the code's comments and the
+  harness's log prefix still said "Pass 121"; they were relabelled and the run repeated so that the committed
+  code is what ran. Eight screenshots in `reports/assets/pass122/`.
+- **Code-traced only:** **a swipe** (a long one may step more than one slot); a back-step below the fetched
+  range and its read; the minute after a half-hour boundary, when the stale `isAtNow` draws the strip and the
+  first Left is refused; a boundary during back-steps; Menu, ↩ Now and +12h after them; a server notice during
+  one; overlays; the Player on top; Up, Down and Right with the strip drawn; a fast presser; and whether the
+  7–13 ms hand-back shows as a blink of the ring.
+- **Records this pass changes, recorded forward and not edited:** Pass 77's *"forward only; Left, Menu,
+  `↩ Now`, `+12h` and a rail trip all behave exactly as they did"* (DECISIONS.md:1204-1206), Pass 78's
+  acceptance of the same (DECISIONS.md:1270-1273) and its report's line 23 now hold **except for Left on a
+  channel cell while the window is ahead**. `COLD-START.md`'s Guide line is brought to the current state in
+  place. **`GuideRightEdgeUITests.testScrollThenRailRoundTrip` can no longer pass as written** — its Lefts
+  from four slots ahead now step the window back instead of reaching the rail; it was not run or edited.
+- **Raised, not decided:** the footer while ahead still says "forward only"; the stale harness above.
+- **Home Theater now runs this pass's build**, put there by the runs; **the bedroom Apple TV runs Pass 120's
+  code**. Under the standing rule it is brought up once this is proven.
+- **No write of any kind went to the server.** The builder's only requests were two `GET /api/logs`; the
+  app's only non-GET requests were its six launch pings (four diagnostic launches, two runs), one client id.
+  Nothing was installed on this Mac; the installs were the app builds the pass's runs put on Home Theater.
+- **This pass is committed and NOT pushed** — the owner tests on Home Theater first. Its own commit SHA is not
+  written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
+  and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+- **The findings are in `reports/2026-09-24-pass122-guide-left-back-step.md`.**
