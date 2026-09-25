@@ -210,6 +210,17 @@ call of 2026-09-20 and is not to be raised unless he asks for it by name** (DECI
 
 ## Next step
 
+**S5 is accepted and pushed.** The owner tested Pass 125 on Home Theater and accepted it on 2026-09-25 — his words, **"all good"** — and Pass 126 pushed Pass 125's `cc0293f` together with its own notebook commit, as a fast-forward from `4a7f927`. Nothing is claimed beyond his words: **the failed-start path stays traced** — what his test and the run covered is Resume landing on the saved position and the position surviving leaving the Player (DECISIONS.md, 2026-09-25 (Pass 126); `reports/2026-09-25-pass125-s5-try-again-keeps-the-position.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `cc0293f`'s app code — which Pass 126's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa"). Each item's files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 125's build**, installed by its runs. **The bedroom Apple TV still runs Pass 123's code**, built from `4a7f927` and installed after Pass 124, not launched. The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 125's commit is `cc0293f`, pushed by Pass 126**; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 126 response and belongs in the next pass's entry.
+
+*Next step as Pass 125 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 126 was named for `COLD-START.md`'s *Next step* and `DECISIONS.md` only, not the history file:*
+
 **Pass 125 (2026-09-25) built S5 — "Try again" after a failed start no longer overwrites the recording's saved position with 0 — and committed it without pushing.** `restart(at:)` writes the resume store only once playback has attached at least once in that Player; the load-bearing `position = target` is untouched, and S6's lines are not in the diff. The failed-start path is traced (it needs the server down, or the Apple TV's network pulled, which the owner declined); the run was the regression Pass 119 named — Resume landed on the saved position and the position survived leaving the Player (`reports/2026-09-25-pass125-s5-try-again-keeps-the-position.md`).
 
 - **The owner tests this on Home Theater first.** What he can see on a healthy server is the regression only: open a recording with a saved position, Resume, watch it land where he left it, press Menu, and see the Resume line and the Continue watching card still there with the position moved on by what he watched. S5's own case shows only when a start fails — then "Try again" keeps his place instead of losing it. The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.

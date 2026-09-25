@@ -3559,3 +3559,36 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
   and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
 - **The findings are in `reports/2026-09-25-pass125-s5-try-again-keeps-the-position.md`.**
+
+## 2026-09-25 (Pass 126 — Pass 125 accepted and pushed)
+
+- **Owner acceptance (2026-09-25): Pass 125 was tested on Home Theater and accepted. His words, as this
+  pass's prompt relays them: "all good".** Recorded verbatim, and **nothing is claimed beyond them**. They are
+  **not** taken as a measurement of any path Pass 125 did not run: **the failed-start path stays traced** —
+  "Try again" after a failed start with the entry kept, a retry that fails again, Menu during the retry, the
+  retry that lands and seeks to the kept position, the `[resume] … is kept` line that no run has ever printed,
+  the `playNext` variant, and T1's hand-off, which stays traced as Pass 99 left it. What his test covered is
+  what the run covered: Resume landing on the saved position and the position surviving leaving the Player.
+  It answers nothing in the Pass 125 report's *What I am least sure of*.
+- **Pushed by this pass:** Pass 125's `cc0293f` (`cc0293f4f4f5a04d5623672ed6bb7adfbf7eb430`, S5), together with
+  this pass's own notebook commit, **as a fast-forward from `4a7f927`** (Pass 124), which stays an ancestor.
+  Nothing forced, rebased or amended.
+- **Home Theater runs Pass 125's build**, installed by its runs. **The bedroom Apple TV is still on Pass
+  123's code**, built from `4a7f927` and installed after Pass 124, not launched (DECISIONS.md, 2026-09-25
+  (Pass 125)). This batch is now proven on Home Theater, so the standing rule — *"whenever we done doing
+  updates and they a proven always update the bedroom"* — falls due and it is **brought up next**; both Apple
+  TVs were do-not-touch here, so nothing was installed.
+- **After the bedroom, S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's
+  "aa").
+- **Only *Next step* was changed in `COLD-START.md`**, with Pass 125's paragraph kept beneath it, labelled.
+  Pass 125's open questions — `armResumeSeek` reading its target out of `position`, and the kept line never
+  printed on a device — were not answered by his words and are not raised here.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or report was
+  changed in this pass**, neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Before this pass changed anything,** `git fetch origin` then `git rev-parse main` read
+  `cc0293f4f4f5a04d5623672ed6bb7adfbf7eb430`, `git rev-parse origin/main` and `git ls-remote origin main` both
+  read `4a7f927cd8a58088f0084aa416547083f3185b37`, `git rev-list --left-right --count main...origin/main` was
+  `1 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
