@@ -423,9 +423,26 @@ final class PlayerModel {
     /// Returns **true** when it acted, which is the caller's signal to swallow the press. It
     /// returns false while playing, on live, on a camera, and before the item exists — in every
     /// one of those cases the press falls straight through to Apple's transport bar, unchanged.
+    ///
+    /// **Pass 127 (S6):** it also returns false, and does nothing, while the item is not yet
+    /// `.readyToPlay` and while the resume seek is still in flight. `attach` sets `.playing` before
+    /// the item is ready — Pass 96 measured 0.45–0.79 s from attach to ready, then 0.19–0.32 s for
+    /// the resume seek — and a paused click in that window used to send `cancelPendingSeeks` and an
+    /// exact seek to an item with no timebase, and could cancel the resume seek after
+    /// `resumeSeekDone` was set, so the recording began at the top instead of the saved spot
+    /// (REVIEW.md S6; Pass 119). In those two cases the app still owns the arrow — it is paused on
+    /// a recording — so the press reaches neither this step nor Apple's skip: it does nothing at all.
     @discardableResult
     func frameStep(_ frames: Int) -> Bool {
         guard isRecording, isPaused, phase == .playing, frames != 0, let item = player.currentItem else { return false }
+        guard item.status == .readyToPlay else {
+            print("[framestep] declined — the item is not ready yet")
+            return false
+        }
+        guard pendingResumeSeek == nil else {
+            print("[framestep] declined — the resume seek is still in flight")
+            return false
+        }
         if frameRate <= 1 { refreshFrameRate() }
         let fps = frameRate > 1 ? frameRate : Self.defaultFrameRate
         let frameDuration = CMTime(value: CMTimeValue((Double(Self.frameTimescale) / fps).rounded()),

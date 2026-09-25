@@ -3592,3 +3592,91 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-25 (Pass 127 — S6: a frame-step click waits for the item and the resume seek)
+
+- **Pass 126's verified push SHA is `2888704`** (`2888704460533144b0a2032da11a51e1986a1ec2`). Before this pass
+  changed anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read that SHA, and `git status --porcelain` showed only `?? icon-source/`.
+- **The bedroom Apple TV was brought up to Pass 125's code after Pass 126 — install only, no commit, and no
+  pass number of its own** (2026-09-25, 18:58). "Master Bedroom ATV" was built from `2888704`, with no
+  tracked change, by **Pass 117's method** — **`** BUILD SUCCEEDED **`, exit 0**, a 5 s incremental build on
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` in which only `PlayerModel.swift` recompiled,
+  signed with `tvOS Team Provisioning Profile: com.marlin1111.MarlinDVRTV`, no Xcode component or platform
+  install asked for — then `xcrun devicectl device install app --device "Master Bedroom ATV"` — **`App
+  installed`, exit 0**. Both first try. The television reads **Marlin DVR TV · Version 1.0 · Bundle Version
+  1** (`devicectl device info apps`), as the built `Info.plist` does; the build was tied to its code by the
+  built `Marlin DVR TV.debug.dylib` carrying **Pass 125's "restart with nothing ever attached"**, absent from
+  the 92 KB launcher, which `git log -S` first finds in `cc0293f`, with Pass 122's and 123's strings still
+  there. **It was not launched.** **Both Apple TVs then ran Pass 125's code.** Home Theater was not touched
+  and no request went to the server.
+- **S6, built** — the owner's pick of 2026-09-23, as Pass 119's report describes it (§S6 (b)), and where that
+  report corrected REVIEW.md, the fix is to what the report found: the crash is not established, and the
+  window is the 0.45–0.79 s after attach at whatever point playback begins, plus the resume seek's
+  0.19–0.32 s flight. **`PlayerModel.swift` (+17 / −0) and `PlayerHost.swift` (+3 / −1, a comment)** — the two
+  files Pass 119 names for S6 and no other.
+  - **The defect, traced:** `attach` sets `.playing` before the item is `.readyToPlay`, and `frameStep`'s
+    guard checked pause, phase and the item but not readiness, so a paused click in that window sent
+    `cancelPendingSeeks` and an exact seek to an item with no timebase — and a click during the resume
+    seek's flight cancelled that seek after `resumeSeekDone` was set, so the recording began at the top
+    and the next save wrote the unmoved time over the stored entry.
+  - **The fix:** two guards at the top of `frameStep`, before `cancelPendingSeeks` (`:438-445`) — the item
+    must be `.readyToPlay`, and `pendingResumeSeek` must be nil — each declining with a console line. The
+    app owns the arrow whenever it is paused on a recording, so a declined click reaches neither this step
+    nor Apple's skip: it does nothing at all. The doc comment Pass 119 said would go stale (`:427-434`)
+    says so, and `PlayerHost.swift`'s Pass 28 paragraph (`:21-23`) gains the same sentence.
+  - **Untouched, by the pass's terms:** `restart(at:)` — `position = target` (`:882`) and Pass 125's
+    `if everAttached` (`:866`) are byte-identical; `armArrowOwnership` and `armSelectOwnership` are not in
+    the diff; nor are `seekToResumePosition`, `resumeSeekLanded` or `armResumeSeek`.
+- **The runs — five on Home Theater, two of them with the console attached; the app's code identical
+  throughout.** `FrameStepReadyUITests` (new): from the Continue watching shelf it opens *The Proof Is Out
+  There* S6 E16 (`dd5f3e4a6778`, 29.97 fps, 1 hr 11 min), presses Resume and, at about +0.9 s, Select to
+  pause, then six Right clicks at 120 ms, then sixty Right and sixty Left, then Menu from the paused state.
+  - **Drive 1, console attached (19:04:39 ping, session `19:05:08.214`): S6's window was hit and the fix
+    held.** The pause landed 0.16 s after attach, before the item was ready; the first click was
+    **declined — "the item is not ready yet"** (+1.2 s after the press), the second **declined — "the
+    resume seek is still in flight"**; then **`[resume] asked 898.00 s, landed t=898.000367`** — the seek
+    that a click used to cancel — and the other four clicks, sixty Right and sixty Left each stepped
+    **0.033367 s at 29.9700 fps**, 898.000 → 900.136 → 898.134. The harness then failed on itself:
+    its reading of Apple's transport-bar clock was the bar's scrub head, which the early pause had left at
+    0:00, and its Select to play on **seeked to that head** — `[player] playing (0:00)` — so `stop()` saved
+    a position under five seconds and the Resume line vanished.
+  - **Found beside S6, not S6's, measured once:** a pause that lands before the item is ready leaves Apple's
+    transport bar's scrub head at 0:00, it stays there through the resume seek and 126 frame steps, and the
+    Select that plays on seeks to it. Raised as an open question; nothing was built for it.
+  - **The subject's position was put back** by a third harness method, `testPutTheSubjectsPositionBack`
+    (19:17:43 ping; session `19:18:24`–`19:19:32`): the episode played from the top and Apple's own 10 s
+    skip walked it to **"15 min in"**, one minute past the "14 min in" the drive had found. Three earlier
+    attempts (19:10:58, 19:13:04, 19:14:45, 19:16:23 pings) failed in the harness's own navigation — the
+    shelf walk, a shelf card's badge-led label, and Right crossing into the episodes by way of "Edit series
+    pass" since Pass 103 — and each is now in the harness as it should be.
+  - **Drive 2, console attached (19:20:06 ping):** a faster start — the first fetch 16 ms after the session,
+    the seek landed at +0.8 s and the pause fell after it — so no click met the window; all 126 stepped
+    0.033367 s; Menu from paused kept "15 min in". **Run 1 with `launch()` (19:22:13 ping) passed**; two of
+    the harness's log strings were worded for drive 1 and were neutralised, and **run 2 (19:24:19–19:25:54,
+    `** TEST EXECUTE SUCCEEDED **`, 1 test, 0 failures, launch ping `19:24:24.346 POST
+    /api/clients/<client id>/ping 200`) is the run of record** — the committed harness is what ran: the
+    burst, 126 clicks, the app and the Player up throughout, no failure card, and **"Resume S6 E16 · 15 min
+    in" before and after**; its session `POST` at `19:24:41.250`, `DELETE` at `19:25:47.683` on the Menu.
+- **Run or traced.** **Run:** Resume landing on the saved position (drive 1's `landed t=898.000367` with the
+  burst under way, and every run's position kept to the minute); each paused click after that moving exactly
+  one frame (246 steps of 0.033367 s across the two console drives, none of another size); a click declined
+  in the not-ready window and in the seek's flight doing nothing at all (drive 1: two declined, the time
+  unmoved until the first stepped click); no crash across five runs. **Traced:** which clicks of the record
+  run's burst fell inside the window (its console is not attached; drive 1 is the measurement, on the same
+  binary); the exception REVIEW.md feared — never seen, on this tvOS or any other; the `playNext` variant.
+- **Records this pass changes, recorded forward and not edited:** DECISIONS.md, 2026-09-07 (frame-by-frame),
+  *"Left and right **clicks** move one frame while paused on a recording"* — with the narrow exception above;
+  `PlayerHost.swift`'s Pass 28 paragraph, amended in place as a comment. `COLD-START.md`'s Player line and
+  *Next step* are brought current in place.
+- **The saved positions:** *The Proof Is Out There* S6 E16 read "14 min in" before the pass, was lost by
+  drive 1's harness, restored to "15 min in", and reads "15 min in" after the record; *History's Greatest
+  Mysteries*'s two positions were not touched. No entry was cleared and nothing was deleted, trashed, kept,
+  scheduled or marked watched. **The only requests beyond the app's own** — eight launch pings, five play
+  sessions (a `POST` and a `DELETE` each) and GETs — **were two `GET /api/logs`.** No `GET /api/settings`.
+  Nothing was installed on this Mac; the bedroom Apple TV was not touched; marlin-dvr was not cloned or read.
+  Build warnings: the two pre-existing ones, `PlayerModel.swift:373` and `GuideScreen.swift:1026`.
+- **This pass is committed and NOT pushed** — the owner tests on Home Theater first. Its own commit SHA is not
+  written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
+  and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+- **The findings are in `reports/2026-09-25-pass127-s6-frame-step-waits-for-ready.md`.**

@@ -18,7 +18,9 @@
 //  same `pressesBegan`/`pressesEnded` pair that already claims Menu. `frameStep` answers false
 //  in every other case — playing, live, camera — and the press falls straight through to
 //  Apple's transport bar unchanged. Swipes are untouched: a swipe on the touch surface is not
-//  a `UIPress`, so only the discrete click reaches this code at all.
+//  a `UIPress`, so only the discrete click reaches this code at all. (Pass 127, S6: it also
+//  answers false while the item is not yet ready or the resume seek is still in flight; the app
+//  owns the arrow then, so that press does nothing at all — no step and no skip.)
 //
 //  Pass 29: claiming the press was not enough. Measured on the device — every arrow press
 //  reached `pressesBegan` and none was forwarded to `super`, and Apple skipped 10 s anyway —
