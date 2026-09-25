@@ -210,6 +210,17 @@ call of 2026-09-20 and is not to be raised unless he asks for it by name** (DECI
 
 ## Next step
 
+**S6 is accepted and pushed.** The owner tested Pass 127 on Home Theater and accepted it on 2026-09-25 — his words, **"all good"** — and Pass 128 pushed Pass 127's `94b10d6` together with its own notebook commit, as a fast-forward from `2888704`. Nothing is claimed beyond his words: **every path Pass 127 labelled traced stays traced**, and **its open question 1 stays open** — a pause that lands before the item is ready leaves Apple's scrub head at 0:00 and a Select to play on seeks there; Menu is the safe way out of such a pause until he decides (DECISIONS.md, 2026-09-25 (Pass 128); `reports/2026-09-25-pass127-s6-frame-step-waits-for-ready.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `94b10d6`'s app code — which Pass 128's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then S11, its own pass**, the last of the batch the owner picked on 2026-09-23 (Pass 120's "aa"); its files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 127's build**, installed by its runs. **The bedroom Apple TV still runs Pass 125's code**, built from `2888704` and installed after Pass 126, not launched. The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 127's commit is `94b10d6`, pushed by Pass 128**; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 128 response and belongs in the next pass's entry.
+
+*Next step as Pass 127 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 128 was named for `COLD-START.md`'s *Next step* and `DECISIONS.md` only, not the history file:*
+
 **Pass 127 (2026-09-25) built S6 — a frame-step click does nothing until the recording's item is ready and no resume seek is still in flight — and committed it without pushing.** Two guards at the top of `frameStep`, before its `cancelPendingSeeks`; `restart(at:)`, S5's change, `armArrowOwnership` and `armSelectOwnership` are untouched. Measured on Home Theater with the console attached: a burst of paused clicks inside the first two seconds after Resume had two declined in the window, the resume seek still landed on the saved spot, and every later click stepped one frame; the run of record with `launch()` passed (`reports/2026-09-25-pass127-s6-frame-step-waits-for-ready.md`). **Found beside it, not built:** a pause before the item is ready leaves Apple's scrub head at 0:00 and a Select to play on seeks there (the report's open question 1).
 
 - **The owner tests this on Home Theater first.** To see it: Resume a recording and press Select to pause at once, then click Left or Right — for about a second nothing happens, then each click moves one frame, and the recording is where he left it, not at the top; a pause made later steps as it always has. **Leave with Menu rather than Select after such an early pause** until open question 1 is decided. The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.

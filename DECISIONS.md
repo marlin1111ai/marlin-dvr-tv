@@ -3680,3 +3680,41 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
   and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
 - **The findings are in `reports/2026-09-25-pass127-s6-frame-step-waits-for-ready.md`.**
+
+## 2026-09-25 (Pass 128 — Pass 127 accepted and pushed)
+
+- **Owner acceptance (2026-09-25): Pass 127 was tested on Home Theater and accepted. His words, as this
+  pass's prompt relays them: "all good".** Recorded verbatim, and **nothing is claimed beyond them**. They are
+  **not** taken as a measurement of any path Pass 127 did not run: **every path Pass 127 labelled traced stays
+  traced** — which clicks of the record run's burst fell inside the not-ready window (drive 1, with the
+  console, is the measurement of that window, on the same binary); the exception REVIEW.md feared, never
+  seen on any tvOS; the `playNext` variant, and a live channel or camera; and the dependence on
+  `AVPlayerViewController`'s internals that makes a declined click do nothing. **Pass 127's open question 1
+  is not closed by his words either**: a pause that lands before the item is ready leaves Apple's transport
+  bar's scrub head at 0:00 and a Select to play on seeks there — measured once, nothing built, and still his
+  to decide. What his test covered is what the run covered: a burst of paused clicks straight after Resume,
+  no crash, the picture where he left off, and each click one frame. It answers nothing in the Pass 127
+  report's *What I am least sure of*.
+- **Pushed by this pass:** Pass 127's `94b10d6` (`94b10d6dc5c872b301a1f9872c3112f98e2fdf04`, S6), together with
+  this pass's own notebook commit, **as a fast-forward from `2888704`** (Pass 126), which stays an ancestor.
+  Nothing forced, rebased or amended.
+- **Home Theater runs Pass 127's build**, installed by its runs. **The bedroom Apple TV is still on Pass
+  125's code**, built from `2888704` and installed after Pass 126, not launched (DECISIONS.md, 2026-09-25
+  (Pass 127)). This batch is now proven on Home Theater, so the standing rule — *"whenever we done doing
+  updates and they a proven always update the bedroom"* — falls due and it is **brought up next**; both Apple
+  TVs were do-not-touch here, so nothing was installed.
+- **After the bedroom, S11, its own pass** — the last of the batch the owner picked on 2026-09-23 (Pass 120's
+  "aa"), and the one whose `fetch` landing lines carry Pass 116's accepted "no notice is coalesced away".
+- **Only *Next step* was changed in `COLD-START.md`**, with Pass 127's paragraph kept beneath it, labelled.
+  Pass 127's other open questions — no position readable inside the Player since Pass 110, and
+  `armResumeSeek` reading its target out of `position` — were not answered by his words and are not raised
+  here.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or report was
+  changed in this pass**, neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Before this pass changed anything,** `git fetch origin` then `git rev-parse main` read
+  `94b10d6dc5c872b301a1f9872c3112f98e2fdf04`, `git rev-parse origin/main` and `git ls-remote origin main` both
+  read `2888704460533144b0a2032da11a51e1986a1ec2`, `git rev-list --left-right --count main...origin/main` was
+  `1 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
