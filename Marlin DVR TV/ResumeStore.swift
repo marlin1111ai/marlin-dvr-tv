@@ -81,8 +81,9 @@ enum ResumeStore {
     /// The store's own record of "finished" is the **absence** of an entry: playing a recording to
     /// its end clears it (`PlayerModel.playedToEnd`), and `saveResume` refuses to write a position
     /// inside the last three seconds. This is the second guard, for an entry left at the very end
-    /// by `restart(at:)`, which saves unconditionally. It is deliberately the same three-second
-    /// test `saveResume` uses.
+    /// by `restart(at:)`, which saves without that test whenever playback has attached (since
+    /// Pass 125 it saves nothing when nothing ever attached). It is deliberately the same
+    /// three-second test `saveResume` uses.
     ///
     /// It says nothing about the server's `watched` flag, which is shared with the other Apple TV;
     /// a resume position is this Apple TV's alone (DECISIONS.md, 2026-09-05 (design); 2026-09-16

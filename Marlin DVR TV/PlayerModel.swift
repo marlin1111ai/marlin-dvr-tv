@@ -80,6 +80,11 @@ final class PlayerModel {
     private var observations: [NSKeyValueObservation] = []
     private var notificationTokens: [NSObjectProtocol] = []
     private var attachedAt: Date?
+    /// Pass 125 (S5): whether this Player has ever attached an item. `attachedAt` cannot say so,
+    /// because `detachPlayer()` clears it before `restart(at:)` reads anything. It is false from a
+    /// failed start until a retry attaches — and until then `position` has never meant a place in
+    /// the recording, so `restart(at:)` must not write it to the resume store.
+    private var everAttached = false
     private var lastResumeSave = Date.distantPast
     private var restartingBeyond = false
 
@@ -205,6 +210,7 @@ final class PlayerModel {
         player.replaceCurrentItem(with: item)
         player.play()
         attachedAt = Date()
+        everAttached = true
         phase = .playing
         showHUD(for: 6)
         loadCommercialsOnce()
@@ -820,8 +826,10 @@ final class PlayerModel {
     ///
     /// **Pass 98 (Pass 95's T1).** A restarted recording reaches `target` exactly the way Resume
     /// does since Pass 96 — the new session asks for the **whole** recording and the app seeks —
-    /// and not by pre-seeding `startOffset`. Everything else about the teardown is untouched: the
-    /// same detach, the same DELETE, the same `ResumeStore.save`, in the same order.
+    /// and not by pre-seeding `startOffset`. The teardown is otherwise as it was: the same detach,
+    /// the same DELETE, the same `ResumeStore.save`, in the same order — except that **since Pass 125
+    /// (S5) the save happens only once playback has attached at least once in this Player**; see the
+    /// comment at the save.
     func restart(at requested: Double? = nil) async {
         let target = requested ?? (isRecording ? position : 0)
         writeDone = false
@@ -830,7 +838,19 @@ final class PlayerModel {
         if let id = session?.id { await sessions.stop(id: id) }
         session = nil
         if isRecording, let episode = request.episode {
-            ResumeStore.save(recordingID: episode.id, position: target, duration: duration)
+            // Pass 125 (S5): only a position playback has actually reached is worth writing. After a
+            // **failed start** nothing attached and `position` is still 0, so this save used to
+            // overwrite the recording's real saved position with 0 — "Try again" cost the owner his
+            // place, and a second failure, or Menu during the retry, left the 0 there (REVIEW.md S5;
+            // Pass 119). The entry is kept instead: a retry that lands still seeks to it, because
+            // `armResumeSeek` falls back to `request.resumeSeconds` when `position` is 0, and
+            // `tick()` saves from there. Every other caller — a failure or a 410 after playback, and
+            // the seek past the prepared range — has attached, and saves exactly as before.
+            if everAttached {
+                ResumeStore.save(recordingID: episode.id, position: target, duration: duration)
+            } else {
+                print(String(format: "[resume] restart with nothing ever attached — the saved position on %@ is kept, not overwritten with %.2f s", episode.id, target))
+            }
         }
         // Was `startOffset = target`, which claimed the session would begin there. Since Pass 96 it
         // does not: `PlayRequest.startSeconds` is 0 for a recording, so the server builds the whole

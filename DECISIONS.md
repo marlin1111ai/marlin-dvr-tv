@@ -3479,3 +3479,83 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-25 (Pass 125 — S5: "Try again" after a failed start keeps the saved position)
+
+- **Pass 124's verified push SHA is `4a7f927`** (`4a7f927cd8a58088f0084aa416547083f3185b37`). Before this pass
+  changed anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read that SHA, and `git status --porcelain` showed only `?? icon-source/`.
+- **The bedroom Apple TV was brought up to Pass 123's code after Pass 124 — install only, no commit, and no
+  pass number of its own** (2026-09-25, 18:38–18:39). "Master Bedroom ATV" was built from `4a7f927`, with no
+  tracked change, by **Pass 117's method**: `xcodebuild … -destination 'platform=tvOS,name=Master Bedroom ATV'
+  -allowProvisioningUpdates -derivedDataPath ~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom
+  build` — **`** BUILD SUCCEEDED **`, exit 0**, a 6 s incremental build on that DerivedData, signed with `tvOS
+  Team Provisioning Profile: com.marlin1111.MarlinDVRTV`, no Xcode component or platform install asked for —
+  then `xcrun devicectl device install app --device "Master Bedroom ATV"` — **`App installed`, exit 0**. Both
+  first try. The television reads **Marlin DVR TV · Version 1.0 · Bundle Version 1** (`devicectl device info
+  apps`), as the built `Info.plist` does; those numbers identify no build, so it was tied to its code: the built
+  `Marlin DVR TV.debug.dylib` carries **Pass 122's "back-step refused at" and "back-step -> " and Pass 123's
+  "the held ring stops here", "left ring held", "left ring let go" and "forward-step"** — none of them in the
+  92 KB launcher — with the footer's "24 hours per request" present and the old "forward only, 24 hours"
+  absent; `git log -S` shows each first appears in `65321af` and `2ca8e39`. **It was not launched.** **Both
+  Apple TVs then ran Pass 123's code**, which is the standing rule satisfied for that batch. Home Theater was
+  not touched and no request went to the server.
+- **S5, built** — the owner's pick of 2026-09-23, as Pass 119's report describes it (§S5 (b)), and where that
+  report corrected REVIEW.md, the fix is to what the report found: the progress bar vanished only when the
+  session POST itself failed; the loss was the saved position. **`PlayerModel.swift` (+23 / −3) and
+  `ResumeStore.swift` (+3 / −2, a comment only)** — the two files Pass 119 names for S5 and no other.
+  - **The defect, traced:** after a *failed start* nothing has attached, so `position` is still 0 — only
+    `armResumeSeek`, inside `attach`, ever moves it before playback. "Try again" runs `restart()`, whose
+    target is that `position`, and its `ResumeStore.save` wrote **0 over the recording's real saved
+    position**. A retry that landed healed it (the seek falls back to `request.resumeSeconds`); a retry
+    that failed, or Menu during "Preparing the recording", left the 0, and `isResumable` then dropped the
+    Resume line and the Continue watching card.
+  - **The fix:** `everAttached` (`:87`), true from the first `attach` (`:213`) and never cleared —
+    `attachedAt` cannot serve, because `detachPlayer()` clears it before `restart(at:)` reads anything —
+    and `restart(at:)` saves only when it is true (`:849`); otherwise it prints `[resume] restart with
+    nothing ever attached — the saved position on … is kept` (`:852`) and leaves the entry alone. A retry
+    that lands still seeks to the saved position, because `armResumeSeek` falls back to
+    `request.resumeSeconds` when `position` is 0, and `tick()` saves from there. Every other caller — a
+    failure or a 410 after playback, and the seek past the prepared range — has attached and saves as before.
+  - **Untouched, by the pass's terms:** `position = target` (`:865`, load-bearing since Pass 98) is
+    byte-identical; `frameStep`, `seekToResumePosition`, `cancelPendingSeeks` and everything S6 touches are
+    not in the diff; `fetch`-less this time — `GuideScreen.swift`, `ScreenShell.swift`, `RailView.swift` and
+    `PlayerHost.swift` are unchanged. The doc comment Pass 119 said would go stale (`:826-831`) now says the
+    save is conditional, and `ResumeStore.isFinished`'s "which saves unconditionally" now says so too.
+- **The run — the regression Pass 119 says a healthy server can prove, and nothing more.** `ResumeRoundTripUITests`
+  (new), `launch()`, one method: from the Recordings screen's Continue watching shelf it opens the standing
+  subject, *History's Greatest Mysteries* S4 E14 (`5328bb632e76`), presses Resume, pauses on Apple's transport
+  and reads its clock, plays on, leaves with Menu, and reads the Resume line and the card again.
+  - **Run 1 (18:46, ping `18:46:16.742`) failed on the harness, not the app.** It waited for "Preparing the
+    recording", which a finished recording no longer shows for long enough to be seen — the server serves the
+    `.mp4` beside it with no remux (1.9.1) — and its fallback test, that show detail's text had gone, was wrong
+    too: the text under the Player's cover stays in the accessibility tree. **The app had played**: the
+    server's log holds `POST /api/play/sessions` 0.4 s after the press, the commercials read and twenty
+    seconds of chunk fetches, and the session ended by the server's own 15 s watchdog after the test runner
+    killed the app. The harness now proves the Player is up by the transport clock it reads on the pause.
+  - **Run 2 (18:48:21–18:49:18, ping `18:48:27.336`), `** TEST EXECUTE SUCCEEDED **`, 1 test, 0 failures:**
+    the card and the Resume line both read **"S4 E14 · 3 min in"** before; Resume pressed at `18:48:44.278`,
+    the session created at `18:48:44.183` (the server's clock) and its `.mp4` served with no ffmpeg; **paused
+    at transport clock `03:24` — 204 s, inside the saved minute**; played on; Menu at about `18:49:05`, the
+    session's `DELETE` at `18:49:05.750`; **show detail's Resume line "S4 E14 · 3 min in" and the card "S4 E14
+    · 3 min in" after** — the position survived leaving. Five screenshots in `reports/assets/pass125/`.
+- **Traced, never driven — the whole of S5's own path:** "Try again" after a failed start with the entry kept;
+  a retry that fails again; Menu during the retry; the `[resume] … is kept` line, which no run has printed;
+  the `playNext` variant; and T1's hand-off, which stays traced (Pass 99). The failure needs the server down
+  or restarting, or the Apple TV's network pulled, which the owner declined on 2026-09-16 — none was forced.
+- **Records this pass changes, recorded forward and not edited:** Pass 98's *"Nothing else in the teardown
+  changed: the same detach, the same DELETE, the same `ResumeStore.save`, in the same order"* (DECISIONS.md,
+  2026-09-16 (Pass 98)) — the save is conditional now; `reports/2026-09-16-pass91-continue-watching.md:161`,
+  *"On `restart(at:)` — unconditionally"* — the shelf's own end-of-file test is still needed for an attached
+  restart at the end. `COLD-START.md`'s Player line and its closed-section T1 entry are brought current in place.
+- **The saved position on `5328bb632e76` read "3 min in" before and after** — the two runs played about
+  twenty seconds of it each; no entry was cleared, nothing was deleted, trashed, kept, scheduled or marked
+  watched. **The only requests beyond the app's own** — its two launch pings, its two play sessions (one
+  `POST` each, run 2's `DELETE` on Menu, run 1's ended by the server's watchdog) and its GETs — **were two
+  `GET /api/logs`.** No `GET /api/settings`. Nothing was installed on this Mac; the bedroom Apple TV was not
+  touched; marlin-dvr was not cloned or read. Build warnings: the two pre-existing ones, `PlayerModel.swift`
+  `nominalFrameRate` (now `:373`) and `GuideScreen.swift:1026`.
+- **This pass is committed and NOT pushed** — the owner tests on Home Theater first. Its own commit SHA is not
+  written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
+  and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+- **The findings are in `reports/2026-09-25-pass125-s5-try-again-keeps-the-position.md`.**
