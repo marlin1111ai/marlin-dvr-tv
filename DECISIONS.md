@@ -3440,3 +3440,42 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   its own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md,
   2026-09-11 (Pass 68)).
 - **The findings are in `reports/2026-09-25-pass123-guide-swipe-and-held-ring.md`.**
+
+## 2026-09-25 (Pass 124 — Passes 122 and 123 accepted and pushed)
+
+- **Owner acceptance (2026-09-25): Pass 123 was tested on Home Theater and accepted. His words, as this
+  pass's prompt relays them: "all looks good to me".** Recorded verbatim, and **nothing is claimed beyond
+  them**. They are **not** taken as a measurement of any path Pass 122 or Pass 123 did not run: **every path
+  those passes labelled traced stays traced.** From Pass 122 — a back-step below the fetched range and its
+  read, the minute after a half-hour boundary, a boundary during back-steps, Menu, ↩ Now and +12h after
+  them, a server notice during one, an overlay open, the Player on top, Up, Down and Right with the strip
+  drawn, a fast presser, and a swipe left, of which his words of 2026-09-24 ("the gong back works swipe and
+  the left over ring click") are his report and not a measurement this project holds. From Pass 123 — a
+  swipe right and a swipe left, a held Right across the 45-slot refetch or at the horizon, a hold on a row
+  with no later cell, a held Left that starts at now, a held Left that starts one slot ahead, a second Left
+  inside about half a second of a hold's release, the engine's one extra forward step after a held Right is
+  released, the physical ring's repeat itself, and Up, Down and Right with either catcher drawn. It answers
+  nothing in the Pass 123 report's *What I am least sure of*.
+- **Pushed by this pass:** Pass 122's `65321af` (`65321afc9063aa4fdc72f57cce3a499996f50197`, item G, the
+  Guide's Left back-step) and Pass 123's `2ca8e39` (`2ca8e39acfc327ba623f1eb7ec67a98fb7232cc0`, the swipe
+  right, the held ring and the footer), together with this pass's own notebook commit, **as a fast-forward
+  from `6950e2a`** (Pass 121), which stays an ancestor. Nothing forced, rebased or amended.
+- **Home Theater runs Pass 123's build**, installed by its runs. **The bedroom Apple TV is still on Pass
+  120's code**, built from `6950e2a` and installed after Pass 121, not launched (DECISIONS.md, 2026-09-24
+  (Pass 122)). This batch is now proven on Home Theater, so the standing rule — *"whenever we done doing
+  updates and they a proven always update the bedroom"* — falls due and it is **brought up next**; both
+  Apple TVs were do-not-touch here, so nothing was installed.
+- **After the bedroom, S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass
+  120's "aa").
+- **Only *Next step* was changed in `COLD-START.md`**, with Pass 123's paragraph kept beneath it, labelled.
+  Pass 123's open questions — the at-now footer's "forward only", the one-slot-ahead held Left, the
+  202-row redraw setting the pace — were not answered by his words and are not raised here.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or report was
+  changed in this pass**, neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Before this pass changed anything,** `git fetch origin` then `git rev-parse main` read
+  `2ca8e39acfc327ba623f1eb7ec67a98fb7232cc0`, `git rev-parse origin/main` and `git ls-remote origin main` both
+  read `6950e2a2d5d6bff80cd732f9d7645de530564531`, `git rev-list --left-right --count main...origin/main` was
+  `2 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
