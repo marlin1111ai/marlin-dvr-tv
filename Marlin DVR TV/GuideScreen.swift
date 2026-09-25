@@ -47,9 +47,23 @@
 //  nor a press recognizer on the window can stop the focus engine carrying that press into the rail
 //  (measured on Home Theater, Pass 122), so the press is caught by where focus goes — see
 //  `backStepCatcher`.
+//  Pass 123: a swipe right, and a held ring (owner, 2026-09-24: "I can't swipe right"; "I should be able
+//  to hold the right outer ring and keep scrolling"). Measured on Home Theater: a swipe never reaches
+//  `.onMoveCommand`, a held ring reaches it once, at release, and while the ring is held the focus
+//  engine repeats the focus move on its own, about every 0.27 s after a 0.55 s delay. So Right at a
+//  row's last cell is caught the way Pass 122 catches Left — by a strip focus can land on,
+//  `forwardStepCatcher` — and every landing, by a swipe, a click or a repeat of the held ring, steps
+//  the window forward through Pass 77's `nudge(from:)`. A held Left repeats through `backStepCatcher`
+//  the same way and stops at the current half hour: `RingHoldWatch` reports whether Left is still
+//  down, and while it is the catcher stays drawn there; a Left pressed on its own at now reaches the
+//  rail as before. The back-step catcher itself is now a UIKit focusable view with a focus guide to its
+//  left that redirects back to it, because a repeat that fires while the catcher still has focus —
+//  the hand-back takes up to 0.5 s while a 202-row grid redraws — went Left from the catcher into the
+//  rail (measured). The app adds no timer of its own — the pace is the platform's repeat.
 //
 
 import SwiftUI
+import UIKit
 
 enum GuideMark {
     /// ● while the recorder is running, ● for a Record Now booking that has not started,
@@ -365,6 +379,17 @@ struct GuideScreen: View {
     /// where an overlay hands focus back to, so it is what a redraw that waited for that overlay
     /// has to check is still there. (`lastCell` above is programme cells only.)
     @State private var lastGridFocus: String?
+    /// Pass 123: true while Left on the ring has been down longer than a click, and after it comes up
+    /// until the focus engine has stopped repeating it (`holdQuiet`). It keeps `backStepCatcher` drawn
+    /// at the current half hour, so a held Left stops there instead of carrying on into the rail. See
+    /// `RingHoldWatch`.
+    @State private var leftRingHeld = false
+    /// Pass 123: true from Left's press-down to its release, as `RingHoldWatch` reports them.
+    @State private var leftRingDown = false
+    /// Pass 123: true while `backStepCatcher`'s UIKit view has focus, when this screen's own `focused`
+    /// is nil. It stands in for the `"back-step"` focus id the SwiftUI strip had.
+    @State private var backStepCatcherFocused = false
+    @State private var leftRingTask: Task<Void, Never>?
 
     /// The focus id of a channel cell in the left column.
     static func channelFocusID(_ channel: MergedChannel) -> String { "ch:\(channel.id)" }
@@ -457,6 +482,8 @@ struct GuideScreen: View {
                 .onMoveCommand { direction in gridMoved(direction) }
                 // Pass 122: outside the `ScrollView`, which would clip it. See `backStepCatcher`.
                 .overlay(alignment: .topLeading) { backStepCatcher }
+                // Pass 123: its mirror on the right. See `forwardStepCatcher`.
+                .overlay(alignment: .topTrailing) { forwardStepCatcher }
                 legend
                     .padding(.top, 16)
             }
@@ -493,6 +520,11 @@ struct GuideScreen: View {
                     }
                 )
             }
+        }
+        // Pass 123: the one thing the catchers cannot tell on their own — whether Left is still down.
+        .background {
+            RingHoldWatch(shouldWatch: { !overlayOpen && !hold.suspended && focused != nil },
+                          pressed: leftRingPressed, released: leftRingReleased)
         }
         .defaultFocus($focused, "loading")
         .task {
@@ -535,8 +567,9 @@ struct GuideScreen: View {
             // Pass 77: a step rightward inside one row is how a Right press the focus engine
             // consumed is told apart from one it refused. See `gridMoved`.
             if Self.isRightwardStep(from: old, to: new) { engineSteppedRightAt = Date() }
-            // Pass 122: the focus engine took a Left off a channel cell on to the catcher.
-            if new == Self.backStepID { backStep(from: old) }
+            // Pass 122's back-step catcher reports its landing itself since Pass 123 (`BackStepCatcher`).
+            // Pass 123: the focus engine took a Right off a row's last cell on to the forward catcher.
+            if new == Self.forwardStepID { forwardStep(from: old) }
         }
         .onChange(of: hold.holds) { _, _ in handleHold() }
         .onExitCommand {
@@ -604,6 +637,11 @@ struct GuideScreen: View {
     /// press, two actions, which is Pass 29's defect in another costume. The edge is therefore read
     /// from the settled value, and a press the engine consumed is recognised by the rightward step
     /// it made rather than by any before/after comparison of `focused`.
+    ///
+    /// Pass 123: a Right the engine carries on to `forwardStepCatcher` is nudged there, and that
+    /// landing stamps `engineSteppedRightAt` too, so this stands down for it as for any other press
+    /// the engine consumed. What is left for this path is a press the engine refused — which, with the
+    /// catcher drawn, is none on the tvOS measured, and every one should a tvOS not choose the strip.
     private func gridMoved(_ direction: MoveCommandDirection) {
         guard direction == .right, model.sheet == nil, channelMenu == nil, !collectionsOpen else { return }
         let pressedAt = Date()
@@ -645,18 +683,17 @@ struct GuideScreen: View {
 
     // MARK: Pass 122 — Left at a row's channel cell moves the window back one slot (item G)
 
-    /// The focus id of the back-step catcher. It is neither a programme cell id nor a channel cell id,
-    /// so `lastCell`, `lastGridFocus`, `isRightwardStep`, `handleHold` and the redraw's focus repair
-    /// all pass over it.
-    static let backStepID = "back-step"
-
     /// True while the catcher is drawn: the window is ahead of the current half hour, a channel cell
     /// has focus — or the catcher itself does, for the moment it takes to hand focus back — and none
-    /// of this screen's overlays is up. At the current half hour it is not drawn at all, so Left from a
-    /// channel cell reaches the rail exactly as it always has.
+    /// of this screen's overlays is up. At the current half hour it is not drawn, so Left from a
+    /// channel cell reaches the rail exactly as it always has — **except while Left is still held**
+    /// (Pass 123): the focus engine repeats a held press on its own, and without the catcher its next
+    /// repeat would carry focus into the rail, so the catcher stays, refuses, and hands focus back
+    /// until the ring is let go.
     private var backStepCatcherOn: Bool {
-        guard model.loaded, !model.isAtNow, !overlayOpen, let focused else { return false }
-        return focused.hasPrefix("ch:") || focused == Self.backStepID
+        guard model.loaded, !overlayOpen else { return false }
+        guard !model.isAtNow || leftRingHeld else { return false }
+        return focused?.hasPrefix("ch:") == true || backStepCatcherFocused
     }
 
     /// An invisible focusable strip, 16 pt wide, in the gap between the rail and the channel column.
@@ -670,22 +707,29 @@ struct GuideScreen: View {
     /// strip is nearer to a channel cell than any rail entry, so the engine lands on it instead, and
     /// `backStep(from:)` hands focus straight back — 7 ms and 13 ms in that run — without the rail
     /// ever having focus.
+    ///
+    /// **Why it is a UIKit view since Pass 123.** A held ring repeats the Left every 0.27 s, and on a
+    /// 202-row grid the hand-back is drawn up to 0.5 s after the landing, so a repeat can fire while
+    /// the strip itself still has focus — and Left from the strip went into the rail (measured, once
+    /// in three runs). `BackStepCatcher` is the same 16 pt landing with a focus guide 8 pt to its left
+    /// that redirects back to the landing, so a Left from it goes nowhere at all, whatever the timing.
     @ViewBuilder
     private var backStepCatcher: some View {
         if backStepCatcherOn {
-            Color.clear
-                .frame(width: 16)
-                .frame(maxHeight: .infinity)
-                .focusable()
-                .focusEffectDisabled()
-                .focused($focused, equals: Self.backStepID)
-                .offset(x: -28)
+            BackStepCatcher(onFocus: { has in
+                backStepCatcherFocused = has
+                if has { backStep(from: lastGridFocus) }
+            })
+            .frame(width: BackStepCatcherView.width)
+            .frame(maxHeight: .infinity)
+            .offset(x: -(BackStepCatcherView.width + 12))
         }
     }
 
-    /// Focus landed on the catcher: a Left press on channel cell `old`. Focus goes straight back to that
-    /// cell — which a back-step never takes out of the window, so this is Pass 77's rule, "stays while
-    /// it is in the window", mirrored — and the window steps back one slot.
+    /// Focus landed on the catcher: a Left press on channel cell `old` — the last grid focus, since the
+    /// catcher is drawn only while a channel cell has it. Focus goes straight back to that cell — which
+    /// a back-step never takes out of the window, so this is Pass 77's rule, "stays while it is in the
+    /// window", mirrored — and the window steps back one slot.
     private func backStep(from old: String?) {
         guard let old, old.hasPrefix("ch:") else {
             // Not reachable by design: the catcher is drawn only while a channel cell has focus.
@@ -699,8 +743,117 @@ struct GuideScreen: View {
             if await model.nudgeBack() {
                 print("[guide] back-step -> \(model.windowLabel) · fetch=\(model.fetchStart) · focus stays on \(old)")
             } else {
-                print("[guide] back-step refused at \(model.windowLabel) — the window is at the current half hour")
+                print("[guide] back-step refused at \(model.windowLabel) — the window is at the current half hour\(leftRingHeld ? "; the held ring stops here" : "")")
+                // Pass 123: the ring is up and the engine still repeated it — wait for it to go quiet.
+                if leftRingHeld && !leftRingDown { leftRingLetGoWhenQuiet() }
             }
+        }
+    }
+
+    // MARK: Pass 123 — a swipe right, and a held ring (owner, 2026-09-24)
+
+    /// The focus id of the forward-step catcher: neither a programme cell id nor a channel cell id, so
+    /// `lastCell`, `lastGridFocus`, `isRightwardStep`, `handleHold` and the redraw's focus repair all
+    /// pass over it.
+    static let forwardStepID = "forward-step"
+
+    /// True while the forward catcher is drawn: the focused cell is the last one its row has in the
+    /// window — or the catcher itself has focus, for the moment it takes to hand focus back — and
+    /// none of this screen's overlays is up.
+    private var forwardStepCatcherOn: Bool {
+        guard model.loaded, !overlayOpen, let focused else { return false }
+        return focused == Self.forwardStepID || lastCellID(inRowOf: focused) == focused
+    }
+
+    /// An invisible focusable strip, 16 pt wide, in the trailing margin right of the programme area —
+    /// `backStepCatcher`'s mirror.
+    ///
+    /// **Why a strip here too — measured on Home Theater in Pass 123.** A swipe on the touch surface
+    /// never reaches `.onMoveCommand` (the owner's "I can't swipe right"), and a held ring reaches it
+    /// once, at release. What both do is move focus — and while the ring is held, the focus engine
+    /// repeats that move on its own, about every 0.27 s after a 0.55 s delay, until it is let go. At a
+    /// row's last cell there was nothing to the right, so the engine had nowhere to go and the app heard
+    /// nothing. Now there is this strip: every move on to it — a swipe, a click, or each repeat of a
+    /// held ring — is handed straight back and steps the window forward one slot through Pass 77's
+    /// `nudge(from:)`, so its stops and its focus rule are untouched. `gridMoved` still nudges a click
+    /// the engine refused, should a tvOS not choose the strip, and stands down when the strip took it.
+    @ViewBuilder
+    private var forwardStepCatcher: some View {
+        if forwardStepCatcherOn {
+            Color.clear
+                .frame(width: 16)
+                .frame(maxHeight: .infinity)
+                .focusable()
+                .focusEffectDisabled()
+                .focused($focused, equals: Self.forwardStepID)
+                .offset(x: 28)
+        }
+    }
+
+    /// Focus landed on the forward catcher: a Right — swiped, clicked, or repeated by a held ring — on
+    /// programme cell `old`, the last in its row. Focus goes straight back to it and the window steps
+    /// forward by Pass 77's rule, which settles focus itself.
+    private func forwardStep(from old: String?) {
+        // The engine consumed this press, so `gridMoved` must not nudge it a second time: the same
+        // stamp a rightward step inside a row leaves (see `isRightwardStep`).
+        engineSteppedRightAt = Date()
+        guard let old, Self.cellKey(old) != nil else {
+            // Not reachable by design: the catcher is drawn only while a programme cell has focus.
+            let landing = lastGridFocus ?? firstCellID ?? "collections"
+            print("[guide] forward-step: the catcher was reached from \(old ?? "nothing"), not a programme cell — focus to \(landing), window unchanged")
+            Task { focused = landing }
+            return
+        }
+        Task {
+            focused = old
+            await nudge(from: old)
+        }
+    }
+
+    /// How long Left has to be down to count as held rather than clicked. Measured in Pass 123: a
+    /// click is 128–134 ms from press-down to release, and the engine's first move for a press comes
+    /// about 110 ms after press-down, so the catcher at now must not appear before that move has been
+    /// made — 350 ms sits clear of both.
+    private static let holdThreshold: Duration = .milliseconds(350)
+    /// How long the focus engine has to be quiet after Left comes up before the hold is over. Its
+    /// last repeat is due up to about 120 ms after the release, but a due timer fires late while the
+    /// grid is redrawing (about 0.5 s on 202 rows), and in one run of Pass 123 it fired after a fixed
+    /// 350 ms let-go had withdrawn the catcher, and carried focus into the rail. So the let-go is not a
+    /// fixed wait: every landing on the catcher after the release starts it again, and the catcher is
+    /// withdrawn only once the engine has been quiet this long.
+    private static let holdQuiet: Duration = .milliseconds(500)
+
+    /// Left on the ring went down.
+    private func leftRingPressed() {
+        leftRingDown = true
+        leftRingTask?.cancel()
+        leftRingTask = Task {
+            try? await Task.sleep(for: Self.holdThreshold)
+            guard !Task.isCancelled else { return }
+            leftRingHeld = true
+            print("[guide] left ring held")
+        }
+    }
+
+    /// Left on the ring came up. A click never set `leftRingHeld`; a hold is honoured until the engine
+    /// has been quiet for `holdQuiet`.
+    private func leftRingReleased() {
+        leftRingDown = false
+        leftRingTask?.cancel()
+        leftRingTask = nil
+        guard leftRingHeld else { return }
+        leftRingLetGoWhenQuiet()
+    }
+
+    /// Start, or start again, the wait that ends the hold. Called on the release and on every landing on
+    /// the catcher after it, so the withdrawal is always ordered after the engine's last repeat.
+    private func leftRingLetGoWhenQuiet() {
+        leftRingTask?.cancel()
+        leftRingTask = Task {
+            try? await Task.sleep(for: Self.holdQuiet)
+            guard !Task.isCancelled else { return }
+            leftRingHeld = false
+            print("[guide] left ring let go")
         }
     }
 
@@ -978,12 +1131,154 @@ struct GuideScreen: View {
                 Text("Covered by a series pass")
             }
             Spacer(minLength: 0)
-            Text(model.isAtNow ? "Starts at the current half hour · forward only" : "Menu snaps back to now · forward only, 24 hours per request")
+            // Pass 123: the ahead sentence no longer says "forward only" (owner, 2026-09-24, answer 2a).
+            Text(model.isAtNow ? "Starts at the current half hour · forward only" : "Menu snaps back to now · 24 hours per request")
                 .foregroundStyle(Nocturne.neutral600)
         }
         .font(.nocturne(Nocturne.TextSize.floor))
         .foregroundStyle(Nocturne.neutral500)
     }
+}
+
+// MARK: Pass 123 — the back-step catcher as a UIKit view, with a focus guide that traps Left
+
+/// Pass 122's landing strip, hosted in UIKit so that a focus guide can sit beside it: the guide, 8 pt
+/// to the landing's left, names the landing as its preferred focus, so the focus engine's answer to a
+/// Left *from* the landing is the landing itself — no movement, and never the rail — while its answer
+/// to a Left from a channel cell is still the landing, the nearest thing to the left of the column.
+/// `onFocus` reports the landing gaining and losing focus; the screen hands focus back and steps.
+struct BackStepCatcher: UIViewRepresentable {
+    let onFocus: (Bool) -> Void
+
+    func makeUIView(context: Context) -> BackStepCatcherView { BackStepCatcherView() }
+
+    func updateUIView(_ view: BackStepCatcherView, context: Context) {
+        view.onFocus = onFocus
+    }
+}
+
+final class BackStepCatcherView: UIView {
+    /// The guide (16 pt), the gap (8 pt) and the landing (16 pt), left to right.
+    static let width: CGFloat = 40
+
+    var onFocus: (Bool) -> Void = { _ in }
+    private let landing = BackStepLandingView()
+    private let guide = UIFocusGuide()
+
+    init() {
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        landing.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(landing)
+        addLayoutGuide(guide)
+        NSLayoutConstraint.activate([
+            landing.trailingAnchor.constraint(equalTo: trailingAnchor),
+            landing.widthAnchor.constraint(equalToConstant: 16),
+            landing.topAnchor.constraint(equalTo: topAnchor),
+            landing.bottomAnchor.constraint(equalTo: bottomAnchor),
+            guide.leadingAnchor.constraint(equalTo: leadingAnchor),
+            guide.widthAnchor.constraint(equalToConstant: 16),
+            guide.topAnchor.constraint(equalTo: topAnchor),
+            guide.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+        guide.preferredFocusEnvironments = [landing]
+        landing.onFocus = { [weak self] has in self?.onFocus(has) }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+}
+
+/// The 16 pt landing itself: focusable, invisible, and no focus effect (a plain `UIView` draws none).
+final class BackStepLandingView: UIView {
+    var onFocus: (Bool) -> Void = { _ in }
+
+    override var canBecomeFocused: Bool { true }
+
+    override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+        super.didUpdateFocus(in: context, with: coordinator)
+        if context.nextFocusedView === self {
+            onFocus(true)
+        } else if context.previouslyFocusedView === self {
+            onFocus(false)
+        }
+    }
+}
+
+// MARK: Pass 123 — the window's press recognizer for Left on the ring
+
+/// A zero-size view that installs one press recognizer for Left on the window and reports the press
+/// going down and coming up — `RemoteHoldDetector`'s shape (RemoteHold.swift), for Left instead of
+/// Select. **It observes only**: `cancelsTouchesInView` is false, so the focus engine and
+/// `.onMoveCommand` see the press exactly as they did without it — measured on Home Theater in
+/// Pass 123, one move command per press, at release, with it installed. Put in the Guide's background
+/// once; it removes its recognizer when it leaves the window, which `ScreenShell.swift`'s
+/// `.id(current)` makes happen on every rail visit.
+struct RingHoldWatch: UIViewRepresentable {
+    let shouldWatch: () -> Bool
+    let pressed: () -> Void
+    let released: () -> Void
+
+    func makeUIView(context: Context) -> RingHoldWatchView { RingHoldWatchView() }
+
+    func updateUIView(_ view: RingHoldWatchView, context: Context) {
+        view.shouldWatch = shouldWatch
+        view.pressed = pressed
+        view.released = released
+    }
+}
+
+final class RingHoldWatchView: UIView, UIGestureRecognizerDelegate {
+    var shouldWatch: () -> Bool = { false }
+    var pressed: () -> Void = {}
+    var released: () -> Void = {}
+    private var recognizer: UILongPressGestureRecognizer?
+    private weak var installedOn: UIWindow?
+
+    init() {
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if let installedOn, installedOn !== window, let recognizer {
+            installedOn.removeGestureRecognizer(recognizer)
+            self.recognizer = nil
+            self.installedOn = nil
+        }
+        guard let window, recognizer == nil else { return }
+        let press = UILongPressGestureRecognizer(target: self, action: #selector(changed(_:)))
+        press.minimumPressDuration = 0            // begins at press-down; the threshold is the screen's
+        press.allowedPressTypes = [NSNumber(value: UIPress.PressType.leftArrow.rawValue)]
+        press.allowedTouchTypes = []              // the ring, not the touch surface
+        press.cancelsTouchesInView = false        // observe only
+        press.delegate = self
+        window.addGestureRecognizer(press)
+        recognizer = press
+        installedOn = window
+    }
+
+    @objc private func changed(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began: pressed()
+        case .ended, .cancelled, .failed: released()
+        default: break
+        }
+    }
+
+    /// Only while the Guide's own grid or header has the remote — never from the rail, under one of
+    /// the Guide's overlays, or with the Player on top.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive press: UIPress) -> Bool {
+        shouldWatch()
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 }
 
 /// One channel row: the channel cell, then the programs placed by start/end across the window.

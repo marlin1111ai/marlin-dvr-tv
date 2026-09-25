@@ -3315,3 +3315,128 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
   and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
 - **The findings are in `reports/2026-09-24-pass122-guide-left-back-step.md`.**
+
+## 2026-09-25 (Pass 123 — the Guide's swipe right and held ring)
+
+- **Pass 122's commit is `65321af`** (`65321afc9063aa4fdc72f57cce3a499996f50197`), one ahead of Pass 121's
+  pushed `6950e2a`, **and it is still not pushed**. Before this pass changed anything, `git fetch origin`
+  then `git rev-parse main` read `65321af…`, `git rev-parse origin/main` and `git ls-remote origin main`
+  both read `6950e2a2d5d6bff80cd732f9d7645de530564531`, `git rev-list --left-right --count
+  main...origin/main` was `1 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **The owner tested G on Home Theater on 2026-09-24. His words: "the gong back works swipe and the left
+  over ring click".** Recorded verbatim; nothing is claimed beyond them. They are his test of Pass 122's
+  back-step by a swipe left and by a Left click on the ring — the swipe was code-traced only in Pass 122 —
+  and they are not yet the push gate for G: G's `65321af` and this pass's commit are pushed together after
+  he tests this pass.
+- **His two requests of 2026-09-24, verbatim, as this pass's prompt relays them.** 2a: **"I can't swipe
+  right"**. 2b: **"I should be able to hold the right outer ring and keep scrolling through it stops and I
+  have to keep clicking it to move to next time"**. **2b is asked by name, and reopens Pass 77's finding
+  that a held Right does not repeat** — measured on 2026-09-12 with a synthesized hold, left open as Pass 77
+  open question 3 and Pass 78's "whether a physical held Right auto-repeats", and closed with everything
+  else by his call of 2026-09-20 (Pass 118). Under that call a closed item is raised again only when he
+  asks for it by name, and he has.
+- **His answers, as the prompt relays them: 1a, 2a and 3a.** **1a** — a held Left steps the window back to
+  the current half hour and stops there; a separate Left press after that goes to the sidebar exactly as
+  today. **2a** — the footer's "Menu snaps back to now · forward only, 24 hours per request" becomes
+  "Menu snaps back to now · 24 hours per request". **3a** — `GuideRightEdgeUITests.testScrollThenRailRoundTrip`
+  is recorded as unable to pass since Pass 122, because its Left presses now step the window back; it is
+  not amended. Recorded as they arrived; the answers' wording is the prompt's, not his.
+- **Step 2, measured first — what a held ring and a swipe right deliver to the app.** A disclosed
+  `[probe] Pass 123 DIAGNOSTIC ONLY` diagnostic in `GuideScreen.swift` (137 lines, reverted with
+  `git checkout --` before the build began; its diff is in the report) and a temporary harness,
+  `Pass123ProbeUITests` (deleted), against a `devicectl … --console` launch on Home Theater, on the owner's
+  "All Channels" — 202 rows:
+  - **The focus engine repeats a held ring press on its own.** Its first move comes about 110–125 ms after
+    press-down; while the ring stays down it moves focus again about 550 ms after that and then **every
+    260–268 ms** until release, and its last repeat can land about 120 ms after the release. This is what
+    Pass 77's `press(forDuration:)` could not see, because it counted move commands.
+  - **`.onMoveCommand` fires once per press, at release** — 0–14 ms after the recognizer's `ended` — never
+    for a repeat. So Pass 77's nudge for a click has always happened 150 ms after the button came up, and a
+    held Right walked the cells to the edge and then did nothing until it was let go, which is the owner's
+    "it stops and I have to keep clicking it".
+  - **A `UILongPressGestureRecognizer` on the window, zero duration, for Left and Right, with
+    `cancelsTouchesInView = false`, sees press-down and release (128–134 ms apart for a click, 2.95 s for a
+    3 s hold) and leaves `.onMoveCommand` and the engine exactly as they were** — one move command per press,
+    at release, with it installed.
+  - **A 16 pt focusable strip in the trailing margin, right of the programme area, is taken by every engine
+    move at a row's last cell** — the click and each repeat of a hold, nine in one 3 s hold — and handed
+    focus back in 129–133 ms on 202 rows. A window step on that grid draws in about 0.5 s.
+  - **A swipe was not driven** — XCUITest on tvOS cannot swipe — and is traced: the owner's own words above
+    show a swipe left landing on Pass 122's strip, which works on where focus goes, and the right strip is
+    that strip's mirror.
+- **Built — `GuideScreen.swift` alone, +318 / −23**, every other app file byte-identical, `fetch` untouched:
+  - **(a) A swipe right, and (b) a held Right.** `forwardStepCatcher` — the measured strip, drawn while the
+    focused cell is the last one its row has in the window; every landing on it hands focus back and steps
+    the window forward through Pass 77's `nudge(from:)`, so its stops (the last listed slot, the 45-slot
+    refetch) and its focus rule are unchanged, and the landing stamps `engineSteppedRightAt` so `gridMoved`
+    stands down instead of nudging the same press twice. **The app adds no timer: the pace is the platform's
+    own repeat** — one engine move every ~0.27 s, each a cell walk or a window step, throttled only by the
+    redraw. Measured on All Channels with the console attached: **six window steps in one 4.2 s press, at
+    0.49–0.76 s apart** (each interval holds the redraw and, every second or third repeat, a cell walk);
+    the 3-in-5 ratio of Pass 77 is what makes the walk.
+  - **(c) A held Left.** The engine's repeats land on Pass 122's `backStepCatcher` and step back one slot
+    each, seven in 4.56 s on All Channels. To stop at the current half hour, `RingHoldWatch` — the measured
+    recognizer, for Left only, in the Guide's background — reports press-down and release; from 350 ms
+    after press-down (`holdThreshold`, clear of a click's 134 ms and of the engine's first move at 110 ms)
+    `leftRingHeld` keeps the catcher drawn at now, where it refuses and hands focus back, and the hold ends
+    only once the engine has been quiet for 500 ms after the release (`holdQuiet`, re-armed by every
+    landing after the release). **And the catcher is now a UIKit view**, `BackStepCatcher`: the same 16 pt
+    landing with a `UIFocusGuide` 8 pt to its left whose preferred focus is the landing itself, so a Left
+    *from* the landing goes nowhere — because a repeat that fires while the landing still has focus, before
+    the hand-back has been drawn, went into the rail (below). A separate Left press at now reaches the rail
+    as before (owner's 1a).
+  - **(d) The footer** while ahead reads "Menu snaps back to now · 24 hours per request" (owner's 2a). The
+    at-now sentence, "Starts at the current half hour · forward only", was not named and is unchanged.
+- **Five runs of the harness, the last the record; two failed, each diagnosed with its console, no blind
+  retry.** `GuideRingHoldUITests` (new), `launch()`, one drive: a click Right at the row's last cell, one
+  held Right of 4 s, the footer, Left along the row, one held Left of 8.2 s, one separate Left.
+  - **Run 1 (17:28) failed on the harness, not the app**: the wall clock crossed 5:30 PM during the run
+    and the held Left stopped at the *new* current half hour, in the grid, exactly as built, while the
+    harness compared against the half hour the Guide had opened at. It now reads the clock.
+  - **Run 2 (17:32) failed in the app**: the held Left reached now and then the rail. A console-attached
+    drive (17:37, passed) showed the let-go landing 0.41 s after release under load; a fixed 350 ms let-go
+    and the engine's last repeat are both main-thread timers due within about 120 ms of each other, and
+    order is not guaranteed. **The let-go is now re-armed by every landing after the release.**
+  - **Run 3 (17:43) failed in the app another way**: the held Left went into the rail five steps in, with
+    the window still ahead. The engine repeats every 0.27 s; on 202 rows the hand-back from the strip is
+    drawn up to 0.5 s after the landing; a repeat that fires in between moves Left *from the strip*, and the
+    only thing left of the strip is the rail. **Hence the UIKit catcher with the focus guide.**
+  - **A console-attached drive of the final code (17:51) passed**, its lines in the report; **run 4 (17:55)
+    passed**; one stale comment was then fixed and the harness header brought current, and **run 5
+    (18:00:38–18:04:10), `** TEST EXECUTE SUCCEEDED **`, 1 test, 0 failures, launch ping `18:00:43.749
+    POST /api/clients/<client id>/ping 200`, is the run of record** — the committed tree is what ran.
+- **Run 5 on Home Theater, All Channels, the Guide open at 6:00 PM:** one click at the edge → 6:30, exactly
+  one slot; **one held Right of 4.0 s → 9:30, six slots in the one press**, ↩ Now drawn, the footer "Menu
+  snaps back to now · 24 hours per request" and the old sentence absent; one Left along the row to
+  "WMAR-HD, 2.1" with the window unmoved; **one held Left of 8.2 s → 6:00 PM, the current half hour, "6:00
+  PM · now" drawn, ↩ Now gone, the at-now footer back, focus still on "WMAR-HD, 2.1" in the grid**; **one
+  separate Left → the rail, ring on Guide**, window unmoved. The server's log for the run holds the ping,
+  the Guide's two opening reads and Pass 116's connect re-read, and **no `GET /api/guide` after 18:00:53**
+  — every step stayed inside the fetched 24 hours. Seven screenshots in `reports/assets/pass123/`.
+- **Code-traced only:** a swipe right and a swipe left (never driven); a held Right across the 45-slot
+  refetch or at the horizon (each repeat then prints Pass 77's refusal); a hold on a row with no later
+  cell; a held Left that starts at now (its own first move reaches the rail, as a click does); a second
+  Left inside about half a second of a hold's release, which the catcher still refuses; a held Left that
+  starts one slot ahead, where `leftRingHeld` (350 ms, later under load) must be drawn before the engine's
+  first repeat at ~670 ms; one extra forward step from the engine's last repeat after a held Right is
+  released; the physical ring's repeat itself — measured with a synthesized hold, which drives the
+  device's own press pipeline (Pass 9), and consistent with the owner's words.
+- **Records this pass changes, recorded forward and not edited:** Pass 77's *"A held Right does NOT
+  auto-repeat the move command, so nothing was built for it"* (DECISIONS.md:1238-1241) holds for the move
+  command and not for focus — the engine repeats the move, and the Guide now steps on each; Pass 78's
+  open item *"whether a physical held Right auto-repeats"* is answered above; Pass 122's *"the footer while
+  ahead still says 'forward only'"* and its strip as a SwiftUI `Color.clear` are superseded by (d) and (c);
+  Pass 122's "7 ms and 13 ms" hand-back was on a 5-row collection, and on 202 rows it is 0.13–0.5 s.
+  `COLD-START.md`'s Guide line and harness line are brought to the current state in place.
+- **Not changed:** `ScreenShell.swift`, `RailView.swift`, `PlayerModel.swift`, `PlayerHost.swift`,
+  `RemoteHold.swift`, `fetch`, `gridMoved`'s logic, `nudge(from:)`, `nudgeForward`, `nudgeBack`, Menu,
+  ↩ Now, +12h, the collection filter, the Pass 116 redraw. Build warnings: the two pre-existing ones,
+  `channelFocusID` (now `GuideScreen.swift:1026`) and `PlayerModel.swift:367`.
+- **No write of any kind went to the server.** The builder's requests were two `GET /api/logs`; the app's
+  only non-GET requests were its eight launch pings (17:15–18:00, one client id). Nothing was installed on
+  this Mac. The bedroom Apple TV was not touched. marlin-dvr was not cloned or read.
+- **This pass is committed and NOT pushed** — the owner tests on Home Theater first, and G's `65321af`
+  goes with it. Its own commit SHA is not written into this entry, and cannot be — a commit cannot contain
+  its own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md,
+  2026-09-11 (Pass 68)).
+- **The findings are in `reports/2026-09-25-pass123-guide-swipe-and-held-ring.md`.**
