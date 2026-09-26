@@ -3817,3 +3817,46 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
   and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
 - **The findings are in `reports/2026-09-25-pass129-s11-stale-guide-reads.md`.**
+
+## 2026-09-25 (Pass 130 — Pass 129 accepted and pushed; the batch of 2026-09-23 complete)
+
+- **Owner acceptance (2026-09-25): Pass 129 was tested on Home Theater and accepted. His words, as this
+  pass's prompt relays them: "all good".** Recorded verbatim, and **nothing is claimed beyond them**. They are
+  **not** taken as a measurement of any path Pass 129 did not run: **every path Pass 129 labelled traced stays
+  traced** — the discard of a notice's answer and the re-read that follows it (needs a server write); the
+  discard of a pick's answer landing after Menu and the re-read `storedAnswerFitsTheScreen` then causes
+  (focus sits in the rail until the pick's read lands, so the Menu never reaches the Guide); an answer
+  dropped as older than a stored one; overlapping nudge reads across the 45-slot refetch; a pick before
+  the first load; and Menu during a notice's re-read. **Pass 129's open questions are not closed by his
+  words either**: a Menu inside a collection pick's read going Home, and the short server log. What his
+  test covered is what the run covered — +12h twice then Menu and then ↩ Now each filled at now, a pick
+  while ahead in place, the back-step and the held ring — and the discard itself, driven under the
+  reverted delay. It answers nothing in the Pass 129 report's *What I am least sure of*.
+- **With this acceptance the batch the owner picked on 2026-09-23 is complete**: REVIEW.md's fifteen
+  "should fix" items — S1, S2 and S4–S16 — and item G, sorted in Pass 119, built in Passes 120 (the twelve
+  SWEEP items), 122 (G), 125 (S5), 127 (S6) and 129 (S11), each accepted on Home Theater and pushed. Nothing
+  of that batch is open. REVIEW.md's other findings, N1–N22 and N25–N55, stay unpicked, not to be built or
+  re-reported unless he asks for one by name (DECISIONS.md, 2026-09-24 (Pass 119)).
+- **Pushed by this pass:** Pass 129's `1aa17eb` (`1aa17eb1fb352987652c964fd809177ed93c3339`, S11), together
+  with this pass's own notebook commit, **as a fast-forward from `7eb4915`** (Pass 128), which stays an
+  ancestor. Nothing forced, rebased or amended.
+- **Home Theater runs Pass 129's build**, installed by its runs. **The bedroom Apple TV is still on Pass
+  127's code**, built from `7eb4915` and installed after Pass 128, not launched (DECISIONS.md, 2026-09-25
+  (Pass 129)). This batch is now proven on Home Theater, so the standing rule — *"whenever we done doing
+  updates and they a proven always update the bedroom"* — falls due and it is **brought up next**; both Apple
+  TVs were do-not-touch here, so nothing was installed.
+- **After the bedroom, the next step is whatever the owner asks for next.**
+- **`COLD-START.md`'s server line is brought to marlin-dvr 1.11.6**, which Pass 129 recorded from the
+  server's own log — `marlin-dvr 1.11.6 started on port 8089` at 20:40:50 on 2026-09-25, in the middle of its
+  run of record — as a new first bullet superseding the 1.11.1 reading, in the form Pass 120 used; nothing
+  beyond the version and the time is claimed, and what 1.11.2–1.11.6 changed was not read. ***Next step* was
+  changed in that file** with Pass 129's paragraph kept beneath it, labelled; nothing else in it.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or report was
+  changed in this pass**, neither Apple TV was touched, and **no request of any kind was sent to the server**.
+- **Before this pass changed anything,** `git fetch origin` then `git rev-parse main` read
+  `1aa17eb1fb352987652c964fd809177ed93c3339`, `git rev-parse origin/main` and `git ls-remote origin main` both
+  read `7eb4915120ed4ae2a7112038a5a54051c7b62bdd`, `git rev-list --left-right --count main...origin/main` was
+  `1 0`, and `git status --porcelain` showed only `?? icon-source/`.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).

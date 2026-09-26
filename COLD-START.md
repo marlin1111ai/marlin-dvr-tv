@@ -38,6 +38,11 @@ Current state only — one line per screen and one per standing fact, each citin
 
 ### The server
 
+- **The server is marlin-dvr 1.11.6**: it restarted as such at 20:40:50 on 2026-09-25, read from its own
+  log's first line, `marlin-dvr 1.11.6 started on port 8089`, in the middle of Pass 129's run of record
+  (Pass 129, recorded here by Pass 130). It supersedes the 1.11.1 reading below. What 1.11.2–1.11.6 changed
+  was not read, and nothing in this app was changed for it; Pass 129's run rode through the restart on Pass
+  116's reconnect re-read.
 - **On 2026-09-24 `GET /api/status` answered marlin-dvr 1.11.1** (Pass 120). It supersedes the 1.10.0 reading
   below. What 1.11.x changed was not read, and nothing in this app was changed for it. The query parsing S10
   depends on was measured against the running 1.11.1.
@@ -209,6 +214,17 @@ call of 2026-09-20 and is not to be raised unless he asks for it by name** (DECI
 **None.** On 2026-09-20 the owner closed everything this project still recorded as open — accepted as built or deferred, none of it to be raised again unless he asks for it by name (DECISIONS.md, 2026-09-20 (Pass 118)). The closed items' history is in `DECISIONS.md`, the reports and `COLD-START-HISTORY.md`; the question lists this section used to point at, in `reports/2026-09-05-pass1-plumbing.md`, `reports/2026-09-05-pass2-server-recon.md` and `reports/2026-09-05-pass3-hls-client-recon.md`, are closed with them. The one thing that arrives on its own date is the provisioning profile's expiry, **2027-09-07** (*Foundation, packaging and the two Apple TVs*).
 
 ## Next step
+
+**S11 is accepted and pushed, and the batch the owner picked on 2026-09-23 is complete.** The owner tested Pass 129 on Home Theater and accepted it on 2026-09-25 — his words, **"all good"** — and Pass 130 pushed Pass 129's `1aa17eb` together with its own notebook commit, as a fast-forward from `7eb4915`. Nothing is claimed beyond his words: **every path Pass 129 labelled traced stays traced**, and its open questions stay open — a Menu inside a collection pick's read goes Home, and the server's log is short for a 202-row Guide. REVIEW.md's fifteen "should fix" items and item G are all built, accepted and pushed (Passes 120, 122, 125, 127, 129); N1–N22 and N25–N55 stay unpicked (DECISIONS.md, 2026-09-25 (Pass 130); `reports/2026-09-25-pass129-s11-stale-guide-reads.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `1aa17eb`'s app code — which Pass 130's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **After that, the next step is whatever the owner asks for next.** Nothing of the 2026-09-23 batch is open.
+- **Home Theater runs Pass 129's build**, installed by its runs. **The bedroom Apple TV still runs Pass 127's code**, built from `7eb4915` and installed after Pass 128, not launched. **The server is marlin-dvr 1.11.6** since 20:40:50 on 2026-09-25 (*The server* above).
+- **Pass 129's commit is `1aa17eb`, pushed by Pass 130**; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 130 response and belongs in the next pass's entry.
+
+*Next step as Pass 129 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 130 was named for `COLD-START.md`'s server line and *Next step*, and `DECISIONS.md`, not the history file:*
 
 **Pass 129 (2026-09-25) built S11 — a Guide read that finishes after the window or the collection on screen has changed never fills the grid — and committed it without pushing.** It is inside `fetch` alone: each read is numbered, a late answer is discarded and said so, and a discarded notice answer — or any discard that leaves the rows not fitting the screen — is read again at the window and collection showing, so every notice still causes a re-read and none is coalesced away. Passes 122's and 123's Left back-step, swipe right, ring hold and footer are untouched. The discard was measured on Home Theater under a disclosed, reverted read delay; the run of record with `launch()` passed the regression (`reports/2026-09-25-pass129-s11-stale-guide-reads.md`). **Found beside it, not built:** a Menu inside a collection pick's read goes Home, because focus sits in the rail until the pick's read lands (the report's open question 1).
 
