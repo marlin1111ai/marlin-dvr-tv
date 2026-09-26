@@ -3860,3 +3860,76 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-25 (Pass 131 — closing pass)
+
+- **Pass 130's verified push SHA is `d48af19`** (`d48af196c9c6777dc4ad36039772e439f39df3d3`). Before this pass
+  changed anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read that SHA, and `git status --porcelain` showed only `?? icon-source/`.
+- **The bedroom Apple TV was brought up to Pass 129's code after Pass 130 — install only, no commit, and no
+  pass number of its own** (2026-09-25, 21:19). "Master Bedroom ATV" was built from `d48af19`, with no
+  tracked change, by **Pass 117's method** — **`** BUILD SUCCEEDED **`, exit 0**, a 6 s incremental build in
+  which only `GuideScreen.swift` recompiled, signed with `tvOS Team Provisioning Profile:
+  com.marlin1111.MarlinDVRTV`, no Xcode component or platform install asked for — then `xcrun devicectl
+  device install app --device "Master Bedroom ATV"` — **`App installed`, exit 0**. Both first try. The
+  television reads **Marlin DVR TV · Version 1.0 · Bundle Version 1** (`devicectl device info apps`), as the
+  built `Info.plist` does; the build was tied to its code by the built `Marlin DVR TV.debug.dylib` carrying
+  **Pass 129's `fetch` lines** — "landed after read", "was stored", "the screen shows", "[guide] read again
+  at" and " for the notice", read as fragments either side of an em dash — absent from the 92 KB launcher,
+  and first found by `git log -S` in `1aa17eb`; Passes 127's, 125's, 123's and 122's strings are still there.
+  **It was not launched.** **Both Apple TVs then ran Pass 129's code**, which is the standing rule satisfied
+  for the last batch. Home Theater was not touched and no request went to the server.
+- **Owner's call (2026-09-25), "a", relayed by the foreman, closing these as accepted — none to be raised
+  again unless he asks for it by name.** Recorded as it arrived; the letters are the prompt's, not his words:
+  **(a)** a held Left started one slot ahead on All Channels can reach the sidebar (Pass 123); **(b)** the
+  held ring's pace on All Channels is set by the 202-row redraw (Pass 123); **(c)** the at-now footer still
+  says "forward only", true there (Pass 123); **(d)** a pause before the item is ready leaves Apple's scrub
+  head at 0:00, and a Select to play on can lose the resume position (Pass 127); **(e)** a Menu during a
+  collection pick's read goes Home, seen only under an artificial 4 s delay (Pass 129); **(f)** the server's
+  log holds under an hour with a 202-row Guide (Pass 129); **(g)** `ShowDetailSeriesPassUITests` cannot pass
+  today, its show now past the six cards (Pass 120); **(h)** every path Passes 119–130 labelled traced, which
+  stays traced — **closed is not measured.** `COLD-START.md` carries the eight under *Closed by the owner's
+  call of 2026-09-20*, beside the calls of 2026-09-20 and 2026-09-23.
+- **The sweep (step 3) found nothing open outside those calls.** Every open question and least-sure item in
+  the Pass 119–129 reports and the Pass 119–130 entries maps to one of the eight above, to the call of
+  2026-09-20 (`armResumeSeek` reading its target out of `position`, Pass 98's), or to a decision already
+  taken (S13 answered in Pass 120; the Pass 122 footer built in Pass 123; `testScrollThenRailRoundTrip`
+  recorded stale by the owner's 3a). **One note was classified rather than closed:** the Pass 127 report's
+  open question 2 says only that no position is readable inside the Player under `launch()` since Pass 110
+  and how a future harness could read one; it asks nothing and owes nothing, and it is taken as a recorded
+  limitation of the evidence method, not an open item — said here so the owner can object.
+- **The sweep found two facts stale against the disk, corrected in place as Pass 118 did:** *(1)* `COLD-START.md`
+  said the tvOS 26.5 platform component — simulator runtime and device support — is installed on this Mac;
+  the Mac now has Xcode 27.0 with the tvOS 27.0 SDK and simulator SDK and **no tvOS simulator runtime at all**
+  (`xcrun simctl list runtimes` lists none). The simulator build line still builds — run in this pass,
+  `** BUILD SUCCEEDED **` against `AppleTVSimulator27.0.sdk` — but nothing can run in a simulator here, so
+  `ManageDVRUITests` and `RailManageUITests`, which drive the Simulator, cannot run on this Mac today; both
+  Apple TVs build, install and run. *(2)* the evidence-harness list did not name this session's three
+  harnesses — `ResumeRoundTripUITests` (Pass 125), `FrameStepReadyUITests` (Pass 127), `GuideStaleReadUITests`
+  (Pass 129) — nor two older ones it never had, `WeatherRadarUITests` (Pass 13) and `GuideSearchUITests`
+  (Passes 63, 65); all five are named now, 29 files on disk against 29 named. Checked and true: the repo's
+  remote, `build/` git-ignored, `design/`'s files, `FocusClick.dataset` inside `icon-source/`'s catalog, the
+  scheme's `useTestSelectionWhitelist`, `~/Xcode/marlin-dvr-reference` absent, and the provisioning profile's
+  expiry, `2027-09-07T03:40:41Z`, re-read from the bedroom build's `embedded.mobileprovision`.
+- **`COLD-START.md` was brought current (step 4), from 362 lines to 234**, as Pass 118 did: the call above
+  added to the closed section; *The server* reduced to one current line carrying the standing facts the
+  superseded readings held; the Guide and Player lines' "an open question" for (e) and (d) now read closed;
+  the two stale facts corrected; *Open questions* reads **None**; *Next step* is one short current statement
+  — nothing open, nothing owed, nothing unpushed, both Apple TVs on Pass 129's code. **Nothing was thrown
+  away.** By Pass 89's rule, the *Next step* paragraphs of Passes 130 back to 118 (143 lines) and the two
+  superseded server lines (4 lines) were **moved into `COLD-START-HISTORY.md` byte-for-byte** — checked line
+  by line by the script that moved them: every line that left `COLD-START.md` is either in the history
+  file's insertions verbatim or one of the nine edited in place; the history file's diff is 155 insertions
+  and **0 deletions**.
+- **Leftovers of Passes 119–130 were deleted (step 5), the deletion shown in the response**: ten DerivedData
+  folders under `build/` — `p120`, `p121`, `p121probe`, `p122`, `p123`, `p123probe`, `p125`, `p127`, `p129`,
+  `p129probe`, about 1.9 GB — plus `build/p131sim`, this pass's own simulator check (328 MB), and the whole
+  session scratchpad — 107 entries, 1.1 GB: raw consoles, harness logs, result bundles, exported screenshots,
+  the diagnostics' diffs and the log reads. Kept: `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom`,
+  every tracked file, and `build/`'s older folders, which are earlier sessions'.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or existing
+  report was changed.** Neither Apple TV was touched. **No request of any kind was sent to the server.**
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
+- **The findings are in `reports/2026-09-25-pass131-closing-pass.md`.**

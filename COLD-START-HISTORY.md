@@ -2,6 +2,8 @@ This file is history moved out of `COLD-START.md` by Pass 89 (2026-09-13), byte-
 
 **Pass 118 (2026-09-20) added to this file by the same rule — byte-for-byte, in original order, nothing rewritten:** the "Next step" paragraphs of Passes 88–117, placed at the top of the *Next step* section below because that section runs newest first; and, at the end of the file, `COLD-START.md`'s *Known and unfixed*, *What is NOT built*, *Raised for the marlin-dvr project* and *Open questions* sections exactly as they stood before the owner's call of 2026-09-20 closed what they carried (DECISIONS.md, 2026-09-20 (Pass 118)).
 
+**Pass 131 (2026-09-25) added to this file by the same rule — byte-for-byte, in original order, nothing rewritten:** the "Next step" paragraphs of Passes 130 back to 118, placed at the top of the *Next step* section below; and, at the end of the file, the two server lines of `COLD-START.md` — the 1.11.1 reading of Pass 120 and the 1.10.0 reading of Pass 115 with the facts it carried — that the 1.11.6 line superseded (DECISIONS.md, 2026-09-25 (Pass 131)).
+
 ## What is built
 
 **The server is marlin-dvr 1.8.2** (Pass 85, 2026-09-13), and this one **is** measured from here:
@@ -1168,6 +1170,152 @@ true numbers live.
 
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
+
+*Moved here by Pass 131 (2026-09-25), byte-for-byte — the paragraphs of Passes 130 back to 118:*
+
+**S11 is accepted and pushed, and the batch the owner picked on 2026-09-23 is complete.** The owner tested Pass 129 on Home Theater and accepted it on 2026-09-25 — his words, **"all good"** — and Pass 130 pushed Pass 129's `1aa17eb` together with its own notebook commit, as a fast-forward from `7eb4915`. Nothing is claimed beyond his words: **every path Pass 129 labelled traced stays traced**, and its open questions stay open — a Menu inside a collection pick's read goes Home, and the server's log is short for a 202-row Guide. REVIEW.md's fifteen "should fix" items and item G are all built, accepted and pushed (Passes 120, 122, 125, 127, 129); N1–N22 and N25–N55 stay unpicked (DECISIONS.md, 2026-09-25 (Pass 130); `reports/2026-09-25-pass129-s11-stale-guide-reads.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `1aa17eb`'s app code — which Pass 130's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **After that, the next step is whatever the owner asks for next.** Nothing of the 2026-09-23 batch is open.
+- **Home Theater runs Pass 129's build**, installed by its runs. **The bedroom Apple TV still runs Pass 127's code**, built from `7eb4915` and installed after Pass 128, not launched. **The server is marlin-dvr 1.11.6** since 20:40:50 on 2026-09-25 (*The server* above).
+- **Pass 129's commit is `1aa17eb`, pushed by Pass 130**; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 130 response and belongs in the next pass's entry.
+
+*Next step as Pass 129 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 130 was named for `COLD-START.md`'s server line and *Next step*, and `DECISIONS.md`, not the history file:*
+
+**Pass 129 (2026-09-25) built S11 — a Guide read that finishes after the window or the collection on screen has changed never fills the grid — and committed it without pushing.** It is inside `fetch` alone: each read is numbered, a late answer is discarded and said so, and a discarded notice answer — or any discard that leaves the rows not fitting the screen — is read again at the window and collection showing, so every notice still causes a re-read and none is coalesced away. Passes 122's and 123's Left back-step, swipe right, ring hold and footer are untouched. The discard was measured on Home Theater under a disclosed, reverted read delay; the run of record with `launch()` passed the regression (`reports/2026-09-25-pass129-s11-stale-guide-reads.md`). **Found beside it, not built:** a Menu inside a collection pick's read goes Home, because focus sits in the rail until the pick's read lands (the report's open question 1).
+
+- **The owner tests this on Home Theater first.** What he can see on a healthy server is the regression: +12h twice then Menu, and +12h twice then ↩ Now, each leaving the Guide filled at now; a collection picked while ahead redrawing in place; the back-step and the held ring as before; and Pass 116's live redraw as accepted — a channel or collection changed on the server redraws the Guide without leaving it. S11's own case shows only when a read is slow — Menu, ↩ Now or a pick inside one — and then the grid stays filled instead of going blank. The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.
+- **S11 was the last of the batch the owner picked on 2026-09-23** (Pass 120's "aa"). After it, nothing of that batch is open; the next step is whatever he asks for next.
+- **Home Theater runs this pass's build**, installed by its runs. **The bedroom Apple TV runs Pass 127's code** — built from `7eb4915` and installed after Pass 128, not launched (DECISIONS.md, 2026-09-25 (Pass 129)). **The server restarted as marlin-dvr 1.11.6 at 20:40:50 on 2026-09-25, in the middle of this pass's run of record**, read from its own log's first line; what 1.11.x changed after 1.11.1 was not read, and nothing in this app was changed for it. *The server* above still says 1.11.1 — a line this pass was not named for (the report's open question 3).
+- **Pass 128's verified push SHA is `7eb4915`.** This pass's one commit is a fast-forward from it and is not pushed.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 129 response and belongs in the next pass's entry.
+
+*Next step as Pass 128 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 129 was named for `COLD-START.md`'s Guide line and *Next step*, not the history file:*
+
+**S6 is accepted and pushed.** The owner tested Pass 127 on Home Theater and accepted it on 2026-09-25 — his words, **"all good"** — and Pass 128 pushed Pass 127's `94b10d6` together with its own notebook commit, as a fast-forward from `2888704`. Nothing is claimed beyond his words: **every path Pass 127 labelled traced stays traced**, and **its open question 1 stays open** — a pause that lands before the item is ready leaves Apple's scrub head at 0:00 and a Select to play on seeks there; Menu is the safe way out of such a pause until he decides (DECISIONS.md, 2026-09-25 (Pass 128); `reports/2026-09-25-pass127-s6-frame-step-waits-for-ready.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `94b10d6`'s app code — which Pass 128's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then S11, its own pass**, the last of the batch the owner picked on 2026-09-23 (Pass 120's "aa"); its files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 127's build**, installed by its runs. **The bedroom Apple TV still runs Pass 125's code**, built from `2888704` and installed after Pass 126, not launched. The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 127's commit is `94b10d6`, pushed by Pass 128**; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 128 response and belongs in the next pass's entry.
+
+*Next step as Pass 127 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 128 was named for `COLD-START.md`'s *Next step* and `DECISIONS.md` only, not the history file:*
+
+**Pass 127 (2026-09-25) built S6 — a frame-step click does nothing until the recording's item is ready and no resume seek is still in flight — and committed it without pushing.** Two guards at the top of `frameStep`, before its `cancelPendingSeeks`; `restart(at:)`, S5's change, `armArrowOwnership` and `armSelectOwnership` are untouched. Measured on Home Theater with the console attached: a burst of paused clicks inside the first two seconds after Resume had two declined in the window, the resume seek still landed on the saved spot, and every later click stepped one frame; the run of record with `launch()` passed (`reports/2026-09-25-pass127-s6-frame-step-waits-for-ready.md`). **Found beside it, not built:** a pause before the item is ready leaves Apple's scrub head at 0:00 and a Select to play on seeks there (the report's open question 1).
+
+- **The owner tests this on Home Theater first.** To see it: Resume a recording and press Select to pause at once, then click Left or Right — for about a second nothing happens, then each click moves one frame, and the recording is where he left it, not at the top; a pause made later steps as it always has. **Leave with Menu rather than Select after such an early pause** until open question 1 is decided. The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.
+- **Then S11, its own pass**, the last of the batch the owner picked on 2026-09-23 (Pass 120's "aa").
+- **Home Theater runs this pass's build**, installed by its runs. **The bedroom Apple TV runs Pass 125's code** — built from `2888704` and installed after Pass 126, not launched (DECISIONS.md, 2026-09-25 (Pass 127)). The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 126's verified push SHA is `2888704`.** This pass's one commit is a fast-forward from it and is not pushed.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 127 response and belongs in the next pass's entry.
+
+*Next step as Pass 126 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 127 was named for `COLD-START.md`'s Player line and *Next step*, not the history file:*
+
+**S5 is accepted and pushed.** The owner tested Pass 125 on Home Theater and accepted it on 2026-09-25 — his words, **"all good"** — and Pass 126 pushed Pass 125's `cc0293f` together with its own notebook commit, as a fast-forward from `4a7f927`. Nothing is claimed beyond his words: **the failed-start path stays traced** — what his test and the run covered is Resume landing on the saved position and the position surviving leaving the Player (DECISIONS.md, 2026-09-25 (Pass 126); `reports/2026-09-25-pass125-s5-try-again-keeps-the-position.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `cc0293f`'s app code — which Pass 126's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa"). Each item's files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 125's build**, installed by its runs. **The bedroom Apple TV still runs Pass 123's code**, built from `4a7f927` and installed after Pass 124, not launched. The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 125's commit is `cc0293f`, pushed by Pass 126**; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 126 response and belongs in the next pass's entry.
+
+*Next step as Pass 125 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 126 was named for `COLD-START.md`'s *Next step* and `DECISIONS.md` only, not the history file:*
+
+**Pass 125 (2026-09-25) built S5 — "Try again" after a failed start no longer overwrites the recording's saved position with 0 — and committed it without pushing.** `restart(at:)` writes the resume store only once playback has attached at least once in that Player; the load-bearing `position = target` is untouched, and S6's lines are not in the diff. The failed-start path is traced (it needs the server down, or the Apple TV's network pulled, which the owner declined); the run was the regression Pass 119 named — Resume landed on the saved position and the position survived leaving the Player (`reports/2026-09-25-pass125-s5-try-again-keeps-the-position.md`).
+
+- **The owner tests this on Home Theater first.** What he can see on a healthy server is the regression only: open a recording with a saved position, Resume, watch it land where he left it, press Menu, and see the Resume line and the Continue watching card still there with the position moved on by what he watched. S5's own case shows only when a start fails — then "Try again" keeps his place instead of losing it. The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.
+- **Then S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa").
+- **Home Theater runs this pass's build**, installed by its runs. **The bedroom Apple TV runs Pass 123's code** — built from `4a7f927` and installed after Pass 124, not launched (DECISIONS.md, 2026-09-25 (Pass 125)). The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 124's verified push SHA is `4a7f927`.** This pass's one commit is a fast-forward from it and is not pushed.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 125 response and belongs in the next pass's entry.
+
+*Next step as Pass 124 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 125 was named for `COLD-START.md`'s Player line and *Next step*, not the history file:*
+
+**The Guide work of Passes 122 and 123 is accepted and pushed.** The owner tested Pass 123 on Home Theater and accepted it on 2026-09-25 — his words, **"all looks good to me"** — and Pass 124 pushed Pass 122's `65321af` (item G, the Left back-step) and Pass 123's `2ca8e39` (the swipe right, the held ring and the footer) together with its own notebook commit, as a fast-forward from `6950e2a`. Nothing is claimed beyond his words: **every path Passes 122 and 123 labelled traced stays traced** (DECISIONS.md, 2026-09-25 (Pass 124); `reports/2026-09-25-pass123-guide-swipe-and-held-ring.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `2ca8e39`'s app code — which Pass 124's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa"). Each item's files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 123's build**, installed by its runs. **The bedroom Apple TV still runs Pass 120's code**, built from `6950e2a` and installed after Pass 121, not launched. The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 123's commit is `2ca8e39` and Pass 122's is `65321af`, both pushed by Pass 124**; this pass's one commit is a fast-forward from `2ca8e39`.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 124 response and belongs in the next pass's entry.
+
+*Next step as Pass 123 left it (2026-09-25) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 124 was named for `COLD-START.md`'s *Next step* and `DECISIONS.md` only, not the history file:*
+
+**Pass 123 (2026-09-25) built the owner's four Guide requests of 2026-09-24 — a swipe right at a row's edge, a held Right, a held Left that stops at the current half hour, and the footer's wording — and committed them without pushing, on top of Pass 122's unpushed G.** Right at a row's last cell is caught the way Pass 122 catches Left, by a strip focus lands on; the focus engine's own repeat of a held press does the rest, at about four moves a second; a held Left stops at now because a window press recognizer keeps the back-step strip drawn while the ring is down, and that strip is now a UIKit view with a focus guide that traps Left. What was measured, what was run and what is traced are in `reports/2026-09-25-pass123-guide-swipe-and-held-ring.md`.
+
+- **The owner tests this on Home Theater first.** To see it: open the Guide; go Right to a row's last programme and **swipe right** on the touch surface — the Guide moves forward half an hour, as a click there does; **hold Right on the ring** — focus walks the row's programmes and then the Guide keeps stepping forward half an hour at a time until the ring is let go; Left to the channel's logo cell and **hold Left** — the Guide steps back half an hour at a time and stops at the current half hour with the highlight still on the channel; **let go and press Left once** — the sidebar opens on Guide; while the Guide is ahead of now the footer reads "Menu snaps back to now · 24 hours per request". **The push of both `65321af` (G) and this pass's commit, and bringing the bedroom Apple TV up to them under the standing rule, follow his acceptance.**
+- **Then S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa").
+- **Home Theater runs this pass's build**, installed by its runs. **The bedroom Apple TV runs Pass 120's code** (DECISIONS.md, 2026-09-24 (Pass 122)). The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 121's verified push SHA is `6950e2a`; Pass 122's unpushed commit is `65321af`.** This pass's one commit is a fast-forward from it; `main` is two ahead of `origin/main`.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 123 response and belongs in the next pass's entry.
+
+*Next step as Pass 122 left it (2026-09-24) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 123 was named for `COLD-START.md`'s Guide line, the harness line and *Next step*, not the history file:*
+
+**Pass 122 (2026-09-24) built item G, the Guide's Left back-step, and committed it without pushing.** While the window is ahead of the current half hour, a Left on a row's channel cell moves the Guide back half an hour and focus stays on the channel; at the current half hour Left opens the sidebar as before. What was measured, what was run and what is traced are in `reports/2026-09-24-pass122-guide-left-back-step.md`.
+
+- **The owner tests this on Home Theater first.** To see it: open the Guide, go Right along a row to its last programme and on until the window is a few half hours ahead, Left to the channel's logo cell, then Left again — each press moves the whole Guide back half an hour with the highlight staying on the channel, and at the current half hour one more Left opens the sidebar on Guide. The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.
+- **Then S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa").
+- **Home Theater runs this pass's build**, installed by its runs. **The bedroom Apple TV runs Pass 120's code** — built from `6950e2a` and installed after Pass 121, not launched (DECISIONS.md, 2026-09-24 (Pass 122)). The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 121's verified push SHA is `6950e2a`.** This pass's one commit is a fast-forward from it and is not pushed.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 122 response and belongs in the next pass's entry.
+
+*Next step as Pass 121 left it (2026-09-24) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 122 was named for `COLD-START.md`'s Guide line and *Next step*, not the history file:*
+
+**Pass 120's sweep is accepted and pushed.** The owner tested it on Home Theater and accepted it on 2026-09-24 — his word, **"good"** — and Pass 121 pushed its commit `dc9b271` together with its own notebook commit, as a fast-forward from `8e68d01`. Nothing is claimed beyond his word: **every path Pass 120 labelled traced stays traced** (DECISIONS.md, 2026-09-24 (Pass 121); `reports/2026-09-24-pass120-sweep-built.md`).
+
+- **The bedroom Apple TV is next.** The batch is proven on Home Theater, so the standing rule falls due (*Standing state of the devices and the evidence*): "Master Bedroom ATV" is brought to `dc9b271`'s app code — which Pass 121's notebook commit does not change — by Pass 54's method. **Wake it before the launch** (Pass 117).
+- **Then G, S5, S6 and S11, each its own pass**, the owner testing each before the next (Pass 120's "aa"). Each item's files and what one run can prove are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+- **Home Theater runs Pass 120's build**, installed by its one run. **The bedroom Apple TV still runs `1895327`'s app code.** The server answered 1.11.1 on 2026-09-24 (Pass 120).
+- **Pass 120's commit is `dc9b271`**, pushed by Pass 121; this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 121 response and belongs in the next pass's entry.
+
+*Next step as Pass 120 left it (2026-09-24) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 121 was named for `COLD-START.md` and `DECISIONS.md` only, not the history file:*
+
+**Pass 120 (2026-09-24) built the twelve SWEEP items — S1, S2, S4, S7, S8, S9, S10, S12, S13, S14, S15 and S16 — and committed them without pushing.** Each was built in the files Pass 119's report names for it and no other. What each does, what was run and what is traced, and how to see each one on Home Theater are in `reports/2026-09-24-pass120-sweep-built.md`.
+
+- **The owner tests this on Home Theater first.** The push, and bringing the bedroom Apple TV up to it under the standing rule, follow his acceptance.
+- **The order, by his answers of 2026-09-24 ("aa"):** this sweep first, then **G, S5, S6 and S11, each its own pass, each tested by him before the next**. S13 included the Player info panel's line.
+- **Home Theater runs this pass's build**, installed by its one run. **The bedroom Apple TV still runs `1895327`'s app code.** The server answered 1.11.1 on 2026-09-24.
+- **Pass 119's verified push SHA is `8e68d01`.** This pass's one commit is a fast-forward from it and is not pushed.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 120 response and belongs in the next pass's entry.
+
+*Next step as Pass 119 left it (2026-09-24) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 120 was named for `COLD-START.md`, `DECISIONS.md` and its report, not the history file:*
+
+**Pass 119 (2026-09-24) sorted the batch the owner picked on 2026-09-23; none of it is built yet.** He answered REVIEW.md with "a": build its fifteen "should fix" items — S1, S2 and S4–S16 — and item G, the Guide's Left back-step (his words "go back as it did forward"; the item as he decided it is in DECISIONS.md, 2026-09-24 (Pass 119)). Each item's files, the records it changes, what one Home Theater run can prove and what stays traced are in `reports/2026-09-24-pass119-review-should-fix-sort.md`.
+
+- **SWEEP (12):** S1, S2, S4, S7, S8, S9, S10, S12, S13, S14, S15, S16. **STANDALONE (4):** G, S5, S6, S11. Pairs that share code: G with S11, S4 with S16, S7 with S8, S5 with S6.
+- **One question waits on the owner, and only S13 turns on it:** whether S13 also fixes the Player info panel's copy of the airing sheet's delete re-read (`PlayerInfoPanel.swift:203`), as his Pass 108 decision that each panel button does what the sheet's control does would have it, or fixes the sheet only and records the panel as differing (report §5).
+- **The next step is building the batch, in the passes the owner names.**
+- **Both Apple TVs still run `1895327`'s app code**; nothing has been built since Pass 117. The server is marlin-dvr 1.10.0; the last server commit read is still `0fa05e1`, read again in this pass through `gh api` with nothing written to disk.
+- **Pass 118's verified push SHA is `e7dc4c8`.** The audit that followed it, `33666a2`, is REVIEW.md alone, and this pass's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 119 response and belongs in the next pass's entry.
+
+*Next step as Pass 118 left it (2026-09-20) — superseded by the paragraph above and kept here unedited until a pass moves it to `COLD-START-HISTORY.md` under Pass 89's rule; Pass 119's commit names only this file, `DECISIONS.md` and its report:*
+
+**Nothing is open, nothing is owed, and nothing is unpushed as of Pass 118, the closing pass.** The next step is whatever the owner asks for next.
+
+- **Both Apple TVs run `1895327`'s app code** — Home Theater since the Pass 116 harness installed it, "Master Bedroom ATV" since Pass 117 — so the standing bedroom rule is satisfied and the two televisions match. Both builds are development-signed and stop launching on **2027-09-07**. **Wake the bedroom Apple TV before any pass that launches on it**: asleep, it still lists as connected and accepts an install, and refuses the launch (Pass 117).
+- **The server is marlin-dvr 1.10.0** (`GET /api/status`, 2026-09-19).
+- **There is no local clone of the server repo.** Server files are read from `github.com/marlin1111ai/marlin-dvr` at a commit the pass names, and deleted afterwards; the last commit read is `0fa05e1`.
+- **The last thing built is the Guide's live redraw** (Pass 116), accepted on Home Theater — "tested and working" — and its open items closed in Pass 118.
+- **No open items.** See *Open questions* above and *Closed by the owner's call of 2026-09-20*; read that section before trusting any path it names, because closed is not the same as measured.
+- **Pass 117's verified push SHA is `f38639b`.** Pass 118's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 118 response and belongs in the next pass's entry.
 
 *Moved here by Pass 118 (2026-09-20), byte-for-byte — the paragraphs of Passes 117 back to 88:*
 
@@ -2522,3 +2670,10 @@ compensated for in the app.
 ## Open questions
 
 See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (server recon) and `reports/2026-09-05-pass3-hls-client-recon.md` (HLS client recon). Environment questions from Pass 1 are listed in `reports/2026-09-05-pass1-plumbing.md`.
+
+## The server lines of `COLD-START.md` superseded by the 1.11.6 line (moved by Pass 131, byte-for-byte)
+
+- **On 2026-09-24 `GET /api/status` answered marlin-dvr 1.11.1** (Pass 120). It supersedes the 1.10.0 reading
+  below. What 1.11.x changed was not read, and nothing in this app was changed for it. The query parsing S10
+  depends on was measured against the running 1.11.1.
+- **The server is marlin-dvr 1.10.0**, as `GET /api/status` answered on 2026-09-19 (Pass 115). **1.10.0 announces channel and collection changes live on `GET /api/events`** — a server-sent event stream whose every notice is the one word `channels` or `collections`, with a keep-alive comment every 15 s and no replay (contract §12; `reports/2026-09-19-pass115-events-recon.md`). **The Guide listens to it, and only the Guide** (Pass 116). It supersedes the 1.9.3 read on 2026-09-16 in Passes 107 and 108 (recorded in Pass 113), which superseded the 1.9.1 measured from `GET /api/status` on 2026-09-16 (Pass 101), which superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
