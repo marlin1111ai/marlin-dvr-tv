@@ -3718,3 +3718,102 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-09-25 (Pass 129 — S11: a Guide read that lands late never fills the grid)
+
+- **Pass 128's verified push SHA is `7eb4915`** (`7eb4915120ed4ae2a7112038a5a54051c7b62bdd`). Before this pass
+  changed anything, `git fetch origin` then `git rev-parse main`, `git rev-parse origin/main` and
+  `git ls-remote origin main` all read that SHA, and `git status --porcelain` showed only `?? icon-source/`.
+- **The bedroom Apple TV was brought up to Pass 127's code after Pass 128 — install only, no commit, and no
+  pass number of its own** (2026-09-25, 19:37). "Master Bedroom ATV" was built from `7eb4915`, with no
+  tracked change, by **Pass 117's method** — **`** BUILD SUCCEEDED **`, exit 0**, a 5 s incremental build in
+  which only `PlayerModel.swift` recompiled, signed with `tvOS Team Provisioning Profile:
+  com.marlin1111.MarlinDVRTV`, no Xcode component or platform install asked for — then `xcrun devicectl
+  device install app --device "Master Bedroom ATV"` — **`App installed`, exit 0**. Both first try. The
+  television reads **Marlin DVR TV · Version 1.0 · Bundle Version 1** (`devicectl device info apps`), as the
+  built `Info.plist` does; the build was tied to its code by the built `Marlin DVR TV.debug.dylib` carrying
+  **Pass 127's two `[framestep] declined` lines** — "the item is not ready yet" and "the resume seek is
+  still in flight", read as the fragments either side of their em dash, which `strings` breaks a run at —
+  absent from the 92 KB launcher, and first found by `git log -S` in `94b10d6`. **It was not launched.**
+  **Both Apple TVs then ran Pass 127's code.** Home Theater was not touched and no request went to the server.
+- **S11, built** — the owner's pick of 2026-09-23, the last of that batch, as Pass 119's report describes it
+  (§S11 (b)), and where that report corrected REVIEW.md, the fix is to what the report found: the blank
+  grid is also repaired by a notice, a pick or +12h then Menu, and a plain discard would lose a notice.
+  **`GuideScreen.swift` alone, +59 / −1, all inside `GuideModel`** — the one file Pass 119 names as
+  certain; `GuideCollections.swift` was not needed.
+  - **The defect, traced:** `fetch` stored whichever answer landed last. Press +12h twice — the second
+    starts a read for 24 h ahead — and Menu before it lands: `snapToNow` makes no request, because the
+    range on screen still covers now, and the late answer is then stored over it; `cells(for:)` finds
+    nothing for a window at now in rows read for a day later, so the grid is blank, and `isAtNow` hides
+    ↩ Now. It stayed so until the next roll, notice, pick or move.
+  - **The fix:** every read is numbered (`fetchSerial`, `:135`); the rows on screen remember their number
+    and their collection (`storedSerial`, `storedFilter`, `:136-137`). When an answer lands,
+    `staleReason` (`:290`) keeps it only if it is not older than the stored one, was asked for the
+    collection now showing, and covers the window now showing; otherwise `fetch` (`:304`) prints
+    `[guide] read N discarded — …`, sets `loaded`, and **reads again at the window and collection showing
+    when the discarded answer was a notice's (`serverWins`) or whenever the rows on screen no longer fit
+    the screen** (`storedAnswerFitsTheScreen`, `:284`) — the second half is what a collection picked while
+    ahead and then Menu needs, since the stored rows are the old collection's. The discard sits before the
+    favourites clear, so a dropped notice answer clears nothing.
+  - **Pass 116's redraw is as accepted:** every notice still causes a re-read; one that arrives during a
+    re-read is still owed and causes one more after it (`serverRedraw`'s loop is untouched); and no
+    notice is coalesced away — a discarded notice answer is read again, never dropped. A notice answer
+    that lands after a later read was stored is dropped as older, and the later read was sent after the
+    change the notice announced, so it carries it.
+  - **Untouched, by the pass's terms:** Pass 122's back-step, Pass 123's forward catcher, ring hold and
+    footer, `nudgeForward`, `nudgeBack`, `tick`, `snapToNow`, `pageForward`, `serverRedraw` — none in the
+    diff; `ScreenShell.swift`, `RailView.swift`, `PlayerModel.swift`, `PlayerHost.swift` byte-identical.
+- **The discard branch was driven on Home Theater under a disclosed diagnostic — a `MARLIN_PROBE_FETCH_DELAY`
+  that held every read for 4 s, added on top of the fix, launched with `devicectl … --console`, and removed
+  before the clean build** (its diff is in the report). Two drives, the same result: +12h, +12h, Menu one
+  second later — `19:50:06.693 [guide] read 3 discarded — covers 7:30 PM–7:30 PM, the window is Fri Sep 25
+  · 7:30 – 9:30 PM` and, after the print gained the day, `19:55:23.581 [guide] read 3 discarded — covers Sat
+  Sep 26 7:30 PM – Sun Sep 27 7:30 PM, the window is Fri Sep 25 · 7:30 – 9:30 PM` — with the grid filled at
+  now, "· now" drawn and ↩ Now gone after each. **Found beside it, measured twice, not S11's and not built:
+  a Menu inside a collection pick's read reaches the shell and the app goes Home** — `pick()` puts focus
+  back in the grid only after its read lands, and until then focus sits in the rail (`[rail] entered on
+  home, restoring to guide` at the pick), where Menu is `ScreenShell`'s. So the "pick while ahead, then
+  Menu inside the read" discard could not be driven and stays traced; it is raised as an open question.
+- **The run of record — `GuideStaleReadUITests` (new), `launch()`, run 4 of 4, 20:47:02–21:07:13,
+  `** TEST EXECUTE SUCCEEDED **`, 1 test, 0 failures, launch ping `20:47:07.292 POST /api/clients/<client
+  id>/ping 200` — the only non-GET request in its window.** On All Channels, the Guide open at 8:30 PM:
+  +12h twice → Sat 8:30 PM, cells drawn; **Menu → Fri 8:30 PM · now, ↩ Now gone, the grid filled**; +12h
+  twice → ↩ Now → the same; a held Right of 3 s → four slots; one Left click on the channel cell → one slot
+  back, focus on "WMAR-HD, 2.1"; a held Left → the current half hour (9:00 PM by then), focus still on the
+  channel cell in the grid; +12h → **Local picked while ahead: the window unmoved at Sat 9:00 AM, ↩ Now up,
+  eleven channel rows with WMAR-HD among them; All Channels put back the same way, thirteen-plus rows, the
+  window still unmoved**; Menu → 9:00 PM · now, filled. The server saw exactly the reads those moves call
+  for — the open, Pass 116's connect re-read, the second +12h's read, Menu's, the second +12h's again,
+  ↩ Now's, the two picks' and the last Menu's — and no read of S11's own, a healthy server answering inside
+  one round trip. **Runs 1–3 of the same harness failed on the harness, the app right each time**: run 1's
+  ceiling on Local's rows (the owner's Local holds eleven channels now, Pass 77 knew five), run 2's
+  non-member check (WBFF45 is a member now), and run 3 passed but its launch ping had left the server's
+  log — **the server restarted as marlin-dvr 1.11.6 at 20:40:50, fifteen minutes into run 3**, and its log
+  began again there; run 3 rode through it on Pass 116's reconnect re-read (`20:40:54`). Eight screenshots
+  in `reports/assets/pass129/`, and the discard drive's one.
+- **Run or traced.** **Run:** the discard of a late +12h read with Menu inside it, twice under the delay,
+  the grid filled at now after; +12h twice then Menu, and then ↩ Now, each a filled grid at now; a pick
+  while ahead redrawing in place and All Channels back; the back-step and the held ring; Pass 116's connect
+  and reconnect re-reads (the latter by the server's own restart). **Traced:** the discard of a notice's
+  answer and its re-read (needs a server write, off limits); a pick's answer landing after Menu (focus is
+  in the rail until it lands — the open question); overlapping nudge reads; a pick before the first load;
+  Menu during a notice's re-read.
+- **Found beside S11, recorded and not acted on:** the server is **marlin-dvr 1.11.6** since 20:40:50 on
+  2026-09-25, read from its own log's first line, `marlin-dvr 1.11.6 started on port 8089`; what 1.11.x
+  changed after 1.11.1 was not read and nothing in this app was changed for it. `COLD-START.md`'s server
+  line still says 1.11.1 and was not edited — this pass was named for the Guide line and *Next step*.
+- **Records this pass changes, recorded forward and not edited:** none of Pass 116's — DECISIONS.md's "no
+  notice is coalesced away" and COLD-START's "every notice re-reads at the window and collection showing"
+  hold as written, and were checked as Pass 119 (d) asked; Pass 72's "No generation counter was added to
+  the Guide" holds — `fetchSerial` is a read number, not a focus generation. `COLD-START.md`'s Guide line
+  and *Next step* are brought current in place.
+- **The owner's Guide pick was left where it was found — All Channels** — after runs 1 and 2 had ended on
+  Local; **no write of any kind went to the server**: the builder's requests were three `GET /api/logs`;
+  the app's only non-GET requests were its launch pings, one per `launch()` and per `devicectl` launch.
+  Nothing was installed on this Mac; the bedroom Apple TV was not touched; marlin-dvr was not cloned or
+  read. Build warnings: the two pre-existing ones, `GuideScreen.swift` `channelFocusID` (now `:1084`) and
+  `PlayerModel.swift:373`.
+- **This pass is committed and NOT pushed** — the owner tests on Home Theater first. Its own commit SHA is not
+  written into this entry, and cannot be — a commit cannot contain its own SHA. It lives in the pass response
+  and in the next pass's notebook entry (DECISIONS.md, 2026-09-11 (Pass 68)).
+- **The findings are in `reports/2026-09-25-pass129-s11-stale-guide-reads.md`.**

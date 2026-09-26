@@ -60,6 +60,14 @@
 //  left that redirects back to it, because a repeat that fires while the catcher still has focus —
 //  the hand-back takes up to 0.5 s while a 202-row grid redraws — went Left from the catcher into the
 //  rail (measured). The app adds no timer of its own — the pace is the platform's repeat.
+//  Pass 129 (S11): a Guide read that finishes after the window or the collection on screen has changed
+//  never fills the grid. `fetch` numbers each read and, when an answer lands, keeps it only if it still
+//  covers the window showing, was asked for the collection showing, and no later answer has been
+//  stored; otherwise it is discarded, said so, and — for a server notice's answer, or whenever the rows
+//  on screen no longer fit the screen — read again at the window and collection showing. Pass 116's
+//  redraw is as accepted: every notice still causes a re-read, one that arrives during a re-read still
+//  causes one more after it, and no notice is coalesced away — a discarded notice answer is re-read,
+//  never dropped.
 //
 
 import SwiftUI
@@ -121,6 +129,12 @@ final class GuideModel {
     private(set) var fetchStart = 0
     private(set) var fetchEnd = 0
     private(set) var loaded = false
+    /// Pass 129 (S11): one number per read, and the number and collection of the answer whose rows are
+    /// on screen, so an answer that lands after a later one was stored — or for a collection no longer
+    /// showing — can be told from the current one at the moment it lands.
+    private var fetchSerial = 0
+    private var storedSerial = 0
+    private var storedFilter: String?
     private(set) var error: String?
     private(set) var endOfListings = false
     private(set) var windowStart = 0
@@ -265,11 +279,53 @@ final class GuideModel {
         if start < fetchStart || start + Self.windowSeconds > fetchEnd { await fetch(from: start) }
     }
 
+    /// Pass 129 (S11): whether the rows on screen were read for the window and the collection now
+    /// showing. False before the first answer is stored.
+    private var storedAnswerFitsTheScreen: Bool {
+        storedFilter == collections.selectedId && fetchStart <= windowStart && windowEnd <= fetchEnd
+    }
+
+    /// Pass 129 (S11): nil when `answer` belongs on the screen as it is at this moment; otherwise why
+    /// it does not. `filter` is the collection it was asked for; `serial` its number.
+    private func staleReason(_ answer: GuideResponse, filter: String?, serial: Int) -> String? {
+        if serial < storedSerial {
+            return "read \(serial) landed after read \(storedSerial) was stored"
+        }
+        if filter != collections.selectedId {
+            return "asked for \(filter ?? "All Channels"), the screen shows \(collections.buttonLabel)"
+        }
+        let end = answer.start + answer.slots * Self.slotSeconds
+        if answer.start > windowStart || end < windowEnd {
+            return "covers \(TimeFormat.shortDay(TimeFormat.date(answer.start))) \(TimeFormat.clock(unix: answer.start)) – \(TimeFormat.shortDay(TimeFormat.date(end))) \(TimeFormat.clock(unix: end)), the window is \(windowLabel)"
+        }
+        return nil
+    }
+
     private func fetch(from start: Int, serverWins: Bool = false) async {
+        fetchSerial += 1
+        let serial = fetchSerial
+        let filter = collections.selectedId
         do {
-            async let guide = api.guide(start: start, slots: Self.fetchSlots, filter: collections.selectedId)
+            async let guide = api.guide(start: start, slots: Self.fetchSlots, filter: filter)
             async let schedule = api.schedule()
             let g = try await guide
+            // Pass 129 (S11): the answer is kept only if it still belongs on the screen as it is now.
+            // Press +12h twice and Menu before the second read lands, and the late answer used to be
+            // stored over a window at now — a blank grid with ↩ Now hidden (REVIEW.md S11). Discarded
+            // before the favourites clear below, so a dropped notice answer clears nothing; `loaded` is
+            // still set. A server notice's answer is then read again at the window and collection
+            // showing, so the change it announced is drawn and no notice is coalesced away (Pass 116),
+            // and so is any answer whose discard leaves the rows on screen not fitting the screen — a
+            // collection picked while ahead, then Menu before its read lands.
+            if let why = staleReason(g, filter: filter, serial: serial) {
+                print("[guide] read \(serial) discarded — \(why)")
+                loaded = true
+                if serverWins || !storedAnswerFitsTheScreen {
+                    print("[guide] read again at \(windowLabel) · \(collections.buttonLabel)\(serverWins ? " for the notice" : "")")
+                    await fetch(from: windowStart, serverWins: serverWins)
+                }
+                return
+            }
             // Pass 72: the server validates nothing a collection stores, so a member id held
             // twice comes back as two rows carrying the same channel (sources.go:396-400).
             // `GuideRow.id` is the channel id and the grid is a plain `Identifiable` ForEach,
@@ -280,6 +336,8 @@ final class GuideModel {
             if serverWins { favouriteOverrides = [:] }
             fetchStart = g.start
             fetchEnd = g.start + g.slots * Self.slotSeconds
+            storedSerial = serial
+            storedFilter = filter
             endOfListings = !rows.contains { $0.blocks.contains { $0.program != nil } }
             do {
                 jobs = try await schedule.jobs
