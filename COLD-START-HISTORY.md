@@ -1173,6 +1173,10 @@ true numbers live.
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
 
+*Moved here by Pass 135 (2026-10-06), byte-for-byte — the *Next step* bullet of its own first addendum, superseded the same evening by the owner's TestFlight call:*
+
+- **What comes next, the owner's call of 2026-10-06 after Pass 135's wrap-up — "not now but it will be next thing to do":** **(1)** he sets up the server's remote access himself ("its there but not wired yet"), server side, for any TV outside the home where the server lives; **(2)** the app must be able to find the server at home or remotely before TestFlight — today the address is a constant in `ServerAPI.swift` (`http://192.168.1.250:8090`) and nothing in the app searches the network. Item (2) is the next pass, planned first; TestFlight's own setup (App Store Connect record, privacy manifest for `UserDefaults`, first-ever Release build, his dad as an internal tester) follows it. Nothing is built from this yet (DECISIONS.md, 2026-10-06 (Pass 135)).
+
 *Moved here by Pass 135 (2026-10-06), byte-for-byte — the paragraph of Pass 134:*
 
 **Nothing is open, nothing is owed, and nothing is unpushed as of Pass 134's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". The next step is whatever the owner asks for next.

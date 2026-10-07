@@ -4163,3 +4163,34 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
     (the app speaks plain HTTP today; HTTPS or a VPN address changes nothing in the app beyond the
     address, a plain-HTTP address across the open internet would be advised against). TestFlight's own
     setup (the record, the privacy manifest, the Release build) comes after.
+- **Later the same evening — pushed, and the owner's call on TestFlight (2026-10-06), recorded as this pass's
+  third, local, notebook commit:**
+  - **`c157367`** (this pass's wrap-up commit) was pushed on his "yes" to the push question, and **`3edfc07`**
+    (the first addendum) on his "push it": `git push origin main` answered `d587da2..c157367` and then
+    `c157367..3edfc07`; after `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main` and
+    `git ls-remote origin main` all read `3edfc073a33fff2ae853b0f0c505d2a0eff0c71a`.
+  - **TestFlight is probably the next step — his words: "note the testflight stuff it will probaly be the next
+    step ive tesed it for like 3 months and think its ready for him to test".** "Him" is his dad. Recorded in
+    *Next step*, which now puts TestFlight first; the first addendum's bullet, which put the server-address
+    work first, is superseded and was **moved into `COLD-START-HISTORY.md` byte-for-byte**. Told plainly in
+    the response and recorded here: a TestFlight build on his dad's own Apple TVs would find no server until
+    item (2), the app finding the server, is built — the address is a constant — so TestFlight can be set up
+    next and his dad can test at the owner's home, but his dad's own home needs (1) and (2) as well.
+  - **Channels DVR, as he describes it**: its Apple TV app "just finds" the server at home and, away, a QR
+    code leads to a login page. Told: the at-home find needs the server to announce itself on the network
+    (a marlin-dvr decision) and the app to listen; the away path in Channels runs through Channels' own
+    cloud sign-in, which Marlin has no equivalent of, so Marlin's away path is a remote address typed once on
+    the TV, plus whatever login the server's remote access has.
+  - **Carried over on purpose, waiting on his server work — his words, "i set that up in server than get back
+    to u"**: the remote address's form (name or number, port, HTTP or HTTPS), whether remote access has a
+    login and of what kind, and whether the server announces itself on the home network.
+  - **Wrap-up, the third run of `.claude/commands/wrap.md`**: (1) open questions — none to ask now; the three
+    above wait on his server work by his own instruction. (2) nothing to commit — the tree was clean after
+    the push. (3) cleanup — nothing to remove; the one helper script, in the session scratchpad, was deleted
+    after it ran. (4) `COLD-START.md`: the *Next step* bullet replaced as above and the pass's push-SHA line
+    brought current. (5) this addendum. (6) the notebook commit, local. (7) the scope check and (8) the push
+    verdict are in the response.
+  - **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or existing
+    report was changed.** No request was sent to the server. Neither Apple TV was touched.
+  - **This commit's own SHA cannot be written here** (DECISIONS.md, 2026-09-11 (Pass 68)); it belongs in the
+    next pass's entry.
