@@ -682,6 +682,10 @@ final class PlayerModel {
             tick()
             showHUD(for: 6)   // a rewind or fast-forward: show how far behind live
         }
+        // Pass 133 (contract §15.2): while the recording is still being written the playlist grows
+        // on its own, so a seek to its end is a seek to the live point — the item waits for the next
+        // segment, as live does — and a new session would only start the stream over from the top.
+        if request.episode?.inProgress == true { return }
         guard isRecording, phase == .playing, !restartingBeyond, let attachedAt, Date().timeIntervalSince(attachedAt) > 3,
               let item = player.currentItem, let range = seekableRange else { return }
         let t = item.currentTime().seconds

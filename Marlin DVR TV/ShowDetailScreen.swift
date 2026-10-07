@@ -38,6 +38,13 @@
 //  drawn from, and they had no way of knowing. `onLibraryChanged` tells them, so the owner
 //  does not have to leave Recordings and come back to see a deleted recording go.
 //
+//  Pass 133 (server 1.13.0, contract §15): an episode still being written carries `inProgress`,
+//  and its row says "● Recording now". Picking it — the row, Play newest or Resume — opens
+//  `WatchChoiceMenu` (end of this file) with the two ways to watch it: the file so far, or the
+//  channel live. The row's date line is now the server's own two strings, `dateLabel` (the
+//  original air date when the guide gave one) and `airedLabel` (when it was recorded), as the
+//  owner chose on 2026-10-06; nothing is formatted from `aired` here any more.
+//
 
 import SwiftUI
 
@@ -118,6 +125,10 @@ struct ShowDetailScreen: View {
     @FocusState private var focused: String?
     @State private var resumeTick = 0   // re-read the resume store after the Player closes
     @State private var menuEpisode: Episode?
+    /// Pass 133: the recording-now episode whose two ways to watch are being offered, and the
+    /// control it was picked from, for the remote to go back to when the menu closes.
+    @State private var watchChoice: Episode?
+    @State private var watchChoiceFrom: String?
     // Pass 103, the sheet's own four (`AiringSheet.swift:57-61`), minus the airing's `job`.
     @State private var pass: PassView?
     @State private var editingPass: PassView?
@@ -148,7 +159,7 @@ struct ShowDetailScreen: View {
                 leftColumn
                 episodes
             }
-            .disabled(menuEpisode != nil || editingPass != nil)
+            .disabled(menuEpisode != nil || editingPass != nil || watchChoice != nil)
             if let menuEpisode {
                 EpisodeActionsMenu(
                     episode: menuEpisode,
@@ -159,6 +170,21 @@ struct ShowDetailScreen: View {
                         closeMenu()
                     },
                     onClose: closeMenu
+                )
+            }
+            if let watchChoice {
+                WatchChoiceMenu(
+                    episode: watchChoice,
+                    show: model.detail,
+                    api: api,
+                    onPlay: { request in
+                        let back = watchChoiceFrom
+                        self.watchChoice = nil
+                        watchChoiceFrom = nil
+                        onPlay(request)
+                        focusSoon { focused = back ?? model.episodes.first?.id ?? "newest" }
+                    },
+                    onClose: closeWatchChoice
                 )
             }
             // Pass 103: the one editor a pass is reached through from anywhere — the same screen
@@ -204,7 +230,7 @@ struct ShowDetailScreen: View {
 
     /// A hold opens the actions menu for the focused episode; anything else is left alone.
     private func handleHold() {
-        guard menuEpisode == nil, editingPass == nil, let focus = focused,
+        guard menuEpisode == nil, editingPass == nil, watchChoice == nil, let focus = focused,
               let episode = model.episodes.first(where: { $0.id == focus }) else { return }
         hold.armSwallow()
         menuEpisode = episode
@@ -217,7 +243,21 @@ struct ShowDetailScreen: View {
     }
 
     private func play(_ episode: Episode, from start: Double) {
+        // Pass 133: a recording still being written is offered its two ways to watch instead of
+        // being played straight away (contract §15); the menu reads the saved place itself.
+        if episode.inProgress {
+            watchChoiceFrom = focused
+            watchChoice = episode
+            return
+        }
         onPlay(.recording(episode: episode, show: model.detail, start: start))
+    }
+
+    private func closeWatchChoice() {
+        let back = watchChoiceFrom
+        watchChoice = nil
+        watchChoiceFrom = nil
+        focusSoon { focused = back ?? model.episodes.first?.id ?? "newest" }
     }
 
     private var leftColumn: some View {
@@ -449,16 +489,15 @@ struct EpisodeRow: View {
         return "S\(episode.season) E\(episode.episode)"
     }
 
-    private var airedLine: String {
-        let date = ISO8601DateFormatter().date(from: episode.aired)
-        if let date { return "Aired \(date.formatted(.dateTime.month(.abbreviated).day().year()))" }
-        return episode.dateLabel
-    }
-
-    /// "Aired Sep 5, 2026 · 16 min · 579.35 MB" — the duration only when the server had it cached.
+    /// "September 7th 2026 · recorded Sep 8 at 12:03 AM, 8 min · 225.41 MB" — the server's two
+    /// strings as they arrive (owner, 2026-10-06; Pass 133). `dateLabel` is the show's original
+    /// air date when the guide gave one, `airedLabel` says when it was recorded and carries the
+    /// duration when the server has it, and while the recording is still being written it reads
+    /// "started today at 6:00 PM" (server 1.13.0, contract §15). Nothing is formatted from
+    /// `aired` here any more.
     private var metaLine: String {
-        var parts = [airedLine]
-        if let duration = episode.airedLabel.cachedDurationSuffix { parts.append(duration) }
+        var parts = [episode.dateLabel]
+        if !episode.airedLabel.isEmpty { parts.append(episode.airedLabel) }
         parts.append(episode.sizeLabel)
         return parts.joined(separator: " · ")
     }
@@ -486,6 +525,12 @@ struct EpisodeRow: View {
                         .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))
                         .foregroundStyle(Nocturne.text)
                         .lineLimit(1)
+                    if episode.inProgress {
+                        // Pass 133: the Guide's recording mark, in its green (`GuideMark.green`).
+                        Text("● Recording now")
+                            .font(.nocturne(Nocturne.TextSize.floor))
+                            .foregroundStyle(GuideMark.green)
+                    }
                     ForEach(flagLabels, id: \.self) { label in
                         Text(label)
                             .font(.nocturne(Nocturne.TextSize.floor))
@@ -519,5 +564,116 @@ struct EpisodeRow: View {
         .padding(18)
         .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
         .focusTreatment(focused, restingRing: Nocturne.hairline)
+    }
+}
+
+/// Pass 133 (server 1.13.0, contract §15): the two ways to watch a recording that is still being
+/// written, in the overlay treatment of `EpisodeActionsMenu`. **Watch recording** plays the file
+/// so far — the Player takes the HLS route for it (`PlayRequest.format`) — from this Apple TV's
+/// saved place when it has one. **Watch live** opens the channel the server names on the episode
+/// (`liveChannelId`); the channel list is read on the click, because the episode carries only the
+/// id and the Player's live request takes a `MergedChannel`.
+private struct WatchChoiceMenu: View {
+    let episode: Episode
+    let show: ShowResponse?
+    let api: APIClient
+    let onPlay: (PlayRequest) -> Void
+    let onClose: () -> Void
+
+    @FocusState private var focused: String?
+    @State private var busy = false
+    @State private var error: String?
+
+    private var header: String {
+        var parts: [String] = []
+        if episode.season > 0 || episode.episode > 0 { parts.append("S\(episode.season) E\(episode.episode)") }
+        parts.append(episode.episodeTitle.isEmpty ? episode.show : episode.episodeTitle)
+        return parts.joined(separator: " · ")
+    }
+
+    /// "From 22 min in" when this Apple TV has a saved place, else from the start.
+    private var recordingState: String {
+        if let entry = ResumeStore.entry(for: episode.id) { return "From \(ResumeStore.label(for: entry))" }
+        return "From the start"
+    }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Nocturne.bg.opacity(0.72), Nocturne.bg.opacity(0.94)], startPoint: .top, endPoint: .bottom)
+            VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("● Recording now · \(episode.show)")
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .tracking(0.12 * Nocturne.TextSize.floor)
+                        .foregroundStyle(GuideMark.green)
+                    Text(header)
+                        .font(.nocturne(44, .medium))
+                        .foregroundStyle(Nocturne.text)
+                        .lineLimit(2)
+                }
+                VStack(spacing: 12) {
+                    MenuRow(title: "Watch recording", state: recordingState, focused: focused == "recording") {
+                        watchRecording()
+                    }
+                    .focused($focused, equals: "recording")
+
+                    MenuRow(title: busy ? "Working…" : "Watch live", state: "The channel as it airs", focused: focused == "live") {
+                        Task { await watchLive() }
+                    }
+                    .focused($focused, equals: "live")
+                }
+                Text("The recording plays from its first second while it is still being written. Watch live opens the channel itself.")
+                    .font(.nocturne(Nocturne.TextSize.floor))
+                    .foregroundStyle(Nocturne.neutral600)
+                    .lineLimit(2)
+                if let error {
+                    Text(error)
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .foregroundStyle(Nocturne.neutral200)
+                        .lineLimit(2)
+                }
+            }
+            .padding(44)
+            .frame(width: 860, alignment: .topLeading)
+            .background(Nocturne.surface, in: RoundedRectangle(cornerRadius: Nocturne.Radius.lg, style: .continuous))
+            .shadow(color: .black.opacity(0.65), radius: 40, y: 16)
+        }
+        .focusSection()
+        .onExitCommand { onClose() }
+        .onAppear {
+            Task {
+                try? await Task.sleep(for: .milliseconds(60))
+                focused = "recording"
+            }
+        }
+    }
+
+    private func watchRecording() {
+        guard !busy else { return }
+        onPlay(.recording(episode: episode, show: show, start: ResumeStore.entry(for: episode.id)?.position ?? 0))
+    }
+
+    private func watchLive() async {
+        guard !busy else { return }
+        guard let channelID = episode.liveChannelId, !channelID.isEmpty else {
+            error = "The server did not say which channel this is being recorded from."
+            return
+        }
+        busy = true
+        error = nil
+        do {
+            let channels = try await api.channels()
+            guard let channel = channels.first(where: { $0.id == channelID }) else {
+                error = "The channel this is being recorded from is not in the channel list."
+                busy = false
+                return
+            }
+            busy = false
+            onPlay(.live(channel: channel, program: nil))
+        } catch {
+            self.error = AiringSheet.friendly(error, fallback: "The channel list could not be read.")
+            print("[show] watch live: channels failed: \(error)")
+            busy = false
+        }
     }
 }

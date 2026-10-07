@@ -127,6 +127,14 @@ extension APIClient {
         try await get("/api/library/shows/\(id)", query: trash ? [URLQueryItem(name: "trash", value: "1")] : [])
     }
 
+    /// GET /api/play/info?rec={id} (stream.go:1143-1156) — read for the show a recording belongs
+    /// to. Pass 133: the Guide's "Watch recording" starts from a schedule item, which names only
+    /// the recording's id (`recordingId`, contract §15.1), and the Player is handed an `Episode`
+    /// from the show's own list exactly as show detail hands it one.
+    func playInfo(recordingID: String) async throws -> PlayInfo {
+        try await get("/api/play/info", query: [URLQueryItem(name: "rec", value: recordingID)])
+    }
+
     /// GET /api/library/trash (server 1.6.0) — every trashed recording in one read, including
     /// the ones whose show has left the library and which no per-show read can reach. Server
     /// order is newest trashed first, and this keeps it (Pass 33 step 2).

@@ -40,13 +40,18 @@ enum PlayRequest: Identifiable {
     /// time-shift buffer. Radio never reaches this type at all — it plays the station URL
     /// directly, with no play session (`RadioStation.swift:31`, `RadioPlayer.swift:10`).
     ///
+    /// **Pass 133 (server 1.13.0, contract §15.2): a recording that is still being written takes
+    /// HLS.** The server refuses `"file"` with 502 until the recording finishes, and only the EVENT
+    /// playlist can carry a growing file; `inProgress` is the server's own flag on the episode,
+    /// read at the moment the request is built. A finished recording keeps the single file.
+    ///
     /// This is the one place the route is chosen, so live and camera cannot drift onto the
     /// file route by accident. The switch is exhaustive with no `default`, so a new kind has
     /// to decide rather than inherit.
     var format: String {
         switch self {
         case .live: return "hls"
-        case .recording: return "file"
+        case .recording(let episode, _, _): return episode.inProgress ? "hls" : "file"
         case .camera: return "hls"
         }
     }

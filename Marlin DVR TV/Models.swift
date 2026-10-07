@@ -293,6 +293,9 @@ struct Job: Decodable, Identifiable {
     let start: Int          // padded
     let end: Int
     let status: String      // Queued | Skipped | Conflict | Recording | COMPLETED | FAILED | STOPPED
+    /// Pass 133 (contract §15.1): on an item whose `status` is `"Recording"`, the library id of
+    /// the file being written — what a `"recording"` session takes as its `id` (passes.go:76, :368).
+    let recordingId: String?
     let reason: String?
     let episodeLine: String
     let badge: String
@@ -386,6 +389,13 @@ struct Episode: Decodable, Identifiable {
     let playUrl: String
     let fileLabel: String
     let exists: Bool
+    /// Pass 133 (server 1.13.0, contract §15.1): `true` while the recording is still being
+    /// written — always present (library.go:667, set :762). The two below arrive only then: the
+    /// channel it is being recorded from, which is the id a `"live"` session takes, and the length
+    /// it will have, in seconds from when it began to its scheduled end, padding included.
+    let inProgress: Bool
+    let liveChannelId: String?
+    let scheduledLength: Double?
     /// Pass 108: the recording's stored metadata (`RecState.Meta`, `json:"meta,omitempty"`,
     /// library.go:77), decoded only for the rating the Player's info panel shows. Absent when the
     /// server has none. `EpisodeMeta` never throws, so this field can never fail an episode.

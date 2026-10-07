@@ -572,6 +572,10 @@ struct GuideScreen: View {
                         model.sheet = nil
                         onPlay(.live(channel: selection.channel, program: selection.program))
                     },
+                    onWatchRecording: { request in
+                        model.sheet = nil
+                        onPlay(request)   // Pass 133
+                    },
                     onScheduleChanged: {
                         await model.refreshSchedule()
                         return model.job(channelId: selection.channel.id, programStart: selection.program.start)

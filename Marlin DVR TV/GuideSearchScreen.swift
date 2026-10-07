@@ -265,6 +265,11 @@ struct GuideSearchScreen: View {
                         model.sheet = nil
                         restoreFocusAfterSheet()
                     },
+                    onWatchRecording: { _ in
+                        // Pass 133: as "Watch live" above — no Player here to hand it to.
+                        model.sheet = nil
+                        restoreFocusAfterSheet()
+                    },
                     onScheduleChanged: {
                         await model.refreshSchedule()
                         return model.job(channelId: selection.channel.id, programStart: selection.program.start)

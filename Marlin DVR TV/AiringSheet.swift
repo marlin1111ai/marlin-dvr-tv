@@ -49,6 +49,9 @@ struct AiringSheet: View {
     let selection: AiringSelection
     let api: APIClient
     let onWatchLive: () -> Void
+    /// Pass 133 (contract §15): the recording being written on this airing, as a request the host
+    /// hands its Player — the sheet has looked the episode up by then (`watchRecording()`).
+    let onWatchRecording: (PlayRequest) -> Void
     /// Refetches GET /api/schedule for the guide's marks and hands back this airing's job.
     let onScheduleChanged: () async -> Job?
 
@@ -278,6 +281,11 @@ struct AiringSheet: View {
                 .buttonStyle(BareButtonStyle())
                 .focused($focused, equals: "watch")
             }
+            // Pass 133 (contract §15): the file being written can be watched from its first second.
+            // `recordingId` is on the item only while its status is "Recording".
+            if recordingJob?.recordingId != nil {
+                action("Watch recording", id: "watchRecording", primary: false) { await watchRecording() }
+            }
             if recordingJob != nil {
                 action(stopArmed ? "Stop recording — click again" : "Stop recording", id: "stop", primary: false) {
                     await stopRecording()
@@ -397,6 +405,34 @@ struct AiringSheet: View {
             print("[sheet] pass failed: \(error)")
         }
         busy = nil
+    }
+
+    /// Pass 133 (contract §15.1): the schedule names only the recording's id, and the Player is
+    /// handed the show's own `Episode`, as show detail hands it one — so two reads: `GET
+    /// /api/play/info?rec=` for the show, `GET /api/library/shows/{id}` for the episode. The
+    /// request starts from this Apple TV's saved place when it has one, as show detail's does.
+    private func watchRecording() async {
+        guard let id = recordingJob?.recordingId else { return }
+        busy = "watchRecording"
+        failed = false
+        message = nil
+        do {
+            let info = try await api.playInfo(recordingID: id)
+            guard let showID = info.showId, !showID.isEmpty else {
+                throw APIError(kind: .decoding, message: "no showId for recording \(id)", path: "/api/play/info")
+            }
+            let show = try await api.show(id: showID)
+            guard let episode = show.episodes.first(where: { $0.id == id }) else {
+                throw APIError(kind: .decoding, message: "recording \(id) is not in show \(showID)", path: "/api/library/shows/\(showID)")
+            }
+            busy = nil
+            onWatchRecording(.recording(episode: episode, show: show, start: ResumeStore.entry(for: id)?.position ?? 0))
+        } catch {
+            failed = true
+            message = Self.friendly(error, fallback: "The server could not find this recording.")
+            print("[sheet] watch recording failed: \(error)")
+            busy = nil
+        }
     }
 
     /// Pass 32 item A: stop the recorder on this airing. The same call frame 6g makes, and the
