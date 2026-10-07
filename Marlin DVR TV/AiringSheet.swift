@@ -130,7 +130,26 @@ struct AiringSheet: View {
     private var whenLine: String {
         var s = "\(TimeFormat.relativeDay(TimeFormat.date(program.start))) \(TimeFormat.timeRange(program.start, program.end))"
         if let r = program.rating, !r.isEmpty { s += " · \(r)" }
+        if let firstAired { s += " · \(firstAired)" }
         return s
+    }
+
+    /// Pass 134 (owner, 2026-10-06): the listing's original air date, which the server has always
+    /// sent (`Program.originalAirDate`) and no screen drew. The guide gives it as `"20211216"`, and
+    /// the server names `"2021-12-16"` and a bare `"2021"` as the other forms it stores: eight
+    /// digits become "first aired Dec 16, 2021" as a calendar date, with no time zone to shift it;
+    /// anything else is shown as it arrived rather than dropped.
+    private var firstAired: String? {
+        guard let raw = program.originalAirDate?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
+        let digits = raw.filter(\.isNumber)
+        if digits.count == 8,
+           let y = Int(digits.prefix(4)), let m = Int(digits.dropFirst(4).prefix(2)), let d = Int(digits.suffix(2)) {
+            let parts = DateComponents(year: y, month: m, day: d)
+            if parts.isValidDate(in: .current), let date = Calendar.current.date(from: parts) {
+                return "first aired \(date.formatted(.dateTime.month(.abbreviated).day().year()))"
+            }
+        }
+        return "first aired \(raw)"
     }
 
     var body: some View {
@@ -225,6 +244,11 @@ struct AiringSheet: View {
                 Text(whenLine)
                     .font(.nocturne(Nocturne.TextSize.secondary))
                     .foregroundStyle(Nocturne.neutral500)
+                    // Pass 134: the line grew by the air date; one line, shrunk a little when
+                    // "Sat Oct 11 · 8:00 PM – 9:00 PM · TV-14 · first aired Dec 16, 2021" is
+                    // too wide, so the card's fixed height never pushes the buttons off it.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                     .padding(.bottom, 20)
                 if let desc = program.desc, !desc.isEmpty {
                     Text(desc)
