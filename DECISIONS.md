@@ -3933,3 +3933,58 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
 - **The findings are in `reports/2026-09-25-pass131-closing-pass.md`.**
+
+## 2026-10-06 (Pass 132 — the owner directs the work himself; CLAUDE.md replaced, /wrap added)
+
+- **Pass 131's verified push SHA is `07c1bbd`** (`07c1bbd01eedaa6d385653472d61d252bca98c93`). Before this pass
+  changed anything, `git rev-parse HEAD` and `git rev-parse origin/main` both read that SHA, and
+  `git status --porcelain` showed only `?? icon-source/`.
+- **Owner's call (2026-10-06), in his own words in this chat, not relayed: "I'm dropping the foreman. From now
+  on I direct the work myself and you report only to me."** From this date there is no foreman or planner:
+  what the owner says in the chat is final, and if something he asks for conflicts with a file in the repo
+  he is asked which one wins. The relayed calls of 2026-09-20, 2026-09-23 and 2026-09-25 recorded above stay
+  as history and are not reworded.
+- **`CLAUDE.md` at the project root was replaced with the owner's own "How we work" text**, pasted by him in
+  this chat: who's in charge, how to talk to him (plain English, no code or file dumps unless asked, one
+  question at a time with two or three options and a one-sentence recommendation, questions batched at a
+  natural stopping point), scope, plan first, session start (read `COLD-START.md` and `DECISIONS.md`, then
+  say where things stand), testing (a step-by-step checklist after every build), git (commit locally when a
+  piece of work is done; **never push until he says "push it"**), scope check (every report ends with the
+  files created or changed and the step that required each), cleanup each pass, wrapping up, and project
+  basics. Where his text said `COLD-START-BRIEF.md` it was written as `COLD-START.md`, this project's real
+  name; there is no separate status file.
+- **Of the old `CLAUDE.md`'s nine rules, two were kept under *Project basics* because they are this
+  project's own** — the do-not-touch list (the other folders under `~/Xcode`, the Marlin DVR server and its
+  data, the Unraid host, marlinpc, the HDHomeRun, the UNAS4Pro share) and the server repo being read-only
+  reference with server changes raised as decisions for the marlin-dvr project — plus, from the old
+  preamble, the pointer that `COLD-START.md` and `DECISIONS.md` are the record, reports live in `reports/`,
+  and what they settle is not re-derived. **Seven were dropped**: recon before build and scope lock (covered
+  by the new Scope, Plan first and Session start sections); the separate push gate (replaced by "push it");
+  no installs without authorisation, never force-push or rewrite history, no secrets in the repo, and
+  stop-and-report when blocked (all in the owner's global rules that apply to every project). *Project
+  basics* was filled in for this app: the Apple TV client of the Marlin DVR server, native Swift/SwiftUI for
+  tvOS 18.0 and later, built on the Mac in Xcode and run on the two Apple TVs, builds signed with the
+  owner's Apple Developer account and installed straight onto the Apple TVs, `build/` the shared build
+  folder; the notarized/DMG wording and the PC line were removed as not applying to a tvOS app, and "ask
+  me before changing anything about signing or entitlements" was kept. The owner's instruction to say which
+  rules were kept and dropped was answered in the response.
+- **`.claude/commands/wrap.md` was created with the owner's eight-step wrap-up routine** — open questions,
+  local commit, cleanup, `COLD-START.md` update, `DECISIONS.md` update, second local commit, scope check,
+  and whether it is safe to say "push it". It runs when he says "wrap up" or types `/wrap`. **It was not
+  run in this pass**, on his instruction.
+- **`COLD-START.md` was searched for lines saying a foreman runs the work and has none.** Its two mentions
+  of a foreman (the closed call of 2026-09-25 under *Closed by the owner's call of 2026-09-20*, and the
+  closed 27-session start-values line under *Server behaviour this project measured*) record closed calls
+  and stay as history, as do the seven mentions in this file's earlier entries and the mentions in nine
+  reports. *Next step* already read "whatever the owner asks for next". `COLD-START.md` and
+  `COLD-START-HISTORY.md` were not changed.
+- **The owner's "commit and push" in this pass's ask was the say-so for this pass's one push.** He chose,
+  from three options, to have this entry written in the same commit rather than left to the wrap routine.
+- **No report file was written for this pass**: the owner's new rules put the work report in the chat,
+  ending with the scope check.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or existing
+  report was changed. No build was run. Neither Apple TV was touched. No request of any kind was sent to
+  the server.**
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).
