@@ -4137,3 +4137,29 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   touched.
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain
   its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+- **After the wrap-up, the same evening — the owner's calls on what comes next (2026-10-06), recorded by
+  this pass as an addendum and committed as its second, local, notebook commit:**
+  - **`icon-source/` stays as it is** — his words, "leave as is for now". Its fate was recorded as undecided
+    since Pass 55; it is now decided for now: untracked, untouched, not moved, not deleted.
+  - **He asked how much of a pain TestFlight would be.** Told, from the project as it stands: a paid account,
+    the App Store icon and Top Shelf art and automatic signing are already in place; one time it needs an
+    App Store Connect record, a privacy manifest (six files use `UserDefaults`/`@AppStorage` and Apple has
+    rejected uploads without the declaration since May 2024), the encryption answer, an archive and upload,
+    and TestFlight on each Apple TV; builds expire 90 days after upload where the development install lasts
+    to 2027-09-07; outside testers get an Apple review the app cannot pass, because it only works beside its
+    server — so an outside person is added to the developer team as an internal tester instead. The Release
+    configuration has never run on either Apple TV (every install so far is Debug; no `#if DEBUG` code).
+    Signing is not touched without his say-so (CLAUDE.md).
+  - **He thought the app searched for the server; it does not and never has.** `ServerAPI.swift:15` holds
+    `http://192.168.1.250:8090` as a constant, nothing in the app browses the network, and the notebook has
+    never said otherwise (checked this pass). On another home's network the app would aim at that address
+    and find nothing.
+  - **The next two things to do, his words — "not now but it will be next thing to do":** **(1)** he sets
+    up the server for remote access himself — "its there but not wired yet" — for any TV outside the home
+    where the server lives; server side, not this project's; **(2)** the app must be able to find the server
+    at home or remotely before TestFlight. **Nothing is built from this yet.** Item (2) is the next pass,
+    planned first: a typed server address or a local search (the search would need the server to announce
+    itself — a marlin-dvr decision), one address or home-plus-remote, and what the remote path speaks
+    (the app speaks plain HTTP today; HTTPS or a VPN address changes nothing in the app beyond the
+    address, a plain-HTTP address across the open internet would be advised against). TestFlight's own
+    setup (the record, the privacy manifest, the Release build) comes after.
