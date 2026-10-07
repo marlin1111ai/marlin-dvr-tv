@@ -3988,3 +3988,122 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA. It lives in the pass response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-10-06 (Pass 133 — watch a recording while it is still being written; server 1.13.0, contract §15)
+
+- **Pass 132's verified push SHA is `5dc5ae8`** (`5dc5ae870496503060b8e5c42b4b9b3eb6c48bba`). Before this pass
+  changed anything `git rev-parse HEAD` and `origin/main` both read it, and `git status --porcelain` showed
+  only `?? icon-source/`. **This is the first pass under the owner's rules of 2026-10-06**: his ask came in
+  his own words, the plan went to him in plain English before any code, his calls came back through the
+  question prompt, the report is the chat response, and the notebook is written by `/wrap` — which is why
+  this entry and Pass 134's are written together at the wrap-up.
+- **The ask (owner, 2026-10-06), pasted "from dvr server cli"**: the server is 1.13.3 and plays a recording
+  while it is still being written; the app needs (1) to read `inProgress`, `liveChannelId` and
+  `scheduledLength` on an episode and `recordingId` on a `"Recording"` schedule item, (2) a "recording now"
+  marker and two ways to watch — live on `liveChannelId`, or the recording from its beginning — on show
+  detail and on the Guide, (3) `"hls"` while `inProgress`, never `"file"`, with the EVENT playlist, the
+  answer's real `start`, the 130 s close and the first-seconds 502, (4) the episode's date: `dateLabel` is
+  now the original air date and `airedLabel` the recording time. The full note is §15 of `HLS-CLIENT-API.md`
+  at `6f967c2`, the repo's tip, read from GitHub with `gh api`; `GET /api/status` answered **1.13.3**.
+- **Recon, before the plan**: every recording took the single-file route (`PlayRequest.format`, Pass 42), which
+  1.13.0 refuses while a recording is being written; show detail formatted "Aired Sep 5, 2026" itself from
+  `aired`; the Guide already knew a `"Recording"` job and the sheet offered "Watch live" and "Stop recording";
+  `Program.originalAirDate` was decoded and drawn nowhere; nothing called `GET /api/play/info`. The server's
+  Go source now lives under `cmd/marlin-dvr/` — `library.go:667-669` and `:762` set the three episode fields
+  and the PUT handler answers the same `episodeView` (`:1037`, `:1042`), `passes.go:76` and `:368` the
+  `recordingId`, `stream.go:1152-1154` the play/info answer, `playfile.go:106` the refusal — read at
+  `6f967c2` and deleted after use.
+- **Owner's calls (2026-10-06), from the question prompt, each the recommended option**: the date line shows
+  **"Server's wording as-is"** — "December 9th 2021 · recorded today at 6:00 PM, 43 min · 579 MB", no date
+  handling in the app; the two ways to watch appear as **"A two-button prompt"** on the click, Play newest or
+  Resume, the hold menu unchanged; and **"Yes, build it"**. Told to him with the plan and not objected to: the
+  Guide's "Watch recording" looks the episode up with two reads; a first-seconds 502 shows the server's
+  text on the failure card with the existing "Try again" and no automatic retry; a viewer at the live edge
+  waits, and after the recording ends playback can take up to about two minutes to finish — nothing added
+  for it; Home, the shelves and the Player's panel are untouched.
+- **Built, nine files**: `Models.swift` — `Episode.inProgress: Bool` (always present), `liveChannelId: String?`,
+  `scheduledLength: Double?`; `Job.recordingId: String?`. `PlayRequest.swift` — `format` answers `"hls"` while
+  `episode.inProgress`, `"file"` otherwise. `PlayerModel.swift` — `timeJumped()` returns early for such an
+  episode, so a scrub to the live edge waits for the next segment instead of restarting the session.
+  `ChannelFilter.swift` — `playInfo(recordingID:)`, `GET /api/play/info?rec=`. `ShowDetailScreen.swift` — the
+  "● Recording now" mark in `GuideMark.green`; `play(_:from:)` opens `WatchChoiceMenu` for such an episode,
+  a private view at the end of the file in `EpisodeActionsMenu`'s treatment, "Watch recording" first and
+  focused (from the saved place when there is one), "Watch live" reading `GET /api/channels` on the click
+  to find `liveChannelId`; the row's `metaLine` is `dateLabel · airedLabel · sizeLabel`, `airedLine` removed,
+  `cachedDurationSuffix` left uncalled in `Formatting.swift`. `AiringSheet.swift` — `onWatchRecording`, a
+  "Watch recording" button between "Watch live" and "Stop recording" while `recordingJob?.recordingId` is
+  set, and `watchRecording()`: play/info for `showId`, the show for the `Episode`, then the request from
+  this Apple TV's saved place; a failure lands in the footer through `friendly`. `GuideScreen.swift`,
+  `OnLaterScreen.swift` — the callback closes the sheet and hands the request to `onPlay`;
+  `GuideSearchScreen.swift` — closes the sheet, as "Watch live" does there (no Player). `PlaySession` and
+  `PlayInfo` gained no fields: the route is chosen from the episode, and play/info is read only for `showId`.
+- **Verified, run**: decoding, with the app's own `Models.swift` compiled into a scratch program on this Mac
+  against the live server — `GET /api/library` (13 shows, 3 sections), every `GET /api/library/shows/{id}`
+  (**50 episodes, all decoded**, 0 in progress), `GET /api/schedule` (**51 jobs**, 0 recording, 0 with
+  `recordingId`) and `GET /api/play/info?rec=` (`showId` present) — **DECODE OK**; the sample row read
+  "September 7th 2026 · recorded Sep 8 at 12:03 AM, 8 min · 225.41 MB". The build (`build/p133`, device
+  destination Home Theater) — **`** BUILD SUCCEEDED **`**, no new warnings; `devicectl device install app`
+  — **`App installed`**; a 30 s `--console` launch — the hold recognizer installed, the client ping ok,
+  no error, and the app **terminated by the console's close** (signal 15), so it was left on the Home screen.
+  **Traced, not run**: every recording-now path — nothing was recording on the server while the pass
+  worked, and starting a recording is a server write the pass does not make. **Reads only, no writes**:
+  status, schedule, library, two shows, play/info, and (in Pass 134) guide/search.
+- **Committed as `f236cdd`, not pushed** — the owner tests first. Later the same evening he tested on Home
+  Theater and accepted: **"all works"**. The acceptance is his; what he exercised is not itemised here beyond
+  his words.
+- **The note's closing offer** — an `originalAirDate` field in a 1.13.4 if the builders prefer one clean form —
+  is not needed under his date-line choice, and he was told he can say so to the server side.
+- **Cleanup, shown in the response**: `build/p133` (167 MB), the decode program, the five server-file copies,
+  the build and launch logs — all deleted. No report file: the owner's rules put the report in the chat.
+- **No test-target file, project file, `design/` file, `icon-source/` file or existing report was changed.**
+  The bedroom Apple TV was not touched by this pass. No request of any kind was sent to the server that
+  changes anything.
+
+## 2026-10-06 (Pass 134 — the airing sheet says when the episode first aired; Pass 133 accepted and both pushed; bedroom up; wrap-up)
+
+- **Pass 133's verified push SHA is `f236cdd`** (`f236cddd45cf90190c27fb171d5dbb75323f9f5b`); it was pushed by
+  this pass, below, not by Pass 133.
+- **Owner's question (2026-10-06)**: holding on *Strange Evidence* in the Guide shows no air date. **Finding**:
+  a hold on a programme cell opens the airing sheet (`GuideScreen.handleHold`), the same card a click
+  opens; the sheet draws flags, channel, title, episode line, day and time with the rating, and the
+  description — no air date — while `Program.originalAirDate` has been decoded since the first guide read
+  and drawn by no screen; `GET /api/guide/search?title=Strange%20Evidence` answers `"20211216"` for S6E9
+  "Alien Abduction Secrets". Told to him with the place it would go, the sheet's day-and-time line. **His
+  call: "ok add it than push."**
+- **Built, one file**: `AiringSheet.swift` — `firstAired`: eight digits with or without dashes become
+  "first aired Dec 16, 2021" through `DateComponents` and `Calendar.current` (no time zone to shift a
+  calendar date), **only when `isValidDate`** — an impossible date, a bare year or any other form is shown
+  as it arrived, never dropped; `whenLine` appends it after the rating; the `Text` is `.lineLimit(1)` with
+  `.minimumScaleFactor(0.85)`, so the card's fixed 586 pt height never pushes the buttons off it. On Later's
+  own `whenLine` on its cards is not the sheet's and was not touched.
+- **Verified, run**: the function on this Mac against the server's forms — `"20211216"` → Dec 16, 2021;
+  `"2021-12-09"` → Dec 9, 2021; `"2021"` → "first aired 2021"; `""` and nil → nothing; `"2021-13-40"` first
+  came out **Feb 9, 2022** (the calendar rolled it forward), which is why `isValidDate` is there — it now
+  shows as it arrived. The build (`build/p134`, Home Theater) — **`** BUILD SUCCEEDED **`**; **`App
+  installed`** on Home Theater, not launched. **Traced**: the line on the television — the owner said push
+  before a test, and **he has not yet said he has seen it**.
+- **Committed as `6023e59` and pushed with `f236cdd` on the owner's "push"**: `git push origin main`
+  answered `5dc5ae8..6023e59`; after `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main`
+  and `git ls-remote origin main` all read `6023e59e3ae196f967fd507e756a17bb55edcaf9`.
+- **The bedroom Apple TV was brought up to `6023e59` — install only, not launched, its own step under the
+  standing rule** (2026-10-06, after the push): built to `platform=tvOS,name=Master Bedroom ATV` in
+  `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` (Pass 117's method) — **`** BUILD SUCCEEDED
+  **`** — then `xcrun devicectl device install app --device "Master Bedroom ATV"` — **`App installed`**.
+  **Both Apple TVs run Pass 134's code.**
+- **Wrap-up (the owner's "wrap it", the first run of `.claude/commands/wrap.md`)**: (1) open questions —
+  **none**; nothing is waiting on the owner. (2) nothing to commit — the tree was clean. (3) cleanup —
+  nothing left: `build/p134`, the date-check program and the build logs were deleted when the pass
+  finished, the scratchpad was empty, and no test file was added (29 harness files before and after).
+  (4) `COLD-START.md` brought current: the rules section says there is no foreman since 2026-10-06; *The
+  server* reads 1.13.3 with §15's facts, the contract line reads `6f967c2` (834 lines, §15, `"file"`
+  named once, header still 1.11.1), the last-commit line reads `6f967c2` and `cmd/marlin-dvr/`; the
+  airing sheet, show detail and Player lines carry Passes 133 and 134; *Next step* is one current
+  statement. By Pass 89's rule the superseded lines — Pass 131's *Next step* paragraph and the three
+  server lines — were **moved into `COLD-START-HISTORY.md` byte-for-byte**, checked line by line by the
+  script that moved them. (5) this entry and Pass 133's. (6) the notebook commit, local. (7) the scope
+  check and (8) the push verdict are in the response.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or existing
+  report was changed by the wrap-up.** No request of any kind was sent to the server that changes anything.
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain
+  its own SHA. It lives in the response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
+  (Pass 68)).

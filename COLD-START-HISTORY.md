@@ -4,6 +4,8 @@ This file is history moved out of `COLD-START.md` by Pass 89 (2026-09-13), byte-
 
 **Pass 131 (2026-09-25) added to this file by the same rule — byte-for-byte, in original order, nothing rewritten:** the "Next step" paragraphs of Passes 130 back to 118, placed at the top of the *Next step* section below; and, at the end of the file, the two server lines of `COLD-START.md` — the 1.11.1 reading of Pass 120 and the 1.10.0 reading of Pass 115 with the facts it carried — that the 1.11.6 line superseded (DECISIONS.md, 2026-09-25 (Pass 131)).
 
+**Pass 134 (2026-10-06) added to this file by the same rule — byte-for-byte, in original order, nothing rewritten:** the "Next step" paragraph of Pass 131, placed at the top of the *Next step* section below; and, at the end of the file, three lines of `COLD-START.md`'s *The server* section — the 1.11.6 line, the `HLS-CLIENT-API.md` line read at `0fa05e1`, and the last-commit-read line at `0fa05e1` — each superseded by a 1.13.3 / `6f967c2` line.
+
 ## What is built
 
 **The server is marlin-dvr 1.8.2** (Pass 85, 2026-09-13), and this one **is** measured from here:
@@ -1170,6 +1172,19 @@ true numbers live.
 
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
+
+*Moved here by Pass 134 (2026-10-06), byte-for-byte — the paragraph of Pass 131:*
+
+**Nothing is open, nothing is owed, and nothing is unpushed as of Pass 131, the closing pass.** The next step is whatever the owner asks for next.
+
+- **Both Apple TVs run Pass 129's app code** — Home Theater since Pass 129's own runs, "Master Bedroom ATV" since the install that followed Pass 130 (built from `d48af19`, not launched) — so the standing bedroom rule is satisfied and the two televisions match. Both builds are development-signed and stop launching on **2027-09-07**. **Wake the bedroom Apple TV before any pass that launches on it**: asleep, it still lists as connected and accepts an install, and refuses the launch (Pass 117).
+- **The server is marlin-dvr 1.11.6** since 20:40:50 on 2026-09-25 (*The server* above).
+- **There is no local clone of the server repo.** Server files are read from `github.com/marlin1111ai/marlin-dvr` at a commit the pass names, and deleted afterwards; the last commit read is `0fa05e1`.
+- **The last thing built is S11, the Guide's stale-read guard** (Pass 129), accepted on Home Theater — "all good" — and pushed by Pass 130; with it the batch the owner picked on 2026-09-23 — REVIEW.md's fifteen "should fix" items and item G — is complete (Passes 120, 122, 125, 127, 129). REVIEW.md's N1–N22 and N25–N55 stay unpicked.
+- **No open items.** See *Open questions* above and *Closed by the owner's call of 2026-09-20*, which now also carries his call of 2026-09-25; read that section before trusting any path it names, because closed is not the same as measured.
+- **Pass 130's verified push SHA is `d48af19`.** Pass 131's one commit is a fast-forward from it.
+
+This pass's own SHA is not written here and cannot be — a commit cannot contain its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it is in the Pass 131 response and belongs in the next pass's entry.
 
 *Moved here by Pass 131 (2026-09-25), byte-for-byte — the paragraphs of Passes 130 back to 118:*
 
@@ -2677,3 +2692,21 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
   below. What 1.11.x changed was not read, and nothing in this app was changed for it. The query parsing S10
   depends on was measured against the running 1.11.1.
 - **The server is marlin-dvr 1.10.0**, as `GET /api/status` answered on 2026-09-19 (Pass 115). **1.10.0 announces channel and collection changes live on `GET /api/events`** — a server-sent event stream whose every notice is the one word `channels` or `collections`, with a keep-alive comment every 15 s and no replay (contract §12; `reports/2026-09-19-pass115-events-recon.md`). **The Guide listens to it, and only the Guide** (Pass 116). It supersedes the 1.9.3 read on 2026-09-16 in Passes 107 and 108 (recorded in Pass 113), which superseded the 1.9.1 measured from `GET /api/status` on 2026-09-16 (Pass 101), which superseded the 1.8.2 read on 2026-09-13 (Pass 85), which superseded the 1.8.1 read in Passes 71 and 72, which superseded the owner's own 1.8.0 and 1.7.0 readings of 2026-09-08 (Pass 72, Pass 85). **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101).
+
+## The server lines of `COLD-START.md` superseded by the 1.13.3 and `6f967c2` lines (moved by Pass 134, byte-for-byte)
+
+- **The server is marlin-dvr 1.11.6**: it restarted as such at 20:40:50 on 2026-09-25, read from its own
+  log's first line, `marlin-dvr 1.11.6 started on port 8089`, in the middle of Pass 129's run of record
+  (Pass 129, recorded by Pass 130). What 1.11.2–1.11.6 changed was not read, and nothing in this app was
+  changed for it; Pass 129's run rode through the restart on Pass 116's reconnect re-read. The readings it
+  supersedes — 1.11.1 on 2026-09-24 (Pass 120), 1.10.0 on 2026-09-19 (Pass 115) and the chain before them —
+  are in `COLD-START-HISTORY.md`, moved there by Pass 131. **The standing server facts this app was built
+  on stay as they were:** **1.10.0 announces channel and collection changes live on `GET /api/events`** —
+  a server-sent event stream whose every notice is the one word `channels` or `collections`, with a
+  keep-alive comment every 15 s and no replay (contract §12; `reports/2026-09-19-pass115-events-recon.md`),
+  and **the Guide listens to it, and only the Guide** (Pass 116); **1.9.1 writes an `.mp4` sidecar beside
+  the `.mpg` when a recording finishes and serves that file directly on `format:"file"` with byte ranges
+  and no remux** — relayed by the owner from the marlin-dvr project, 2026-09-16 (Pass 101); the query
+  parsing S10 depends on was measured against the running 1.11.1 (Pass 120).
+- **`HLS-CLIENT-API.md` in the marlin-dvr repo is current on its version and still silent on the single-file route.** At `0fa05e1` its header says **1.10.0** (`HLS-CLIENT-API.md:7`), it is 670 lines and runs to **§12**, the change notices — and **`"file"`, `video.mp4` and `/api/play/file` appear nowhere in it** (read from GitHub and searched, Pass 118; blob `8f1e7941`, the same bytes Pass 115 read). So §2.3 of `reports/2026-09-08-pass41-single-file-route-recon.md` is still the only written description of that route, read from their Go source (Pass 41), and the route stays undocumented on their side — recorded, closed with the rest on 2026-09-20, not to be raised unless the owner asks. It supersedes this line's earlier wording — *"byte-unchanged across the whole 1.8.0 delivery, its header still says 1.7.0"* — which was true at Pass 41 and had gone stale by Pass 115.
+- **There is no reference clone any more; the last server commit read is `0fa05e1`** (`0fa05e13927b202df469a430789df9c9683c73c4`, source at 1.10.0), read straight from GitHub in Pass 115 under the rule in *Where things live*. The old clone — `eb0c098`, a tree at 1.8.1 (Pass 72; still there at Pass 85) — was removed from this Mac on 2026-09-19, not by this project; earlier reports' server `file:line` citations were read at the commit each report names and stay as written. Server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the source (Pass 72).
