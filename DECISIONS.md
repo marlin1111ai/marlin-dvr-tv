@@ -4107,3 +4107,33 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain
   its own SHA. It lives in the response and in the next pass's notebook entry (DECISIONS.md, 2026-09-11
   (Pass 68)).
+
+## 2026-10-06 (Pass 135 — Pass 134 seen on the television and accepted; `d587da2` recorded; wrap-up)
+
+- **Pass 134's wrap-up commit is `d587da2`** (`d587da232be7da9e22b29aef2b818a3a31499d48`), pushed on the
+  owner's "push it" at the end of the previous session the same evening; the Pass 134 entry could not
+  carry it (DECISIONS.md, 2026-09-11 (Pass 68)). **Verified by this pass before it changed anything**:
+  after `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin
+  main` all read `d587da232be7da9e22b29aef2b818a3a31499d48`. The tree was clean but for `icon-source/`,
+  untracked as the record says it stays.
+- **Owner acceptance (2026-10-06)**: told that Pass 134's "first aired" line had been pushed without a
+  television test, he answered — his words, verbatim — **"i tested it goos push and wrap"**, read as "I
+  tested it, good; push and wrap". The airing sheet's "first aired" line is **seen on the television and
+  accepted**; which Apple TV he tested on, and which programme, he did not say and is not claimed.
+  Nothing is claimed beyond his words: Pass 133's recording-now paths stay traced.
+- **"push": nothing to push.** `HEAD`, `origin/main` and the remote already agreed on `d587da2`, so no
+  `git push` was run. Nothing was built, installed or launched by this pass.
+- **Wrap-up (the second run of `.claude/commands/wrap.md`)**: (1) open questions — **none**; nothing is
+  waiting on the owner. (2) nothing to commit — the tree was clean. (3) cleanup — nothing to remove: the
+  pass created no test file, scratch script, sample data, build folder, test result or log; the one
+  script it wrote, the notebook mover in the session scratchpad, was deleted after it ran, and `build/`,
+  the shared build folder, was not touched. (4) `COLD-START.md` brought current: the airing-sheet line
+  under *What is built* and *Next step* carry the acceptance and `d587da2`. By Pass 89's rule the
+  superseded *Next step* paragraph of Pass 134 was **moved into `COLD-START-HISTORY.md` byte-for-byte**
+  by the script, which checked every moved line against the original. (5) this entry. (6) the notebook
+  commit, local. (7) the scope check and (8) the push verdict are in the response.
+- **No app-target file, test-target file, project file, `design/` file, `icon-source/` file or existing
+  report was changed by this pass.** No request of any kind was sent to the server. Neither Apple TV was
+  touched.
+- **This pass's own commit SHA is not written into this entry, and cannot be** — a commit cannot contain
+  its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.

@@ -1173,6 +1173,19 @@ true numbers live.
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
 
+*Moved here by Pass 135 (2026-10-06), byte-for-byte — the paragraph of Pass 134:*
+
+**Nothing is open, nothing is owed, and nothing is unpushed as of Pass 134's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". The next step is whatever the owner asks for next.
+
+- **Both Apple TVs run Pass 134's app code, `6023e59`** — Home Theater since Pass 134's install on 2026-10-06 (installed, not launched), "Master Bedroom ATV" since the install that followed the push the same evening (built from `6023e59` by Pass 117's method, installed, not launched) — so the standing bedroom rule is satisfied and the two televisions match. Both builds are development-signed and stop launching on **2027-09-07**. **Wake the bedroom Apple TV before any pass that launches on it**: asleep, it still lists as connected and accepts an install, and refuses the launch (Pass 117).
+- **The server is marlin-dvr 1.13.3** (*The server* above); it plays a recording while it is still being written, and the app uses that since Pass 133.
+- **There is no local clone of the server repo.** Server files are read from `github.com/marlin1111ai/marlin-dvr` at a commit the pass names, and deleted afterwards; the last commit read is `6f967c2`, and the Go source lives under `cmd/marlin-dvr/`.
+- **The last things built are Pass 133 — watching a recording while it is still being written (server 1.13.0, contract §15), accepted by the owner on Home Theater, "all works" — and Pass 134, the airing sheet's "first aired" date, pushed on his "add it then push" and not yet seen by him on the television.** Pass 133's recording-now paths were traced, not run, by the pass itself — nothing was recording on the server while it worked. REVIEW.md's N1–N22 and N25–N55 stay unpicked.
+- **No open items.** See *Open questions* above and *Closed by the owner's call of 2026-09-20*, which also carries his calls of 2026-09-23 and 2026-09-25; read that section before trusting any path it names, because closed is not the same as measured.
+- **Pass 134's verified push SHA is `6023e59`** (`6023e59e3ae196f967fd507e756a17bb55edcaf9`), a fast-forward from `5dc5ae8` (Pass 132) through `f236cdd` (Pass 133), fetched and compared on 2026-10-06. The wrap-up's notebook commit is a fast-forward from it.
+
+The wrap-up commit's own SHA is not written here and cannot be — a commit cannot contain its own SHA (DECISIONS.md, 2026-09-11 (Pass 68)); it belongs in the next pass's entry.
+
 *Moved here by Pass 134 (2026-10-06), byte-for-byte — the paragraph of Pass 131:*
 
 **Nothing is open, nothing is owed, and nothing is unpushed as of Pass 131, the closing pass.** The next step is whatever the owner asks for next.
