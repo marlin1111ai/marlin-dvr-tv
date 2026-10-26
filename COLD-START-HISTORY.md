@@ -1173,6 +1173,11 @@ true numbers live.
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
 
+*Moved here by Pass 138's addendum (2026-10-26), byte-for-byte — the paragraph of Pass 138's wrap-up:*
+
+**Nothing is open and nothing is unpushed as of Pass 138's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it" — **and one thing is owed: the bedroom Apple TV is not yet on Pass 138's code**, because it was unavailable when the pass pushed (below). **The next step is whatever the owner asks for**; in his order of 2026-10-26 the pieces still ahead from the REA report are Recordings onto the rails container (his 3a) and the Sort / Genre / Rating menus in the filter bar's slot (his 2a); **the Guide stays as it is** (his call of 2026-10-26, cancelling a Guide plan); TestFlight and the app finding the server (below) come after.
+
+
 *Moved here by Pass 138 (2026-10-26), byte-for-byte — the paragraph of Pass 137:*
 
 **Nothing is open, nothing is owed, and nothing is unpushed as of Pass 137's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". **The next step is whatever the owner asks for**; in his order of 2026-10-26 the pieces still ahead from the REA report are Recordings onto the rails container (his 3a) and the Sort / Genre / Rating menus in the filter bar's slot (his 2a; the server gives `categories` and `rating` per airing), each its own pass, planned first; TestFlight and the app finding the server (below) come after.

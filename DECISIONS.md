@@ -4510,3 +4510,33 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   was sent to the server, and nothing was read from it by hand — every server fact came from GitHub at `674a7a7`.
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
   (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+
+## 2026-10-26 (Pass 138 addendum — the bedroom brought up to `70d6e6e`; `021696d` pushed; wrap-up)
+
+- **The bedroom Apple TV was brought up to Pass 138's code — install only, not launched — on the owner's word** ("Bedroom
+  is on — install Pass 138 on it now, don't launch it"). `devicectl device info details` read it **connected**, booted,
+  last connected at 7:54 PM, where at the push it had read unavailable. The working tree differed from `70d6e6e` only in
+  the three notebook files (`git diff --stat 70d6e6e HEAD`), so the build is that commit's app code: built to
+  `platform=tvOS,name=Master Bedroom ATV` in `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` (Pass 117's
+  method, **`** BUILD SUCCEEDED **`**) and installed (`App installed`, `com.marlin1111.MarlinDVRTV`). **Both Apple TVs
+  run `70d6e6e`**: Home Theater from the build installed before the push, the bedroom from this one; both built bundles
+  carry Pass 138's own lines (four `[lastchannel]` strings and the double-click line, by `strings` on each
+  `Marlin DVR TV.debug.dylib`), and `devicectl device info apps` lists the app, 1.0 (1), on both. The app carries no
+  commit id of its own, so which commit each runs rests on which build went onto it. The owed item of Pass 138's entry
+  is closed.
+- **Pass 138's wrap-up commit `021696d` was pushed on the owner's word**: `git push origin main` answered
+  `70d6e6e..021696d`; after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote
+  origin refs/heads/main` all read `021696d39bbcbaa9e67e08d4ec830eacc8e06eb6`.
+- **Wrap-up (the seventh run of `.claude/commands/wrap.md`, on his "wrap it")**: (1) open questions — **one is still
+  awaited from him**: the server's remote-access facts (the remote address's form, whether it has a login, whether the
+  server announces itself on the home network), which he said on 2026-10-06 he would bring and which the app finding the
+  server waits on; asked again in the response, unanswered at the time of writing. (2) nothing to commit — the tree was
+  clean. (3) cleanup — nothing to remove: the session scratchpad was already empty and no process was left running;
+  `build/` and the bedroom build folder were not touched. (4) `COLD-START.md` brought current: *Next step* says nothing is
+  owed, both Apple TVs run `70d6e6e`, and `021696d` is pushed; by Pass 89's rule Pass 138's wrap-up paragraph was
+  **moved into `COLD-START-HISTORY.md` byte-for-byte**, checked by the script that moved it. (5) this entry. (6) the
+  notebook commit, local. (7) the scope check and (8) the push verdict are in the response.
+- **No app file, `design/` file, `icon-source/` file, `rea/` file, project file or existing report was changed.** Nothing
+  was sent to the server.
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
+  (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
