@@ -19,6 +19,11 @@
 //  Pass 110 (owner, 2026-09-16): the card across the top — frame 6c on recordings, 6b on live
 //  channels — is no longer drawn for either; the info panel replaces it. Cameras keep 6b. See `hud`.
 //
+//  Pass 138 (owner, 2026-10-26): every live channel that reaches the playing state is recorded as this
+//  Apple TV's current channel (`LastChannel`), and a quick double-click on the clickpad centre while one
+//  plays switches to the channel watched before it — `flipToPreviousChannel`, offered the second click
+//  by `PlayerContainerController`. Nothing else in the Player changes.
+//
 
 import SwiftUI
 
@@ -31,6 +36,9 @@ struct PlayerScreen: View {
     @FocusState private var focused: String?
     /// Pass 108: the info panel is up.
     @State private var infoPanelOpen = false
+    /// Pass 138: a switch to the previous channel is under way — reading it from the server, stopping
+    /// this session, starting the new one — so a second double-click cannot start another beside it.
+    @State private var flipping = false
 
     init(request: PlayRequest, api: APIClient, clientName: String, onDismiss: @escaping () -> Void) {
         self.api = api
@@ -49,7 +57,8 @@ struct PlayerScreen: View {
                            frameStep: { model.frameStep($0) },
                            onSelectSkip: { model.skipCommercialBreak() },
                            infoPanelOpen: infoPanelOpen,
-                           onInfoPanel: { openInfoPanel() }) { dismiss() }
+                           onInfoPanel: { openInfoPanel() },
+                           onDoubleSelect: { flipToPreviousChannel() }) { dismiss() }
                     .ignoresSafeArea()
                 hud
                 // Pass 38 step 5: the commercial-skip prompt, over running playback, in the
@@ -73,6 +82,8 @@ struct PlayerScreen: View {
         .task { await model.start() }
         .onChange(of: model.phase) { _, phase in
             if phase != .playing { infoPanelOpen = false }
+            // Pass 138: a live channel counts once it plays — a tune that fails never becomes "previous".
+            if phase == .playing, let channel = model.request.channel { LastChannel.played(channel) }
             switch phase {
             case .ended: focusSoon { focused = model.nextEpisode != nil ? "next" : "back" }
             case .failed: focusSoon { focused = "back" }
@@ -123,6 +134,28 @@ struct PlayerScreen: View {
             await model.stop()
             onDismiss()
         }
+    }
+
+    /// Pass 138: the second click of a double-click on the clickpad centre. While a live channel plays,
+    /// with the info panel down and a previous channel on record, it switches to that channel through the
+    /// start an On Now card makes — a `.live` request for the channel and what is on it, read fresh from the
+    /// server (owner's B1) — swapped in the way `playNext` swaps in the next episode: this session stopped,
+    /// which frees its tuner, then the new one started, with the Starting, tuner-busy and failure screens
+    /// exactly as from On Now. True when it took the press; false leaves the click a single click.
+    private func flipToPreviousChannel() -> Bool {
+        guard !flipping, model.phase == .playing, !infoPanelOpen,
+              let playing = model.request.channel,
+              let previous = LastChannel.previous, previous.id != playing.id else { return false }
+        flipping = true
+        print("[lastchannel] double-click on ch\(playing.number) \(playing.name) → \(previous.label)")
+        Task {
+            defer { flipping = false }
+            guard let target = await LastChannel.resolve(previous, api: api) else { return }
+            await model.stop()
+            model = PlayerModel(request: .live(channel: target.channel, program: target.program), api: api, clientName: clientName)
+            await model.start()
+        }
+        return true
     }
 
     /// Frame 6e: the next-newer episode of the same show, from the top.

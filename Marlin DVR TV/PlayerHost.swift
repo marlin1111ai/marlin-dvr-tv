@@ -58,6 +58,19 @@
 //  into the player (`shouldUpdateFocus`), so Up or Down past the panel's last control cannot land
 //  focus on the video with the panel still drawn. When it closes, focus is asked back here.
 //
+//  Pass 138 (owner, 2026-10-26 — his A1, B1, C1): **a quick double-click on the clickpad centre while
+//  a live channel plays switches to the channel this Apple TV watched before** (`LastChannel.swift`).
+//  No click can know a second is coming, so the first is never held back: it reaches Apple's handler,
+//  or Pass 7C's own pause, exactly as a single click does. A second centre click whose press begins
+//  within `doubleSelectWindow` of the first is offered to `onDoubleSelect`; when that takes it — a
+//  previous channel exists and nothing of the app's is up — the press and its release are swallowed and
+//  **Pass 7C's pending pause or resume from the first click is cancelled**, so in the first minute after
+//  tuning, while the app does its own delayed pause, a double-click flips without pausing at all when it
+//  lands inside the 0.35 s grace, and pauses once and never twice when it lands after it. When the window
+//  is long enough for Apple's own handler, Apple's recognizer still sees both clicks (Pass 38 measured
+//  that not calling `super` cannot stop it), so the channel pauses and resumes in the instant before it is
+//  stopped. A second click that `onDoubleSelect` declines — nothing previous — is a single click, as today.
+//
 
 import AVKit
 import SwiftUI
@@ -82,6 +95,10 @@ struct PlayerHost: UIViewControllerRepresentable {
     /// Pass 108: open the info panel. Returns true when it acted, which is the signal to swallow a
     /// down click; false — a camera — leaves the press to Apple.
     let onInfoPanel: () -> Bool
+    /// Pass 138: the second centre click of a double-click on a live channel. Returns true when it
+    /// switched to the previous channel, which is the signal to swallow the press; false leaves it a
+    /// single click.
+    let onDoubleSelect: () -> Bool
     let onMenu: () -> Void
 
     func makeUIViewController(context: Context) -> PlayerContainerController {
@@ -90,6 +107,7 @@ struct PlayerHost: UIViewControllerRepresentable {
         controller.frameStep = frameStep
         controller.onSelectSkip = onSelectSkip
         controller.onInfoPanel = onInfoPanel
+        controller.onDoubleSelect = onDoubleSelect
         controller.attach(player: player, linearOnly: linearOnly, shortWindowSelect: shortWindowSelect)
         controller.armArrowOwnership(ownsArrows)
         controller.armSelectOwnership(ownsSelect)
@@ -102,6 +120,7 @@ struct PlayerHost: UIViewControllerRepresentable {
         controller.frameStep = frameStep
         controller.onSelectSkip = onSelectSkip
         controller.onInfoPanel = onInfoPanel
+        controller.onDoubleSelect = onDoubleSelect
         controller.armArrowOwnership(ownsArrows)
         controller.armSelectOwnership(ownsSelect)
         controller.setInfoPanelOpen(infoPanelOpen)
@@ -115,12 +134,20 @@ final class PlayerContainerController: UIViewController, UIGestureRecognizerDele
     /// How long Apple's handler gets before the container acts (a click's press-ended
     /// arrives within about 100 ms; Apple toggles on it).
     static let appleGrace: TimeInterval = 0.35
+    /// Pass 138 (owner's C1): the most a double-click's second press may begin after the first's.
+    static let doubleSelectWindow: TimeInterval = 0.4
 
     var onMenu: () -> Void = {}
     var frameStep: (Int) -> Bool = { _ in false }
     var onSelectSkip: () -> Bool = { false }
     /// Pass 108: open the info panel; true when it acted.
     var onInfoPanel: () -> Bool = { false }
+    /// Pass 138: switch to the previous channel; true when it acted.
+    var onDoubleSelect: () -> Bool = { false }
+    /// Pass 138: when the last centre click on a live channel began (`UIPress.timestamp`, seconds since
+    /// boot), so the next one can be told a double-click's second press. Nil after a double-click, so a
+    /// third click starts afresh.
+    private var lastLiveSelectAt: TimeInterval?
     /// Pass 108: a down click consumed as the panel's opener, so its release is swallowed too.
     private var swallowDownRelease = false
     /// Pass 108: mirrors `PlayerHost.infoPanelOpen`.
@@ -334,7 +361,24 @@ final class PlayerContainerController: UIViewController, UIGestureRecognizerDele
         if presses.contains(where: { $0.type == .select }) {
             if onSelectSkip() { swallowSelectRelease = true; return }
         }
-        if shortWindowSelect, presses.contains(where: { $0.type == .select }) {
+        if shortWindowSelect, let select = presses.first(where: { $0.type == .select }) {
+            // Pass 138: the second click of a double-click switches to the previous channel.
+            if let last = lastLiveSelectAt, select.timestamp - last <= Self.doubleSelectWindow {
+                let gap = Int(((select.timestamp - last) * 1000).rounded())
+                if onDoubleSelect() {
+                    let ownPending = pendingSelect != nil
+                    pendingSelect?.cancel()
+                    pendingSelect = nil
+                    lastLiveSelectAt = nil
+                    swallowSelectRelease = true
+                    print("[select] double-click, second press \(gap) ms after the first, window \(Int(seekableWindow)) s → previous channel; "
+                          + (ownPending ? "the first click's own pause/resume was still pending — cancelled, so no pause"
+                                        : "no own pause/resume pending from the first click"))
+                    return
+                }
+                print("[select] double-click, second press \(gap) ms after the first → no previous channel, a single click")
+            }
+            lastLiveSelectAt = select.timestamp
             handleShortWindowSelect()
         }
         super.pressesBegan(presses, with: event)
@@ -370,6 +414,8 @@ final class PlayerContainerController: UIViewController, UIGestureRecognizerDele
         pendingSelect?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self, let player = self.playerController.player else { return }
+            // Pass 138: no longer pending once it runs, so a double-click can tell whether it was.
+            self.pendingSelect = nil
             let stillSame = (player.timeControlStatus != .paused) == wasPlaying
             guard stillSame else {
                 print("[select] window \(Int(window)) s → Apple's handler acted")
