@@ -4311,3 +4311,108 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   from it by hand.
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its
   own SHA (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+
+## 2026-10-26 (Pass 137 — the screen containers, the filter bar, the image-aspect contract and the status badges; the grid's focus room; `a3c5b1e` pushed; both Apple TVs on `992d3a3`; wrap-up)
+
+- **Pass 136's wrap-up commit `a3c5b1e` was pushed first, on the owner's word**: `git push origin main` answered
+  `60a035f..a3c5b1e`; after `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote
+  origin main` all read `a3c5b1eaba45b0afee3b34006a2b1e596bf0ac8f`. The tree was clean but for `icon-source/` and `rea/`.
+- **The plan (≤20 lines, Apple TV only) was given first and he answered its four decisions**: **1a** — the filter bar
+  scrolls its chips sideways (over wrapping them or trimming the labels); **2a** — chips only on On Now, the slot for the
+  Sort / Genre / Rating menus left empty this pass (over building the menus now; the server gives `categories` and
+  `rating` per airing, so they can be built later); **3a** — Recordings stays off the rails container, which is not
+  built until Recordings moves onto it (over moving Recordings now); **4a** — show detail's poster goes to 2:3 **only if
+  the show art is portrait**, which was to be read from the server. Out of scope and untouched: Weather, Radio, Cameras,
+  the Guide, the Player, the airing sheet, the Mac target.
+- **The server was read from its source on GitHub, not live, and the reason is on the record**: the tool's own guard
+  refused a live read of the server from the Mac twice in the session — a `curl` of `/api/status`, then a Python fetch
+  — and no third way was tried. `cmd/marlin-dvr/artwork.go` at the repo's tip **`674a7a7`**
+  (`674a7a72f67d0e5210e234b36eb547fd51f1291e`, committed 2026-10-24) answers his 4a: a show's art is the title's TMDB
+  poster at w342 / w780 (2:3); an airing's art is the provider's feed image passed through `/api/art/feed?u=…&title=…`
+  with that poster as its fallback; nothing served is 4:3 and there is no backdrop route — so 4a applies and the
+  contract follows what the server sends. The copy was deleted after reading; nothing else of the server repo was read.
+- **Built, one commit, Apple TV only** (new `ArtView.swift`, `ScreenContainers.swift`, `StatusBadges.swift` and the
+  harness `Pass137UITests.swift`; changed `OnNowScreen.swift`, `OnLaterScreen.swift`, `SettingsScreen.swift`,
+  `ServerImage.swift`, `FavoritesScreen.swift`, `RecordingsScreen.swift`, `ShowDetailScreen.swift`,
+  `ScheduleManageView.swift`, `TrashManageView.swift`; no project-file change):
+  - **The containers** (REA §2.3): `GridPage` — the screen header, the bar, an optional status line and the
+    three-column grid; `ListDetailPage` — the groups on the left and the chosen group's rows on the right, with
+    `ListGroupRow` lifted out of Pass 136's Settings. On Now and On Later moved onto the first, Settings onto the second.
+    The rails page waits for Recordings (his 3a). A container owns layout only — never a card, a row or a model.
+  - **The filter bar**: `FilterBar`, the chips in a sideways-scrolling row inside a focus section, with the menu slot.
+    On Now's ten chips no longer push the shell left, which closes Pass 136's deferred overflow (his 1b): the harness
+    read the first card at x 223 on the first run where Pass 136 had read 191, and the sidebar whole on On Now.
+  - **The image contract**: `ArtKind` — poster 2:3, placard 4:3 (unused today), screencap 16:9, logo (fitted whole, 6 pt
+    inside, on the `neutral200` backing) — and `ArtView`, which takes one dimension and derives the other from the kind,
+    fills and crops when given both, and falls back from the artwork to the grey placeholder to the channel's initials.
+    Show detail's poster became 315 × 472 (it was a 520 × 472 box that cropped the picture); On Later's card art and the
+    schedule row's art became 2:3 where they were squares; the trash row and the episode thumb kept their sizes; the
+    Recordings poster card keeps the design's fixed box; `ChannelLogo` is the logo kind, so CBS is no longer cropped.
+  - **The badges**: `StatusTag` / `StatusTagRow` (NEW, LIVE, PREMIERE, FINALE, HD as `TagChip`s), `StateBadge` (the dot
+    states on the semantic pairs), `CountBadge`. On Now gained HD; On Later's cards carry tags, with Premiere from its own
+    derived rule so the card and the pill agree, and "Scheduled" on the scheduled pair; Favorites' HD is a tag; show
+    detail's "Recording now" is the state badge. **Not drawn because the server gives nothing to draw**: a premiere flag
+    that is ever set, season vs series premiere, interrupted / stopped early / started late, a trash removal date, Dolby,
+    4K.
+  - **Found and fixed on the way**: show detail's episode rows had been drawing the server's HD, codec, audio and rating
+    tags as empty slivers since Pass 133's longer date strings took the row's width — they sit on their own line now;
+    and with the sidebar open On Now's narrower cards broke their tags mid-word on the first run — the tags keep their
+    width and the channel text truncates instead.
+- **His two photo defects after his look on Home Theater, both fixed in the grid container and nowhere else (his
+  instruction: "Fix it in the shared grid container, not per screen")**: the focused card in the first column grew and
+  lost its left edge at the content boundary, and the third column ran off the right edge; the top row the same. One
+  cause: the grid filled the content area edge to edge and the scroll area clips at its own edges, so the 5 % growth
+  and the lift were cut on the left, the top and the right (the harness had read the focused first card at x 223 and
+  the third at 1311–1852 against a content area of 236–1840). **The fix**: the grid is inset inside its scroll area by
+  the growth itself — the side inset solved from the measured content width so that a focused card in the first or
+  third column grows exactly to the content's edge and not past it (13 pt beside the collapsed rail, columns of 507
+  where they were 516; 12 pt beside the open sidebar), 20 pt above and below for the lift, the scale and the shadow's
+  reach — and the scroll area keeps its clip so cards scrolled under the bar never draw over it. The first row sits
+  10 pt lower than before. `scrollClipDisabled` was considered and rejected: it would let scrolled cards draw over the
+  bar. **A measurement quirk found and recorded, not a defect**: a card whose art is a landscape picture filled into
+  the 2:3 poster box reports an accessibility frame as wide as the unclipped picture — On Later's first card read 26 pt
+  wider than it is drawn — so the harness's edge checks read the focus ring's own pixels in the screenshot (the
+  accent `#9184D9` within 16 per channel, which excludes the tag ink, the tag ring and `accent600`) and log the frame.
+  **Folded into the pass's commit by `--amend` at his instruction ("fold into 01fd625")** — local and unpushed, so no
+  pushed history was rewritten — `01fd625` becoming **`992d3a3`**.
+- **Run on Home Theater — `Pass137UITests`, two methods, `launch()`, passed in full on the folded code (the run of
+  record)**: `testFocusedCardsHaveRoomInTheGrid` — on On Now and On Later the first column's ring starts at x 236 and
+  the third column's ends at x 1839 (content 236–1840), the top row's ring at y 259 / 278 under a scroll area starting
+  at y 250, two Rights reaching the third column on the same row; `testGridPagesContractBadgesAndListDetail` — the
+  first On Now card at x 236, nine chips walked with every one on screen (All 341 · HD · HDFX-4K · Verizon · Philo ·
+  You Tube · Marlin Cast You Tube · SY-FY · fast, after Favorites), the grid unmoved while the bar scrolled, the
+  sidebar whole on On Now with the logo at x 80, On Later, Favorites, Recordings, show detail, Scheduled Recordings,
+  Settings. Three earlier runs preceded it: two of the first method alone on `01fd625` (the second, after the two
+  fixes above, the record of that commit), and one of both methods on the fix in which On Later's first card failed
+  the frame-based edge check by the quirk above — the pixels were then made the evidence. The four column screenshots
+  were looked at by eye: the ring whole on every side. **Traced, not run**: the grid beside the open sidebar (no card
+  is focused while it is open), the placard kind, the fallback chain's placeholder step.
+- **Pushed on his "push it"**: `git push origin main` answered `a3c5b1e..992d3a3`; after `git fetch origin`,
+  `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin refs/heads/main` all read
+  `992d3a39a3417b1cc892e547b4578defc2630a58`. Home Theater was reinstalled from the folded build before the push
+  (`xcrun devicectl device install app`, the bundle installed), so it runs exactly what was pushed. **The bedroom Apple TV
+  was brought up to `992d3a3` — install only, not launched, its own step under the standing rule**: built to
+  `platform=tvOS,name=Master Bedroom ATV` in `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` (Pass 117's
+  method, **`** BUILD SUCCEEDED **`**); **the first install failed** with the install tooling's device-connection error
+  (`kAMDRemoteConnectError`, CoreDeviceError 3002) while `devicectl device info details` showed the device connected,
+  booted, paired, its tunnel up and its last connection that minute — so one informed second attempt was made, and it
+  installed. **Both Apple TVs run Pass 137's code.** The bedroom's tvOS reads **26.6** from the device details.
+- **Facts recorded**: the server is still marlin-dvr 1.19.1 (Pass 136's reading; not re-read); the server repo's tip on
+  2026-10-26 is `674a7a7`, committed 2026-10-24.
+- **Wrap-up (the fifth run of `.claude/commands/wrap.md`)**: (1) open questions — **none that block**; what is still
+  awaited is the owner's remote-access facts (Pass 135's item), and the next pass is his to name, with a recommendation
+  in the response. (2) nothing to commit — the tree was clean after the push. (3) cleanup — the result bundle, the run
+  log and the exported screenshots in the session scratchpad were deleted after each run; `build/` (the shared build
+  folder) and the bedroom build folder were not touched; the harness stays in the project as the pass's evidence file,
+  as every pass's does (30 → 31). (4) `COLD-START.md` brought current: *The server* reads the `674a7a7` line; *The
+  sidebar* records the overflow cured; On Now, On Later, Recordings and show detail, Favorites, Manage DVR and Settings
+  carry Pass 137; the harness list names `Pass137UITests`; *What is NOT built* names the rails page and the menu slot;
+  *Next step* is one current statement with both Apple TVs on `992d3a3`. By Pass 89's rule the superseded lines —
+  Pass 136's *Next step* paragraph and the `6f967c2` server line — were **moved into `COLD-START-HISTORY.md`
+  byte-for-byte**, every moved line checked against the original by the script that moved them. (5) this entry. (6) the
+  notebook commit, local. (7) the scope check and (8) the push verdict are in the response.
+- **No `design/` file, `icon-source/` file, `rea/` file, project file or existing report was changed by this pass.** The
+  app sent only its own reads and launch pings; no write of any kind was sent to the server, and nothing was read from
+  it by hand — the one server fact came from GitHub.
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
+  (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.

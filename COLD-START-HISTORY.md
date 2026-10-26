@@ -1173,6 +1173,11 @@ true numbers live.
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
 
+*Moved here by Pass 137 (2026-10-26), byte-for-byte — the paragraph of Pass 136:*
+
+**Nothing is open, nothing is owed, and nothing is unpushed as of Pass 136's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". **The next step is Pass 137, planned first in the chat and not yet built**: the REA report's three screen containers and, first among them, the filter bar — On Now's pill row moves onto it in that pass, which cures the overflow that shifts On Now's screen left (owner's 1b, 2026-10-26) — then the image-aspect contract and the shared status badges (REA §2.3, §3.3, §5.1 items 2, 4, 14). TestFlight and the app finding the server (below) come after.
+
+
 *Moved here by Pass 136 (2026-10-26), byte-for-byte — the paragraph of Pass 135:*
 
 **Nothing is open, nothing is owed, and nothing is unpushed as of Pass 135's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". The next step is whatever the owner asks for next.
@@ -2765,3 +2770,7 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
   that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the
   marlin-dvr project, 2026-09-16 (Pass 101); the query parsing S10 depends on was measured against the
   running 1.11.1 (Pass 120).
+
+## The server line of `COLD-START.md` superseded by the `674a7a7` line (moved by Pass 137, byte-for-byte)
+
+- **There is no reference clone any more; the last server commit read is `6f967c2`** (`6f967c2550df43885263c1a75334664789c192f8`, the tip on 2026-10-06, source at 1.13.3), read straight from GitHub in Pass 133 under the rule in *Where things live* — `HLS-CLIENT-API.md` at the root and the Go source, which now lives under **`cmd/marlin-dvr/`** (`library.go`, `stream.go`, `passes.go`, `playfile.go`; a root-level path answers 404) — every copy deleted before the pass ended. It supersedes the `0fa05e1` reading (source at 1.10.0, Pass 115), moved to `COLD-START-HISTORY.md` by Pass 134. The old clone — `eb0c098`, a tree at 1.8.1 (Pass 72; still there at Pass 85) — was removed from this Mac on 2026-09-19, not by this project; earlier reports' server `file:line` citations were read at the commit each report names and stay as written. Server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the source (Pass 72).
