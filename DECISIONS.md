@@ -4530,7 +4530,7 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
 - **Wrap-up (the seventh run of `.claude/commands/wrap.md`, on his "wrap it")**: (1) open questions — **one is still
   awaited from him**: the server's remote-access facts (the remote address's form, whether it has a login, whether the
   server announces itself on the home network), which he said on 2026-10-06 he would bring and which the app finding the
-  server waits on; asked again in the response, unanswered at the time of writing. (2) nothing to commit — the tree was
+  server waits on; asked again in the response, and **his answer, the same evening: "Stay open — I'll bring those facts when I set up remote access."** It stays open, and nothing is built for it until he does. (2) nothing to commit — the tree was
   clean. (3) cleanup — nothing to remove: the session scratchpad was already empty and no process was left running;
   `build/` and the bedroom build folder were not touched. (4) `COLD-START.md` brought current: *Next step* says nothing is
   owed, both Apple TVs run `70d6e6e`, and `021696d` is pushed; by Pass 89's rule Pass 138's wrap-up paragraph was
