@@ -8,6 +8,12 @@
 //  a progress bar derived from start/end; refreshed every minute. A long press on a card
 //  shows that channel's next six hours from GET /api/guide (12 slots) as a list; Menu closes it.
 //
+//  Pass 137: the page is the shared grid container (`GridPage`, ScreenContainers.swift) and the
+//  chips are the shared filter bar, which scrolls sideways — the plain row from Pass 6 ran past
+//  the screen with the owner's sources and shifted the whole shell left (found in Pass 136).
+//  The card's tags are the shared `StatusTag`s, with HD from the channel added, and its logo
+//  is drawn by the image contract (fitted, never cropped).
+//
 
 import SwiftUI
 
@@ -127,37 +133,39 @@ struct OnNowScreen: View {
         _model = State(initialValue: OnNowModel(api: api))
     }
 
-    private static let columns = Array(repeating: GridItem(.flexible(), spacing: 28), count: 3)
-
     var body: some View {
         ZStack {
-            VStack(alignment: .leading, spacing: 34) {
-                ScreenHeader("On Now", subtitle: subtitle)
-                chips
+            GridPage(title: "On Now", subtitle: subtitle, disabled: model.nextHours != nil) {
+                EmptyView()
+            } bar: {
+                FilterBar(items: model.chips,
+                          label: { model.chipLabel($0) },
+                          isActive: { model.chip == $0 },
+                          focusID: { "chip:\($0.label)" },
+                          focus: $focused) { chip in
+                    model.chip = chip
+                    Task { await model.load() }
+                }
+            } status: {
                 if let error = model.error, model.items.isEmpty {
                     ErrorLine(text: error)
                 } else if !model.loaded {
                     LoadingLine().focusable().focused($focused, equals: "loading")
                 }
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVGrid(columns: Self.columns, spacing: 30) {
-                        ForEach(model.items) { item in
-                            Button {
-                                onPlay(.live(channel: item.channel, program: item.program))   // sweep 3 entry point
-                            } label: {
-                                OnNowCard(item: item, focused: focused == item.id)
-                            }
-                            .buttonStyle(BareButtonStyle())
-                            .focused($focused, equals: item.id)
-                            .onLongPressGesture(minimumDuration: 0.5) {
-                                print("[onnow] long press on \(item.channel.number) \(item.channel.name)")
-                                Task { await model.showNextHours(for: item) }
-                            }
-                        }
+            } cards: {
+                ForEach(model.items) { item in
+                    Button {
+                        onPlay(.live(channel: item.channel, program: item.program))   // sweep 3 entry point
+                    } label: {
+                        OnNowCard(item: item, focused: focused == item.id)
                     }
-                    .padding(.vertical, 10)
+                    .buttonStyle(BareButtonStyle())
+                    .focused($focused, equals: item.id)
+                    .onLongPressGesture(minimumDuration: 0.5) {
+                        print("[onnow] long press on \(item.channel.number) \(item.channel.name)")
+                        Task { await model.showNextHours(for: item) }
+                    }
                 }
-                .disabled(model.nextHours != nil)
             }
             if let next = model.nextHours {
                 NextHoursOverlay(next: next)
@@ -193,22 +201,6 @@ struct OnNowScreen: View {
         parts.append("\(model.items.count) channels")
         return parts.joined(separator: " · ")
     }
-
-    private var chips: some View {
-        HStack(spacing: 14) {
-            ForEach(model.chips, id: \.self) { chip in
-                Button {
-                    model.chip = chip
-                    Task { await model.load() }
-                } label: {
-                    PillLabel(text: model.chipLabel(chip), active: model.chip == chip, focused: focused == "chip:\(chip.label)")
-                }
-                .buttonStyle(BareButtonStyle())
-                .focused($focused, equals: "chip:\(chip.label)")
-            }
-        }
-        .focusSection()
-    }
 }
 
 /// One On Now card (dc:87-97) plus the episode line and the new/live flags the task adds.
@@ -230,16 +222,6 @@ struct OnNowCard: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    private var flags: [String] {
-        guard let p = item.program else { return [] }
-        var out: [String] = []
-        if p.new == true { out.append("New") }
-        if p.live == true { out.append("Live") }
-        if p.premiere == true { out.append("Premiere") }
-        if p.finale == true { out.append("Finale") }
-        return out
-    }
-
     var body: some View {
         HStack(alignment: .top, spacing: 22) {
             ChannelLogo(channel: item.channel, size: 82)
@@ -249,7 +231,7 @@ struct OnNowCard: View {
                         .font(.nocturne(Nocturne.TextSize.floor))
                         .foregroundStyle(Nocturne.neutral400)
                         .lineLimit(1)
-                    ForEach(flags, id: \.self) { TagChip(text: $0) }
+                    StatusTagRow(tags: StatusTag.tags(for: item.program, hd: item.channel.hd))
                 }
                 Text(item.title)
                     .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))

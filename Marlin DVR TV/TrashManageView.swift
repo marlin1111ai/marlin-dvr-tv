@@ -204,11 +204,8 @@ struct TrashRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 22) {
-            ServerImage(path: item.artPath) {
-                ArtPlaceholder(cornerRadius: Nocturne.Radius.sm)
-            }
-            .frame(width: 52, height: 78)      // the design's 2:3 poster, at row height
-            .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous))
+            // Pass 137: the image contract's 2:3 poster at row height — 52 × 78, as it was.
+            ArtView(kind: .poster, path: item.artPath, height: 78)
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.show)
                     .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))

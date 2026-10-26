@@ -358,10 +358,10 @@ struct PosterCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ServerImage(path: show.art) {
-                ArtPlaceholder()
-            }
-            .frame(width: focused ? 296 : 252, height: focused ? 404 : 344)
+            // Pass 137: the image contract draws the 2:3 poster the server serves, in the box
+            // the design fixed (dc:1273, Pass 47) — both sizes given, so the poster fills it and
+            // loses about a twelfth top and bottom, as it has since Pass 6; the box is not changed.
+            ArtView(kind: .poster, path: show.art, width: focused ? 296 : 252, height: focused ? 404 : 344, cornerRadius: Nocturne.Radius.md)
             // Before the clip, not after: the bar runs the full width of the poster and the
             // card's own 8 pt corner radius trims its two bottom corners, so nothing sits
             // outside the card's existing layout box. This is the order `EpisodeRow` already
@@ -372,12 +372,8 @@ struct PosterCard: View {
             .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay(alignment: .topTrailing) {
                 if badge, show.unwatched > 0 {
-                    Text("\(show.unwatched) new")
-                        .font(.nocturne(Nocturne.TextSize.floor, .semibold))
-                        .foregroundStyle(Nocturne.bg)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 12)
-                        .background(Nocturne.accent, in: Capsule())
+                    // Pass 137: the shared count badge, the same capsule.
+                    CountBadge(text: "\(show.unwatched) new")
                         .padding(14)
                 }
             }

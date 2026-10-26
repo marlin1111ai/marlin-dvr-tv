@@ -163,12 +163,10 @@ struct FavoriteRow: View {
                         .lineLimit(1)
                     Text("★")
                         .font(.nocturne(Nocturne.TextSize.floor))
-                        .foregroundStyle(GuideMark.gold)
-                    if channel.hd {
-                        Text("HD")
-                            .font(.nocturne(Nocturne.TextSize.floor))
-                            .foregroundStyle(Nocturne.neutral500)
-                    }
+                        .foregroundStyle(Nocturne.Semantic.favourited.text)
+                    // Pass 137: the shared tags — HD as the tag the airing sheet draws, where a
+                    // plain word was; the row's logo is the contract's fitted logo.
+                    StatusTagRow(tags: StatusTag.tags(for: nil, hd: channel.hd))
                 }
                 if let now {
                     Text(now.title)

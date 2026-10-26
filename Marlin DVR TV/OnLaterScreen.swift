@@ -25,6 +25,12 @@
 //  which is what the owner asked for. The week is fetched once per visit and the pills filter what
 //  is already in hand — no pill press makes a request.
 //
+//  Pass 137: the page is the shared grid container and the pills the shared filter bar
+//  (ScreenContainers.swift), the card's art is drawn by the image contract as the 2:3 poster the
+//  server serves (it was a 92 pt square), its tags are the shared `StatusTag`s — with the
+//  premiere from this screen's own derived rule, so the card and the Premieres pill agree — and
+//  "● Scheduled" is the shared state badge on the scheduled pair.
+//
 
 import SwiftUI
 
@@ -354,27 +360,50 @@ struct OnLaterScreen: View {
         _model = State(initialValue: OnLaterModel(api: api))
     }
 
-    /// On Now's grid, unchanged: three flexible columns, 28 across and 30 down
-    /// (`OnNowScreen.swift:130`, `:143`).
-    private static let columns = Array(repeating: GridItem(.flexible(), spacing: 28), count: 3)
-
     private static func pillID(_ pill: LaterPill) -> String { "pill:\(pill.label)" }
 
     var body: some View {
         ZStack {
-            VStack(alignment: .leading, spacing: 34) {
-                ScreenHeader("On Later", subtitle: subtitle) {
-                    TimelineView(.everyMinute) { context in
-                        Text("\(TimeFormat.shortDay(context.date)) · \(TimeFormat.clock(context.date))")
-                            .font(.nocturne(Nocturne.TextSize.floor))
-                            .foregroundStyle(Nocturne.neutral500)
-                    }
+            GridPage(title: "On Later", subtitle: subtitle, disabled: model.sheet != nil) {
+                TimelineView(.everyMinute) { context in
+                    Text("\(TimeFormat.shortDay(context.date)) · \(TimeFormat.clock(context.date))")
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .foregroundStyle(Nocturne.neutral500)
                 }
-                pills
+            } bar: {
+                // A press only switches which bucket is drawn — the week is already in hand.
+                FilterBar(items: LaterPill.allCases,
+                          label: { $0.label },
+                          isActive: { model.pill == $0 },
+                          focusID: { Self.pillID($0) },
+                          focus: $focused) { pill in
+                    model.pill = pill
+                }
+            } status: {
                 if let openError = model.openError {
                     ErrorLine(text: openError)
                 }
-                content
+                if let error = model.error {
+                    ErrorLine(text: error)
+                } else if !model.loaded {
+                    LoadingLine()
+                } else if model.unionIsEmpty {
+                    emptyLine("No collection channels")
+                } else if model.visible.isEmpty {
+                    emptyLine("Nothing on \(model.pill.label) for your collections")
+                }
+            } cards: {
+                ForEach(model.visible) { airing in
+                    Button {
+                        Task { await model.open(airing) }
+                    } label: {
+                        LaterCard(airing: airing,
+                                  scheduled: model.isScheduled(airing),
+                                  focused: focused == airing.id)
+                    }
+                    .buttonStyle(BareButtonStyle())
+                    .focused($focused, equals: airing.id)
+                }
             }
             if let selection = model.sheet {
                 AiringSheet(
@@ -427,41 +456,6 @@ struct OnLaterScreen: View {
         return "\(airings) airing\(airings == 1 ? "" : "s") · \(channels) collection channel\(channels == 1 ? "" : "s")"
     }
 
-    /// The pill row, built the same way On Now's chips are (`OnNowScreen.swift:197-211`): one
-    /// `HStack` of `PillLabel` buttons in their own focus section. A press only switches which
-    /// bucket is drawn — the week is already in hand, so nothing is fetched.
-    private var pills: some View {
-        HStack(spacing: 14) {
-            ForEach(LaterPill.allCases, id: \.self) { pill in
-                Button {
-                    model.pill = pill
-                } label: {
-                    PillLabel(text: pill.label,
-                              active: model.pill == pill,
-                              focused: focused == Self.pillID(pill))
-                }
-                .buttonStyle(BareButtonStyle())
-                .focused($focused, equals: Self.pillID(pill))
-            }
-        }
-        .focusSection()
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if let error = model.error {
-            ErrorLine(text: error)
-        } else if !model.loaded {
-            LoadingLine()
-        } else if model.unionIsEmpty {
-            emptyLine("No collection channels")
-        } else if model.visible.isEmpty {
-            emptyLine("Nothing on \(model.pill.label) for your collections")
-        } else {
-            grid
-        }
-    }
-
     /// Deliberately not focusable. The pill row above is always drawn and always focusable, so the
     /// remote is never stranded and Menu always reaches `.onExitCommand` — the failure
     /// `TrashManageView.swift:58-62` and `RadarScreen.swift:202-203` both record from the device.
@@ -471,26 +465,6 @@ struct OnLaterScreen: View {
             .font(.nocturne(Nocturne.TextSize.secondary))
             .foregroundStyle(Nocturne.neutral500)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var grid: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVGrid(columns: Self.columns, spacing: 30) {
-                ForEach(model.visible) { airing in
-                    Button {
-                        Task { await model.open(airing) }
-                    } label: {
-                        LaterCard(airing: airing,
-                                  scheduled: model.isScheduled(airing),
-                                  focused: focused == airing.id)
-                    }
-                    .buttonStyle(BareButtonStyle())
-                    .focused($focused, equals: airing.id)
-                }
-            }
-            .padding(.vertical, 10)
-        }
-        .disabled(model.sheet != nil)
     }
 }
 
@@ -504,16 +478,18 @@ struct LaterCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 22) {
-            ServerImage(path: airing.artPath) {
-                ArtPlaceholder(cornerRadius: Nocturne.Radius.sm)
-            }
-            .frame(width: 92, height: 92)
-            .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous))
+            // Pass 137: the 2:3 poster the server serves, at the row's 92 pt (it was a square).
+            ArtView(kind: .poster, path: airing.artPath, height: 92)
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(airing.channel.number) · \(airing.channel.name)")
-                    .font(.nocturne(Nocturne.TextSize.floor))
-                    .foregroundStyle(Nocturne.neutral400)
-                    .lineLimit(1)
+                HStack(spacing: 12) {
+                    Text("\(airing.channel.number) · \(airing.channel.name)")
+                        .font(.nocturne(Nocturne.TextSize.floor))
+                        .foregroundStyle(Nocturne.neutral400)
+                        .lineLimit(1)
+                    StatusTagRow(tags: StatusTag.tags(for: airing.program,
+                                                      premiere: OnLaterModel.isPremiere(airing.program),
+                                                      hd: airing.channel.hd))
+                }
                 Text(airing.program.title)
                     .font(.nocturne(Nocturne.TextSize.cardTitle, .medium))
                     .foregroundStyle(Nocturne.text)
@@ -529,13 +505,9 @@ struct LaterCard: View {
                     .foregroundStyle(Nocturne.neutral500)
                     .lineLimit(1)
                 if scheduled {
-                    // The capsule the old On Later row drew, kept exactly (frame 5a, dc:465-467).
-                    Text("● Scheduled")
-                        .font(.nocturne(Nocturne.TextSize.floor))
-                        .foregroundStyle(Nocturne.accent200)
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 16)
-                        .overlay { Capsule().strokeBorder(Nocturne.accent600, lineWidth: 1) }
+                    // Pass 137: the shared state badge on the scheduled pair — the Guide's and
+                    // the airing sheet's green — where the old row's accent capsule was.
+                    StateBadge(text: "Scheduled", pair: Nocturne.Semantic.scheduled, capsule: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

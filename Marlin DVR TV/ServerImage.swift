@@ -10,9 +10,14 @@
 import SwiftUI
 
 /// Loads a server image; shows `fallback` while loading, when there is no path, or on failure.
+/// Pass 137: `inset` and `backing` dress the loaded picture only — a fitted logo sits inset on a
+/// light backing (`ArtView`) — and never the fallback, which keeps the whole box; both default to
+/// nothing, so every earlier caller draws as before.
 struct ServerImage<Fallback: View>: View {
     let path: String?
     var contentMode: ContentMode = .fill
+    var inset: CGFloat = 0
+    var backing: Color? = nil
     @ViewBuilder let fallback: () -> Fallback
 
     var body: some View {
@@ -22,7 +27,8 @@ struct ServerImage<Fallback: View>: View {
                     // Sized by the caller's frame, never by the image (a wide snapshot in fill mode
                     // would otherwise widen its card — seen in Pass 6).
                     Color.clear
-                        .overlay { image.resizable().aspectRatio(contentMode: contentMode) }
+                        .overlay { image.resizable().aspectRatio(contentMode: contentMode).padding(inset) }
+                        .background(backing ?? .clear)
                         .clipped()
                 } else {
                     fallback()
@@ -54,15 +60,13 @@ struct InitialsTile: View {
 }
 
 /// A channel's logo from the provider URL, or its initials tile when there is none or it fails.
+/// Pass 137: drawn by the image contract's logo kind — fitted whole on a light backing, never
+/// cropped (On Now and Favorites; the Player's panel has its own).
 struct ChannelLogo: View {
     let channel: MergedChannel
     var size: CGFloat = 82
 
     var body: some View {
-        ServerImage(path: channel.logo) {
-            InitialsTile(initials: channel.initials, logoBg: channel.logoBg, size: size, fontSize: size * 26 / 82)
-        }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous))
+        ArtView(kind: .logo, path: channel.logo, width: size, initials: channel.initials, logoBg: channel.logoBg)
     }
 }

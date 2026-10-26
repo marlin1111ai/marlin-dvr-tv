@@ -172,11 +172,9 @@ struct ScheduledJobRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 22) {
-            ServerImage(path: job.art) {
-                InitialsTile(initials: job.initials, logoBg: job.logoBg, size: 68, fontSize: Nocturne.TextSize.floor)
-            }
-            .frame(width: 68, height: 68)
-            .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous))
+            // Pass 137: the contract's 2:3 poster at the trash row's 78 pt (it was a 68 pt square),
+            // with the channel's initials as the last fallback.
+            ArtView(kind: .poster, path: job.art, height: 78, initials: job.initials, logoBg: job.logoBg)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 12) {
                     Text(job.program.title)
@@ -223,7 +221,7 @@ struct JobStatusChip: View {
 
     private var colour: Color {
         switch status {
-        case "Recording": return GuideMark.green
+        case "Recording": return Nocturne.Semantic.recording.text   // Pass 137: the pair's ink, the same green
         case "Conflict", "FAILED": return Nocturne.Semantic.error.text   // Pass 136: the error pair's ink, the same red
         case "Skipped", "STOPPED": return Nocturne.neutral600
         default: return Nocturne.accent600

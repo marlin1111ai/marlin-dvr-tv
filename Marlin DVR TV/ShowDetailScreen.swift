@@ -262,10 +262,9 @@ struct ShowDetailScreen: View {
 
     private var leftColumn: some View {
         VStack(alignment: .leading, spacing: 26) {
-            ServerImage(path: model.detail?.art ?? model.show.art) {
-                ArtPlaceholder()
-            }
-            .frame(width: 520, height: 472)
+            // Pass 137 (owner's 4a): the image contract's 2:3 poster at the box's 472 pt height —
+            // 315 pt wide, where the design's box was 520 × 472 and cropped the server's poster.
+            ArtView(kind: .poster, path: model.detail?.art ?? model.show.art, height: 472, cornerRadius: Nocturne.Radius.md)
             .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
@@ -504,10 +503,8 @@ struct EpisodeRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 26) {
-            ServerImage(path: episode.thumb) {
-                ArtPlaceholder(cornerRadius: Nocturne.Radius.sm)
-            }
-            .frame(width: 236, height: 133)
+            // Pass 137: the contract's 16:9 frame grab at the row's 236 pt width (133 pt tall, as before).
+            ArtView(kind: .screencap, path: episode.thumb, width: 236)
             .overlay(alignment: .bottom) {
                 if let fraction = resumeFraction {
                     ProgressBar(fraction: fraction)
@@ -526,10 +523,8 @@ struct EpisodeRow: View {
                         .foregroundStyle(Nocturne.text)
                         .lineLimit(1)
                     if episode.inProgress {
-                        // Pass 133: the Guide's recording mark, in its green (`GuideMark.green`).
-                        Text("● Recording now")
-                            .font(.nocturne(Nocturne.TextSize.floor))
-                            .foregroundStyle(GuideMark.green)
+                        // Pass 133's mark in the Guide's green; Pass 137: the shared state badge.
+                        StateBadge(text: "Recording now", pair: Nocturne.Semantic.recording)
                     }
                     ForEach(flagLabels, id: \.self) { label in
                         Text(label)
@@ -541,23 +536,19 @@ struct EpisodeRow: View {
                     .font(.nocturne(Nocturne.TextSize.secondary))
                     .foregroundStyle(Nocturne.neutral400)
                     .lineLimit(2)
-                HStack(spacing: 16) {
-                    Text(metaLine)
-                        .fixedSize(horizontal: true, vertical: false)
-                    ForEach(episode.tags, id: \.self) { tag in
-                        Text(tag)
-                            .tracking(0.06 * Nocturne.TextSize.floor)
-                            .padding(.vertical, 1)
-                            .padding(.horizontal, 8)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: Nocturne.Radius.sm, style: .continuous)
-                                    .strokeBorder(Nocturne.neutral800, lineWidth: 1)
-                            }
+                Text(metaLine)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .font(.nocturne(Nocturne.TextSize.floor))
+                    .foregroundStyle(Nocturne.neutral500)
+                    .lineLimit(1)
+                if !episode.tags.isEmpty {
+                    // Pass 137: the server's tags (HD, the rating — library.go) as the shared tag
+                    // chips on their own line. Beside the meta line they had been squeezed to empty
+                    // slivers since Pass 133's longer date strings took the row's width.
+                    HStack(spacing: 10) {
+                        ForEach(episode.tags, id: \.self) { TagChip(text: $0).fixedSize() }
                     }
                 }
-                .font(.nocturne(Nocturne.TextSize.floor))
-                .foregroundStyle(Nocturne.neutral500)
-                .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -605,7 +596,7 @@ private struct WatchChoiceMenu: View {
                     Text("● Recording now · \(episode.show)")
                         .font(.nocturne(Nocturne.TextSize.floor))
                         .tracking(0.12 * Nocturne.TextSize.floor)
-                        .foregroundStyle(GuideMark.green)
+                        .foregroundStyle(Nocturne.Semantic.recording.text)   // Pass 137: the pair's ink, the same green
                     Text(header)
                         .font(.nocturne(44, .medium))
                         .foregroundStyle(Nocturne.text)

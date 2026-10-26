@@ -10,6 +10,9 @@
 //  its own sidebar section. Not in the approved design, which parked Settings as a Home tile —
 //  built to the app's look, the route Manage DVR, Favorites, the radar and Radio took.
 //
+//  Pass 137: the two panes are the shared list-plus-detail container and the group row moved to
+//  it (`ListDetailPage`, `ListGroupRow` in ScreenContainers.swift); nothing else changed.
+//
 
 import SwiftUI
 
@@ -84,15 +87,10 @@ struct SettingsScreen: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
-            ScreenHeader("Settings")
-            HStack(alignment: .top, spacing: 40) {
-                groups
-                    .frame(width: 420)
-                rows
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-            Spacer(minLength: 0)
+        ListDetailPage(title: "Settings") {
+            groups
+        } detail: {
+            rows
         }
         .defaultFocus($focused, Self.groupID(.thisAppleTV))
         // The right pane follows the group under focus, so moving down the list changes it.
@@ -123,7 +121,7 @@ struct SettingsScreen: View {
     private var groups: some View {
         VStack(spacing: 12) {
             ForEach(SettingsGroup.allCases) { candidate in
-                SettingsGroupRow(title: candidate.title, active: candidate == group, focused: focused == Self.groupID(candidate))
+                ListGroupRow(title: candidate.title, active: candidate == group, focused: focused == Self.groupID(candidate))
                     .focused($focused, equals: Self.groupID(candidate))
             }
         }
@@ -170,47 +168,3 @@ struct SettingsScreen: View {
     }
 }
 
-/// A group in the left pane: a focusable label with the three states the rail entry has — focused,
-/// active (its rows are the ones showing) and resting — read from the focus-label tokens.
-struct SettingsGroupRow: View {
-    let title: String
-    let active: Bool
-    let focused: Bool
-
-    private var ink: Color {
-        if focused { return Nocturne.FocusLabel.focusedInk }
-        if active { return Nocturne.FocusLabel.activeInk }
-        return Nocturne.neutral500
-    }
-
-    private var fill: Color {
-        if focused { return Nocturne.FocusLabel.focusedFill }
-        if active { return Nocturne.FocusLabel.activeFill }
-        return .clear
-    }
-
-    private var ring: (Color, CGFloat) {
-        if focused { return (Nocturne.FocusLabel.focusedRing, Nocturne.Focus.ringWidth) }
-        if active { return (Nocturne.FocusLabel.activeRing, 1) }
-        return (.clear, 1)
-    }
-
-    var body: some View {
-        Button { } label: {
-            Text(title)
-                .font(.nocturne(.body))
-                .foregroundStyle(ink)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 26)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(fill, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
-                        .strokeBorder(ring.0, lineWidth: ring.1)
-                }
-                .scaleEffect(focused ? Nocturne.Focus.scale : 1)
-                .animation(.easeOut(duration: 0.15), value: focused)
-        }
-        .buttonStyle(BareButtonStyle())
-    }
-}
