@@ -147,6 +147,12 @@ extension APIClient {
         try await get("/api/system")
     }
 
+    /// Pass 136: GET /api/status — `{name, version, uptime_seconds, port}` (Pass 2 §2.1) — the
+    /// Settings screen's server version row. Read once when that screen opens, no retries.
+    func status() async throws -> StatusResponse {
+        try await get("/api/status")
+    }
+
     /// GET /api/cameras (cameras.go:280-289).
     func cameras() async throws -> CamerasResponse {
         try await get("/api/cameras")

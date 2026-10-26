@@ -544,6 +544,14 @@ struct SystemInfo: Decodable {
     let diskVolume: String      // "recordings volume"
 }
 
+// MARK: Status (GET /api/status: name, version, uptime_seconds, port — Pass 2 §2.1) — Pass 136 Settings
+
+/// The two fields the Settings screen shows; the rest of the answer is left undecoded.
+struct StatusResponse: Decodable {
+    let name: String
+    let version: String
+}
+
 // MARK: Playback shapes (stream.go:295, 455-491; contract §2.2) — models only in sweep 1
 
 struct PlaySession: Decodable {

@@ -14,6 +14,12 @@
 //  landing stayed Pass 24's, entry for entry. The rail draws the ring on the active entry
 //  (`railFocused`, dc:1144-1149); putting focus there is `ScreenShell.railRestore`.
 //
+//  Pass 136 (owner, 2026-10-26): the app icon's artwork at the top instead of the accent bar
+//  and wordmark, Settings as the twelfth entry at the bottom, the list read from
+//  `Destination.sidebar`, and the focus scale on the entry. Twelve entries and the logo have to
+//  fit in the 960 pt between the margins, so the entry's vertical padding is 8 pt (was 10) and
+//  the collapsed spacing 8 pt (was 12).
+//
 
 import SwiftUI
 
@@ -38,10 +44,10 @@ struct RailView: View {
     let onSelect: (Destination) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: expanded ? 8 : 12) {
+        VStack(alignment: .leading, spacing: 8) {
             brand
-                .padding(.bottom, 26)
-            ForEach(Destination.railOrder) { destination in
+                .padding(.bottom, 20)
+            ForEach(Destination.sidebar) { destination in
                 Button {
                     onSelect(destination)
                 } label: {
@@ -79,19 +85,16 @@ struct RailView: View {
         .animation(.easeInOut(duration: 0.2), value: expanded)
     }
 
-    /// The accent bar and the wordmark (dc:59-62); the bar alone when collapsed (dc:181).
+    /// Pass 136: the app icon's own artwork (owner's 3a) — `SidebarLogo` in the catalog, the one
+    /// image copied from the icon's front layer — at the icon's 5:3: 150 × 90 pt expanded, 64 × 38 pt
+    /// collapsed, where it lines up with the icon column. It replaces the accent bar and wordmark
+    /// of dc:59-62 and the bar alone of dc:181.
     private var brand: some View {
-        HStack(spacing: 18) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Nocturne.accent)
-                .frame(width: 12, height: 30)
-                .padding(.leading, expanded ? 0 : 26)
-            if expanded {
-                Text("Marlin")
-                    .font(.nocturne(Nocturne.TextSize.body, .medium))
-                    .foregroundStyle(Nocturne.text)
-            }
-        }
+        Image("SidebarLogo")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: expanded ? 150 : 64, height: expanded ? 90 : 38)
+            .clipShape(RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
     }
 
     private var footer: some View {
@@ -99,7 +102,7 @@ struct RailView: View {
             Text(clientName)
             Text(ServerConfig.hostLabel)
         }
-        .font(.nocturne(Nocturne.TextSize.floor))
+        .font(.nocturne(.meta))
         .foregroundStyle(Nocturne.neutral600)
     }
 }
@@ -107,6 +110,8 @@ struct RailView: View {
 /// One rail entry. Active (the current screen) and focused states follow the design data
 /// `railAt` / `railFocused` (dc:1138-1149): active = accent tint, accent-700 hairline,
 /// accent-200 ink; focused = 4 pt accent ring, stronger tint, text ink; otherwise neutral-500.
+/// Pass 136: the inks and rings are read from the focus-label tokens (the same values), and the
+/// entry scales on focus.
 struct RailItem: View {
     let destination: Destination
     let expanded: Bool
@@ -114,20 +119,20 @@ struct RailItem: View {
     let isFocused: Bool
 
     private var ink: Color {
-        if isFocused { return Nocturne.text }
-        if isActive { return Nocturne.accent200 }
+        if isFocused { return Nocturne.FocusLabel.focusedInk }
+        if isActive { return Nocturne.FocusLabel.activeInk }
         return Nocturne.neutral500
     }
 
     private var fill: Color {
         if isFocused { return Nocturne.accent.opacity(0.16) }
-        if isActive { return Nocturne.accent.opacity(0.14) }
+        if isActive { return Nocturne.FocusLabel.activeFill }
         return .clear
     }
 
     private var ring: (Color, CGFloat) {
-        if isFocused { return (Nocturne.accent, Nocturne.Focus.ringWidth) }
-        if isActive { return (Nocturne.accent700, 1) }
+        if isFocused { return (Nocturne.FocusLabel.focusedRing, Nocturne.Focus.ringWidth) }
+        if isActive { return (Nocturne.FocusLabel.activeRing, 1) }
         return (.clear, 1)
     }
 
@@ -139,13 +144,13 @@ struct RailItem: View {
                         .font(.nocturne(34))
                         .frame(width: 36)
                     Text(destination.label)
-                        .font(.nocturne(Nocturne.TextSize.body))
+                        .font(.nocturne(.body))
                         // Every entry is one line: "Manage DVR" (Pass 10B) is the first label
                         // long enough to wrap in the 372 pt expanded rail.
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
                 .padding(.horizontal, 20)
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -160,5 +165,7 @@ struct RailItem: View {
             RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
                 .strokeBorder(ring.0, lineWidth: ring.1)
         }
+        .scaleEffect(isFocused ? Nocturne.Focus.scale : 1)
+        .animation(.easeOut(duration: 0.15), value: isFocused)
     }
 }

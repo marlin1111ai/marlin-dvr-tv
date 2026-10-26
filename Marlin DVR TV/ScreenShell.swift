@@ -15,6 +15,14 @@
 //  is `railRestore` below, and it fires only on the crossing from the content into the rail,
 //  so Up/Down inside the rail still move freely.
 //
+//  Pass 136 (owner, 2026-10-26, his 1a): Menu on a screen opens the sidebar on the entry of the
+//  screen that is open, and Menu again — with the sidebar open — goes Home; `onLeave`, which the
+//  screens call when Menu finds nothing of their own to close, is that same opening. A Left out of
+//  the content lands on `SidebarCatcher`, a strip over the rail's trailing edge, which hands focus
+//  to the current entry before any other entry can draw its ring; `railRestore` stays behind it
+//  for the crossings that are not a move (the Player coming down, a reload). Settings is routed
+//  to `SettingsScreen`.
+//
 
 import SwiftUI
 
@@ -60,11 +68,34 @@ struct ScreenShell: View {
                 .padding(.leading, Nocturne.Layout.contentLeadingBesideRail)
                 .padding(.trailing, Nocturne.Layout.marginHorizontal)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .overlay(alignment: .leading) {
+                    // Pass 136: the catcher sits over the rail's trailing 16 pt — nearer to every
+                    // content row than any rail entry, so a Left lands here first (see below).
+                    SidebarCatcher(armed: !railExpanded) { openSidebar() }
+                        .frame(width: SidebarCatcherView.width)
+                        .offset(x: -SidebarCatcherView.width)
+                }
                 .focusSection()
         }
         .background(Nocturne.bg)
         .onChange(of: focus) { _, landed in railRestore(landed) }
-        .onExitCommand { screen = nil }
+        // Pass 136 (owner's 1a): Menu with the sidebar open goes Home; Menu anywhere else in the
+        // shell opens the sidebar. The screens that handle Menu themselves reach the same opening
+        // through `onLeave`.
+        .onExitCommand {
+            if case .rail = focus {
+                screen = nil
+            } else {
+                openSidebar()
+            }
+        }
+    }
+
+    /// Pass 136: open the sidebar on the entry of the screen that is open. `railRestore` sees the
+    /// landing as already current and leaves it.
+    private func openSidebar() {
+        print("[rail] opening the sidebar on \(current.rawValue)")
+        focus = .rail(current)
     }
 
     /// Focus has moved. If it has just crossed into the rail from the content — from the Player
@@ -87,11 +118,12 @@ struct ScreenShell: View {
     }
 
     /// The screens that exist: sweep 2's five, Favorites (Pass 10), Manage DVR (Pass 10B),
-    /// Weather (Pass 13), Radio (Pass 19) and Search (Pass 63). Anything else keeps the
-    /// placeholder.
+    /// Weather (Pass 13), Radio (Pass 19), Search (Pass 63) and Settings (Pass 136). Anything
+    /// else keeps the placeholder.
     @ViewBuilder
     private var content: some View {
-        let leave = { screen = nil }
+        // Pass 136: leaving a screen opens the sidebar; Home is one more Menu away.
+        let leave = { openSidebar() }
         switch current {
         case .favorites: FavoritesScreen(api: api, onLeave: leave, onPlay: onPlay)
         case .onNow: OnNowScreen(api: api, onLeave: leave, onPlay: onPlay)
@@ -105,7 +137,48 @@ struct ScreenShell: View {
         case .weather: WeatherScreen(model: weather, onLeave: leave)
         case .radio: RadioScreen(api: api, onLeave: leave)
         case .search: GuideSearchScreen(model: search, api: api, onLeave: leave)
+        case .settings: SettingsScreen(api: api, clientName: clientName, onLeave: leave)
         default: PlaceholderScreen(destination: current)
+        }
+    }
+}
+
+// MARK: Pass 136 — the catcher at the sidebar/content boundary
+
+/// A 16 pt focusable strip over the rail's trailing edge, hosted in UIKit the way the Guide's
+/// `BackStepCatcher` is (Pass 123), so that a Left from anywhere in the content lands here — the
+/// nearest thing to the left of every row — and the shell puts focus on the entry of the screen
+/// that is open before any other rail entry can draw its ring. It can be focused only while
+/// something in the content has focus (`armed`, and the focus system reporting a focused item): a
+/// screen appearing with nothing focused never lands here, and a Right from the rail passes over it
+/// into the content. It is invisible and draws no focus effect.
+struct SidebarCatcher: UIViewRepresentable {
+    let armed: Bool
+    let onFocus: () -> Void
+
+    func makeUIView(context: Context) -> SidebarCatcherView { SidebarCatcherView() }
+
+    func updateUIView(_ view: SidebarCatcherView, context: Context) {
+        view.armed = armed
+        view.onFocus = onFocus
+    }
+}
+
+final class SidebarCatcherView: UIView {
+    static let width: CGFloat = 16
+
+    var armed = false
+    var onFocus: () -> Void = {}
+
+    override var canBecomeFocused: Bool {
+        armed && UIFocusSystem.focusSystem(for: self)?.focusedItem != nil
+    }
+
+    override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+        super.didUpdateFocus(in: context, with: coordinator)
+        if context.nextFocusedView === self {
+            print("[rail] boundary catcher took a \(context.focusHeading == .left ? "Left" : "move") from the content")
+            onFocus()
         }
     }
 }

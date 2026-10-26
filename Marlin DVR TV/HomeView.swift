@@ -252,18 +252,8 @@ struct HomeTile: View {
             ),
             in: shape
         )
-        .overlay {
-            shape.strokeBorder(
-                isFocused ? Nocturne.accent : Color.white.opacity(0.08),
-                lineWidth: isFocused ? Nocturne.Focus.ringWidth : 1
-            )
-        }
-        .offset(y: isFocused ? -Nocturne.Focus.lift : 0)
-        .shadow(
-            color: isFocused ? Nocturne.Focus.shadowColor : .clear,
-            radius: Nocturne.Focus.shadowRadius,
-            y: Nocturne.Focus.shadowY
-        )
-        .animation(.easeOut(duration: 0.15), value: isFocused)
+        // Pass 136: the shared treatment (ScreenChrome.swift) in place of a private copy of it —
+        // the same ring, lift and shadow, and the scale with them.
+        .focusTreatment(isFocused, cornerRadius: Nocturne.Radius.lg, restingRing: Color.white.opacity(0.08))
     }
 }

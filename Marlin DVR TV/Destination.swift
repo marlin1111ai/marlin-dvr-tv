@@ -14,6 +14,9 @@
 //  bottom of the rail. It is a rail destination only: the Home grid stays exactly as frame
 //  2a draws it, so `homeTiles` is unchanged.
 //
+//  Pass 136 (owner, 2026-10-26): Settings is live and is the twelfth rail entry, under Manage
+//  DVR; the sidebar is drawn from `sidebar`, this enum filtered by `isShownInSidebar`.
+//
 
 import SwiftUI
 
@@ -22,9 +25,18 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
-    /// Rail order: frame 1b's nine, then Search (Pass 63, directly under Radio) and
-    /// Manage DVR at the bottom (Pass 10B).
-    static let railOrder: [Destination] = [.home, .favorites, .onNow, .guide, .onLater, .recordings, .cameras, .weather, .radio, .search, .manage]
+    /// Rail order: frame 1b's nine, then Search (Pass 63, directly under Radio), Manage DVR
+    /// (Pass 10B) and, since Pass 136, Settings at the very bottom — the Channels app's place for
+    /// it (REA report §2.1, §5.2 item 1; owner, 2026-10-26).
+    static let railOrder: [Destination] = [.home, .favorites, .onNow, .guide, .onLater, .recordings, .cameras, .weather, .radio, .search, .manage, .settings]
+
+    /// Pass 136: the sidebar is drawn from this list and nothing else — `railOrder` with the
+    /// sections `isShownInSidebar` keeps (REA report §5.1 item 1: one section model, served as
+    /// data). Every section is shown today; hiding one is a change to that flag, not to a view.
+    static var sidebar: [Destination] { railOrder.filter(\.isShownInSidebar) }
+
+    /// Pass 136: whether the sidebar lists this section. All true — nothing is dropped.
+    var isShownInSidebar: Bool { true }
 
     /// Home tile order, frame 2a (three rows of three). Manage DVR is not among them.
     static let homeTiles: [Destination] = [.guide, .onNow, .onLater, .recordings, .cameras, .favorites, .weather, .radio, .settings]
@@ -94,12 +106,12 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
     }
 
     /// The screens that exist. Favorites went live in Pass 10, Manage DVR moved into the
-    /// rail in Pass 10B, Weather was built in Pass 13 and Radio in Pass 19; Settings is still
-    /// present as drawn and inert (DECISIONS.md).
+    /// rail in Pass 10B, Weather was built in Pass 13, Radio in Pass 19 and Settings in
+    /// Pass 136 (`SettingsScreen`). Home is the launcher, not a screen in the shell.
     var isBuiltNow: Bool {
         switch self {
-        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather, .radio, .search: return true
-        case .home, .settings: return false
+        case .onNow, .guide, .onLater, .recordings, .cameras, .favorites, .manage, .weather, .radio, .search, .settings: return true
+        case .home: return false
         }
     }
 
@@ -111,7 +123,8 @@ enum Destination: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .weather: return "Local weather"
         case .radio: return "Stations"
-        case .settings: return "Server, tuners, storage"
+        // Pass 136: what the screen holds (owner's 3a of 2026-10-26); it used to promise tuners and storage.
+        case .settings: return "This Apple TV, server, app"
         default: return nil
         }
     }

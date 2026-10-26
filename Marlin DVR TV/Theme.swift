@@ -9,6 +9,11 @@
 //  drawn as a 4 pt accent ring, a lift and an ambient shadow. Only the ramp steps that
 //  frames 1b (rail) and 2a (Home) use are carried here.
 //
+//  Pass 136 (owner, 2026-10-26, his 2b): Nocturne's colours stay. Added beside them are the
+//  semantic colour pairs, the focusable label's states and one named text-style set — the REA
+//  report's §3.4, §3.5 and §5.1 items 12–13 — with the three colours that lived in screens (the
+//  Guide's green and gold, the schedule's conflict red) moved in here.
+//
 
 import SwiftUI
 
@@ -83,6 +88,75 @@ enum Nocturne {
         static let shadowColor = Color.black.opacity(0.7)
         static let shadowRadius: CGFloat = 32
         static let shadowY: CGFloat = 26
+        /// Pass 136: the scale that goes with the lift (REA report §5.2 item 2) — 5 %, drawn over
+        /// the neighbours without moving them, small enough that a full-width row stays on screen.
+        static let scale: CGFloat = 1.05
+    }
+
+    /// Pass 136: the semantic colour pairs — one text ink and one background tint per meaning.
+    /// Nocturne's own colours, kept (owner's 2b): the recording and scheduled green and the pass
+    /// gold are the Guide's marks (dc:1183-1189), the error red is the schedule's conflict colour,
+    /// and the tint is the 20 % the Guide draws behind a marked cell. Favourited shares the pass
+    /// gold (the Guide's ★); warning and destructive are drawn nowhere yet and take the gold and
+    /// the red so that the first screen to need them has a value to read. The Channels app's own
+    /// hex-to-role pairing is unconfirmed (REA report §3.5), so nothing here is copied from it.
+    enum Semantic {
+        struct Pair {
+            let text: Color
+            let background: Color
+            init(_ hex: UInt32, tint: Double = 0.2) {
+                text = Color(hex: hex)
+                background = Color(hex: hex, opacity: tint)
+            }
+        }
+        static let recording = Pair(0x57B083)
+        static let scheduled = Pair(0x57B083)
+        static let pass = Pair(0xD6A94E)
+        static let favourited = Pair(0xD6A94E)
+        static let warning = Pair(0xD6A94E)
+        static let error = Pair(0xC2686B)
+        static let destructive = Pair(0xC2686B)
+    }
+
+    /// Pass 136: the focusable label's states — resting, focused and active (the chosen item of a
+    /// list that stays marked while focus is elsewhere: the rail's current entry, dc:1138-1143, and
+    /// the Settings group whose rows are showing). The resting and focused values are the outlined
+    /// action button's (Pass 9); every button that draws its own focus reads the focused state from
+    /// here, so one place sets it. A row's resting fill stays its own where it sits on a half-tone.
+    enum FocusLabel {
+        static let restingInk = neutral200
+        static let restingFill = Color.clear
+        static let restingRing = neutral700
+        static let focusedInk = text
+        static let focusedFill = accent.opacity(0.18)
+        static let focusedRing = accent
+        static let activeInk = accent200
+        static let activeFill = accent.opacity(0.14)
+        static let activeRing = accent700
+    }
+
+    /// Pass 136: one named text-style set over the sizes above (REA report §3.4, §5.1 item 13).
+    /// The views built from this pass on read a style by name; the screens built before it keep
+    /// their size constants, which are the same numbers.
+    enum TextStyle {
+        case title, subtitle, meta, body, cellTitle, cellSubtitle, cellMeta, button
+
+        var size: CGFloat {
+            switch self {
+            case .title: return TextSize.screenTitle
+            case .subtitle, .cellSubtitle: return TextSize.secondary
+            case .meta, .cellMeta: return TextSize.floor
+            case .body, .button: return TextSize.body
+            case .cellTitle: return TextSize.cardTitle
+            }
+        }
+
+        var weight: Font.Weight {
+            switch self {
+            case .title, .cellTitle: return .medium
+            case .subtitle, .meta, .body, .cellSubtitle, .cellMeta, .button: return .regular
+            }
+        }
     }
 
     /// --shadow-sm is a 1 px hairline of neutral-800
@@ -115,5 +189,10 @@ extension Font {
     /// Design weight 300 = .light, 400 = .regular, 500 = .medium, 600 = .semibold.
     static func nocturne(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight)
+    }
+
+    /// Pass 136: the same font by the name of its style.
+    static func nocturne(_ style: Nocturne.TextStyle) -> Font {
+        nocturne(style.size, style.weight)
     }
 }

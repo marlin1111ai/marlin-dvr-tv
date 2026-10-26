@@ -224,7 +224,7 @@ struct JobStatusChip: View {
     private var colour: Color {
         switch status {
         case "Recording": return GuideMark.green
-        case "Conflict", "FAILED": return Color(hex: 0xC2686B)
+        case "Conflict", "FAILED": return Nocturne.Semantic.error.text   // Pass 136: the error pair's ink, the same red
         case "Skipped", "STOPPED": return Nocturne.neutral600
         default: return Nocturne.accent600
         }

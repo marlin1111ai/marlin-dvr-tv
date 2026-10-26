@@ -79,8 +79,9 @@ enum GuideMark {
     /// green for the recording mark, gold for the pass mark.
     case recording, scheduled, pass
 
-    static let green = Color(hex: 0x57B083)
-    static let gold = Color(hex: 0xD6A94E)
+    // Pass 136: the values live in the semantic pairs (Theme.swift); the names stay for their callers.
+    static let green = Nocturne.Semantic.recording.text
+    static let gold = Nocturne.Semantic.pass.text
 
     var tag: String {
         switch self {

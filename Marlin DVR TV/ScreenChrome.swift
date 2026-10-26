@@ -65,7 +65,8 @@ struct ScreenHeader<Accessory: View, Trailing: View>: View {
 }
 
 /// The 4 pt accent ring, the lift and the ambient shadow (design data FOCUS_ON), or the
-/// resting hairline.
+/// resting hairline. Pass 136: and the scale (REA report §5.2 item 2), for every card and row
+/// that reads this — the Home tile reads it too now, instead of a private copy.
 struct FocusTreatment: ViewModifier {
     let focused: Bool
     var cornerRadius: CGFloat = Nocturne.Radius.md
@@ -78,6 +79,7 @@ struct FocusTreatment: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(focused ? Nocturne.accent : restingRing, lineWidth: focused ? Nocturne.Focus.ringWidth : 1)
             }
+            .scaleEffect(focused ? Nocturne.Focus.scale : 1)
             .offset(y: focused ? -lift : 0)
             .shadow(color: focused ? Nocturne.Focus.shadowColor : .clear, radius: Nocturne.Focus.shadowRadius, y: Nocturne.Focus.shadowY)
             .animation(.easeOut(duration: 0.15), value: focused)
@@ -118,13 +120,13 @@ struct PillLabel: View {
     var body: some View {
         Text(text)
             .font(.nocturne(size))
-            .foregroundStyle(active ? Nocturne.accent200 : (focused ? Nocturne.text : Nocturne.neutral400))
+            .foregroundStyle(active ? Nocturne.FocusLabel.activeInk : (focused ? Nocturne.FocusLabel.focusedInk : Nocturne.neutral400))
             .padding(.vertical, size == Nocturne.TextSize.secondary ? 10 : 8)
             .padding(.horizontal, size == Nocturne.TextSize.secondary ? 24 : 20)
             .background(active ? Nocturne.accent900 : (focused ? Nocturne.accent.opacity(0.14) : .clear), in: Capsule())
             .overlay {
                 Capsule().strokeBorder(
-                    focused ? Nocturne.accent : (active ? Nocturne.accent700 : Nocturne.neutral800),
+                    focused ? Nocturne.FocusLabel.focusedRing : (active ? Nocturne.FocusLabel.activeRing : Nocturne.neutral800),
                     lineWidth: focused ? Nocturne.Focus.ringWidth : 1
                 )
             }
@@ -190,7 +192,8 @@ struct ProgressBar: View {
 
 /// A focusable button drawn like the design's outlined action (frame 5c/5d buttons).
 /// `flexible` (Pass 9 step 2) makes it share the row's width and shrink its label instead of
-/// running past the edge of the screen — the airing sheet's row of three.
+/// running past the edge of the screen — the airing sheet's row of three. Pass 136: its resting
+/// and focused colours are the focus-label tokens (Theme.swift), the same values.
 struct InertActionButton: View {
     let title: String
     let primary: Bool
@@ -201,16 +204,16 @@ struct InertActionButton: View {
     var body: some View {
         Text(title)
             .font(.nocturne(size))
-            .foregroundStyle(primary || focused ? Nocturne.text : Nocturne.neutral200)
+            .foregroundStyle(primary || focused ? Nocturne.FocusLabel.focusedInk : Nocturne.FocusLabel.restingInk)
             .lineLimit(1)
             .minimumScaleFactor(flexible ? 0.6 : 1)
             .padding(.vertical, 18)
             .padding(.horizontal, flexible ? 22 : 36)
             .frame(maxWidth: flexible ? .infinity : nil)
-            .background(focused ? Nocturne.accent.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+            .background(focused ? Nocturne.FocusLabel.focusedFill : Nocturne.FocusLabel.restingFill, in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
-                    .strokeBorder(focused ? Nocturne.accent : Nocturne.neutral700, lineWidth: focused ? Nocturne.Focus.ringWidth : 1)
+                    .strokeBorder(focused ? Nocturne.FocusLabel.focusedRing : Nocturne.FocusLabel.restingRing, lineWidth: focused ? Nocturne.Focus.ringWidth : 1)
             }
             .shadow(color: focused ? Nocturne.accent.opacity(0.24) : .clear, radius: 0, x: 0, y: 0)
             .modifier(FixedUnlessFlexible(flexible: flexible))

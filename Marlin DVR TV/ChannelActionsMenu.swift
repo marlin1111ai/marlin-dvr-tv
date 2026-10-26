@@ -95,12 +95,15 @@ struct ChannelActionsMenu: View {
 }
 
 /// One row of an actions menu: title on the left, current state on the right (frame 5d's
-/// long-press list, dc:643, and the same treatment for the channel menu).
+/// long-press list, dc:643, and the same treatment for the channel menu). Pass 136: an optional
+/// line of help under the title — the Settings rows (REA report §5.2 item 7); nil draws the row
+/// exactly as before — and the focused colours read from the focus-label tokens (the same values).
 struct MenuRow: View {
     let title: String
     let state: String
     let focused: Bool
     var enabled = true
+    var help: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -109,9 +112,18 @@ struct MenuRow: View {
             action()
         } label: {
             HStack(spacing: 20) {
-                Text(title)
-                    .font(.nocturne(Nocturne.TextSize.body))
-                    .foregroundStyle(enabled ? Nocturne.text : Nocturne.neutral600)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.nocturne(Nocturne.TextSize.body))
+                        .foregroundStyle(enabled ? Nocturne.text : Nocturne.neutral600)
+                    if let help {
+                        Text(help)
+                            .font(.nocturne(.meta))
+                            .foregroundStyle(Nocturne.neutral500)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
                 Spacer(minLength: 0)
                 Text(state)
                     .font(.nocturne(Nocturne.TextSize.floor))
@@ -120,10 +132,10 @@ struct MenuRow: View {
             .padding(.vertical, 16)
             .padding(.horizontal, 26)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(focused ? Nocturne.accent.opacity(0.18) : Nocturne.bg.opacity(0.5), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
+            .background(focused ? Nocturne.FocusLabel.focusedFill : Nocturne.bg.opacity(0.5), in: RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: Nocturne.Radius.md, style: .continuous)
-                    .strokeBorder(focused ? Nocturne.accent : Nocturne.neutral800, lineWidth: focused ? Nocturne.Focus.ringWidth : 1)
+                    .strokeBorder(focused ? Nocturne.FocusLabel.focusedRing : Nocturne.neutral800, lineWidth: focused ? Nocturne.Focus.ringWidth : 1)
             }
         }
         .buttonStyle(BareButtonStyle())
