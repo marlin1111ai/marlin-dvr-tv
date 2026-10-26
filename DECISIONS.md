@@ -4194,3 +4194,120 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
     report was changed.** No request was sent to the server. Neither Apple TV was touched.
   - **This commit's own SHA cannot be written here** (DECISIONS.md, 2026-09-11 (Pass 68)); it belongs in the
     next pass's entry.
+
+## 2026-10-26 (Pass 136 — the sidebar to the Channels app's shape, pass 1; Settings built; `d987066` pushed; both Apple TVs on `60a035f`; wrap-up)
+
+- **Pass 135's second wrap-up commit `d987066` was pushed first, on the owner's instruction** ("Push the Pass 135
+  commit first, then go on Pass 136"): `git push origin main` answered `3edfc07..d987066`; after `git fetch origin`,
+  `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all read
+  `d9870664c11a666a7a4299e7c4deccfed11db323`. The tree was clean but for `icon-source/` and the new `rea/`.
+- **The design reference for this pass is the owner's REA report on the Channels DVR client app**,
+  `rea/channels-app.md` (342 lines, prepared 2026-10-26) with `rea/channels-app-assets/` (54 SVG icons, 82 PNGs,
+  the atlases, `index.csv`). **`rea/` stays untracked, like `icon-source/`** (his 2a, below). Nothing from its
+  assets ships; the sidebar icons stay SF Symbols (the standing "nothing bundled" decision).
+- **The plan (≤20 lines, Apple TV only) was given first and he answered its four decisions**: **1a** — Menu on a
+  screen opens the sidebar, Menu again goes Home (over keeping Menu = Home with the sidebar opening on a move left
+  only); **2b** — **Nocturne's colours stay**; only the semantic pairs and the text styles are added (over the
+  report's accent #9B3FFF on #191222, which was offered because the approved design is what the screens are built
+  to and a colour change departs from it); **3a** — the app icon's own artwork as the sidebar logo, one image
+  copied into the catalog (over the "Marlin" wordmark in type); **4a** — Settings holds read-only rows and Manage
+  DVR stays its own section (over folding Manage DVR's four areas into Settings). Out of scope and untouched:
+  screen contents, the Guide's internals, the Player, the Mac target; Weather and Radio were not edited.
+- **Built, one commit, Apple TV only** (`Theme.swift`, `Destination.swift`, `RailView.swift`, `ScreenShell.swift`,
+  `ScreenChrome.swift`, `HomeView.swift`, `GuideScreen.swift`, `ScheduleManageView.swift`,
+  `ChannelActionsMenu.swift`, `ChannelFilter.swift`, `Models.swift`, the new `SettingsScreen.swift`, the new
+  `SidebarLogo.imageset`, the new harness `SidebarPass136UITests.swift`; no project-file change — the targets are
+  synchronized folders):
+  - **The sidebar**: the icon's artwork at the top (150 × 90 pt expanded, 64 × 38 pt collapsed, the icon's 5:3,
+    clipped to the medium radius), **Settings as the twelfth entry at the bottom under Manage DVR**, the list drawn
+    from `Destination.sidebar` — `railOrder` filtered by a per-section `isShownInSidebar`, all true, nothing
+    dropped (REA §5.1 item 1; the server has no navigation override, so none is built) — and, so that twelve
+    entries, the logo and the footer fit in the 960 pt between the margins, the entry's vertical padding 8 pt
+    (was 10) and the collapsed spacing 8 pt (was 12); the entry scales 5 % on focus. Measured on Home Theater:
+    Settings ends at y 921, the footer at 999, inside the 1020 margin.
+  - **Menu (his 1a)**: the shell's exit command goes Home when focus is in the sidebar and opens the sidebar on
+    the current entry otherwise; the `leave` closure every screen calls when Menu finds nothing of its own to
+    close is that same opening. No screen's own Menu handling changed.
+  - **The catcher at the boundary**: `SidebarCatcher`, a 16 pt focusable UIKit strip laid over the rail's
+    trailing edge as an overlay on the content (the Guide's `BackStepCatcher` shape, Pass 123), nearer to every
+    content row than any rail entry, so a Left lands on it first and it hands focus to the current entry before
+    another entry can draw its ring. **It can be focused only while something in the content has focus** — its
+    `canBecomeFocused` is `armed && focusSystem.focusedItem != nil`, `armed` being "the sidebar is not open" —
+    which is what keeps a screen appearing with nothing focused from landing on it and lets a Right from the
+    sidebar pass over it into the content; a `shouldUpdateFocus` refusal was considered and rejected, because a
+    refused update cancels the move rather than picking the next candidate. **Pass 25's `railRestore` stays**
+    for the crossings that are not a move. The plan said "replacing"; the build keeps both, and says so.
+  - **The tokens (his 2b)**: `Nocturne.Semantic` — recording and scheduled `#57B083`, pass and favourited
+    `#D6A94E`, error `#C2686B`, each with a 20 % background tint, the values the Guide and the schedule already
+    drew; **warning takes the gold and destructive the red**, because nothing draws them yet and the Channels
+    hex-to-role pairing is unconfirmed (REA §3.5) — chosen, not copied. `Nocturne.FocusLabel` — the action
+    button's resting ink/fill/ring, the focused state, and the active state (the rail entry's); the action
+    button, the pill, the menu row, the rail entry and the Settings group read the focused state from it, and a
+    row keeps its own resting fill where it sits on a half-tone. `Nocturne.TextStyle` — title 52 medium,
+    subtitle 26, meta 23, body 29, cell title 31 medium, cell subtitle 26, cell meta 23, button 29, over the
+    existing sizes; the screens built before this pass keep their constants. `Nocturne.Focus.scale` 1.05.
+  - **The focus treatment** gains the scale; the Home tile reads the shared modifier instead of its private
+    copy (same ring, lift, shadow); the poster card's own growth (Pass 47) is left alone. Weather's daily rows
+    and Radio's station tiles already read the shared treatment, so they gained the scale with no edit to
+    their files — the one visible change on those two screens.
+  - **Settings**: two panes — groups left (This Apple TV, Server, App), rows right as `MenuRow` with a new
+    optional `help` line under the title (nil draws the row as before); read-only rows: Name (the registered
+    client name), tvOS, Address (`ServerConfig.hostLabel`), Version (**one `GET /api/status`, the pass's only
+    new endpoint read**, decoded as `name` and `version`; "could not read — …" on failure, "Reading the server…"
+    until it answers), App version from the bundle. Menu on a row returns to its group; Menu on a group opens the
+    sidebar. The Home tile opens it (`isBuiltNow`). Not in the approved design; built to the app's look.
+- **Run on Home Theater — `SidebarPass136UITests`, one method, `launch()`, four runs, the fourth the run of
+  record and passed in full** (107.6 s): the Left out of On Now's first card landed on the On Now entry; Up to
+  Home then Down through the list read the twelve entries in order; Right closed the sidebar; Menu opened it on
+  On Now; Menu again went Home; the Settings tile opened Settings on This Apple TV, Right landed on the Name
+  row, Down on tvOS, Menu back on This Apple TV, Down on Server with the Address row ending in the server's
+  address and the Version row reading "marlin-dvr 1.19.1", Down on App with "1.0 (1)"; Menu on a group opened
+  the sidebar on Settings; in the Guide, Left to the channel cell and Left at now reached the sidebar on Guide
+  with the window unmoved; Right back in, two slots ahead by Pass 77's Right, two back-steps that stayed on
+  the channel cell with the sidebar closed, and the next Left at now reached the sidebar again. **The first
+  three runs failed on the harness, not the app**: a lookup by the label "Favorites" also found On Now's own
+  filter pill (fixed by reading the sidebar with `hasFocus` while walking it); the rail/content boundary at
+  x 200 misread a scaled focused card that starts at x 191 (now 170); a Right from the sidebar into the Guide
+  lands on a channel cell, so one more Right precedes the walk. **Traced, not run**: a swipe left, the held
+  ring, the status read's failure branch, the catcher under a reload that removes the focused row. The run's
+  launch ping was not checked in `GET /api/logs` — reading the server by hand was blocked by the tool's own
+  guard this session — but the Settings screen on the screenshots exists only in this build.
+- **Found and not fixed — On Now's filter-pill overflow, deferred by the owner to Pass 137 (his 1b: "the On Now
+  pill row gets fixed in the next pass as part of the filter bar work, not separately")**: `OnNowScreen.chips`
+  is a plain `HStack` of fixed-size pills, unchanged since Passes 6–7, and his collections now make it wider
+  than the content area, which widens the shell's `HStack` past the screen and the root `ZStack` centres it —
+  the whole screen shifts left 32 pt with the sidebar collapsed and about 126 pt with it open, so on On Now the
+  logo and the icons are cut off (the harness read the rail entries at x −53 there and at x 73 on Settings
+  and the Guide; the first card at x 191 where 223 was expected). It predates this pass and shows on On Now
+  only. Screenshots were taken and deleted with the run.
+- **His later calls the same day**: **1b** as above; **2a** — `rea/` stays untracked; **3a** — the Settings
+  tile's sub-line became "This Apple TV, server, app" (it promised tuners and storage), **folded into the pass's
+  commit by `--amend` at his instruction** ("fold it into dfa382f") — the commit was local and unpushed, so no
+  pushed history was rewritten — `dfa382f` becoming **`60a035f`**. **Pushed on his "push it"**: `git push origin
+  main` answered `d987066..60a035f`; after `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main`
+  and `git ls-remote origin main` all read `60a035f1ce26b6b7e66af0efd8c40475d4abe70e`. Home Theater was rebuilt
+  from the folded commit (`build/dd-device`, **`** BUILD SUCCEEDED **`**) and reinstalled (`App installed`) before
+  the push so it runs exactly what was pushed. **The bedroom Apple TV was brought up to `60a035f` — install only,
+  not launched, its own step under the standing rule**: it listed as available, was built to
+  `platform=tvOS,name=Master Bedroom ATV` in `~/Library/Developer/Xcode/DerivedData/MarlinDVRTV-bedroom` (Pass
+  117's method, **`** BUILD SUCCEEDED **`**) and installed (`App installed`). **Both Apple TVs run Pass 136's
+  code.**
+- **Facts recorded**: the server answers **marlin-dvr 1.19.1** (the notebook said 1.13.3; what changed was not
+  read); Home Theater is registered with the server as **"D/S Apple TV"**; Home Theater runs **tvOS 27.0** (the
+  notebook said 26.6; the bedroom's version was not read).
+- **Wrap-up (the fourth run of `.claude/commands/wrap.md`)**: (1) open questions — **none**; every decision was
+  answered in the chat. (2) nothing to commit — the tree was clean after the push. (3) cleanup — the two result
+  bundles, two run logs and two screenshot folders in the session scratchpad were deleted; `build/` (the shared
+  build folder) and the bedroom build folder were not touched; the harness stays in the project as the pass's
+  evidence file, as every pass's does (29 → 30). (4) `COLD-START.md` brought current: *Where things live* names
+  `rea/`; *The server* reads 1.19.1; the tokens, the sidebar, Home, Manage DVR, the new Settings line, the
+  harness list, tvOS 27.0 and *What is NOT built* ("no screen is parked any more") carry Pass 136; *Next step*
+  is one current statement naming Pass 137. By Pass 89's rule the superseded lines — Pass 135's *Next step*
+  paragraph and the 1.13.3 server line — were **moved into `COLD-START-HISTORY.md` byte-for-byte**, every moved
+  line checked against the original by the script that moved them. (5) this entry. (6) the notebook commit,
+  local. (7) the scope check and (8) the push verdict are in the response.
+- **No `design/` file, `icon-source/` file, project file or existing report was changed by this pass.** The app
+  sent only its own reads and launch pings; no write of any kind was sent to the server, and nothing was read
+  from it by hand.
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its
+  own SHA (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.

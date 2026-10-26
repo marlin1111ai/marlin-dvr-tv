@@ -1173,6 +1173,18 @@ true numbers live.
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
 
+*Moved here by Pass 136 (2026-10-26), byte-for-byte — the paragraph of Pass 135:*
+
+**Nothing is open, nothing is owed, and nothing is unpushed as of Pass 135's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". The next step is whatever the owner asks for next.
+
+- **Both Apple TVs run Pass 134's app code, `6023e59`** — Home Theater since Pass 134's install on 2026-10-06, "Master Bedroom ATV" since the install that followed the push the same evening (built from `6023e59` by Pass 117's method) — so the standing bedroom rule is satisfied and the two televisions match. Neither install was launched by a pass; the owner has since run the app himself and accepted Pass 134 on it (which television he used he did not say). Both builds are development-signed and stop launching on **2027-09-07**. **Wake the bedroom Apple TV before any pass that launches on it**: asleep, it still lists as connected and accepts an install, and refuses the launch (Pass 117).
+- **The server is marlin-dvr 1.13.3** (*The server* above); it plays a recording while it is still being written, and the app uses that since Pass 133.
+- **There is no local clone of the server repo.** Server files are read from `github.com/marlin1111ai/marlin-dvr` at a commit the pass names, and deleted afterwards; the last commit read is `6f967c2`, and the Go source lives under `cmd/marlin-dvr/`.
+- **The last things built are Pass 133 — watching a recording while it is still being written (server 1.13.0, contract §15), accepted by the owner on Home Theater, "all works" — and Pass 134, the airing sheet's "first aired" date, pushed on his "add it then push" and since seen on the television and accepted by him — "i tested it good" (2026-10-06, recorded by Pass 135).** Pass 133's recording-now paths were traced, not run, by the pass itself — nothing was recording on the server while it worked. REVIEW.md's N1–N22 and N25–N55 stay unpicked.
+- **No open items.** See *Open questions* above and *Closed by the owner's call of 2026-09-20*, which also carries his calls of 2026-09-23 and 2026-09-25; read that section before trusting any path it names, because closed is not the same as measured.
+- **What comes next, the owner's calls of 2026-10-06 after Pass 135's wrap-up:** **TestFlight is probably the next step** — his words, "ive tesed it for like 3 months and think its ready for him to test" ("him" is his dad): an App Store Connect record, a privacy manifest (six files use `UserDefaults`/`@AppStorage`), the encryption answer, the first-ever Release build on a TV, his dad added to the developer team as an internal tester (outside testers get an Apple review the app cannot pass without its server); builds expire 90 days after upload; signing is not touched without his say-so. **Two things still stand before his dad can use it at his own home**, his earlier words the same evening, "not now but it will be next thing to do": **(1)** the owner sets up the server's remote access himself ("its there but not wired yet"), server side, for any TV outside the home where the server lives, and comes back with the remote address's form, whether it has a login, and whether the server announces itself on the home network; **(2)** the app must be able to find the server at home or remotely — today the address is a constant in `ServerAPI.swift` (`http://192.168.1.250:8090`) and nothing in the app searches the network, so on his dad's network a TestFlight build would find nothing until (2) is built. Each is its own pass, planned first. Nothing is built from this yet (DECISIONS.md, 2026-10-06 (Pass 135)).
+- **Pass 134's wrap-up commit is `d587da2`** (`d587da232be7da9e22b29aef2b818a3a31499d48`), pushed on the owner's "push it" of 2026-10-06 and verified by Pass 135 before it changed anything: after `git fetch origin`, `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin main` all read it. It is a fast-forward from `6023e59` (Pass 134) through `f236cdd` (Pass 133) and `5dc5ae8` (Pass 132). Pass 135's commits are fast-forwards from it: `c157367` (the wrap-up) pushed on the owner's "yes" and `3edfc07` (the first addendum) on his "push it", both verified the same way — the last reading `3edfc073a33fff2ae853b0f0c505d2a0eff0c71a`; this pass's third commit, the second wrap-up, is local.
+
 *Moved here by Pass 135 (2026-10-06), byte-for-byte — the *Next step* bullet of its own first addendum, superseded the same evening by the owner's TestFlight call:*
 
 - **What comes next, the owner's call of 2026-10-06 after Pass 135's wrap-up — "not now but it will be next thing to do":** **(1)** he sets up the server's remote access himself ("its there but not wired yet"), server side, for any TV outside the home where the server lives; **(2)** the app must be able to find the server at home or remotely before TestFlight — today the address is a constant in `ServerAPI.swift` (`http://192.168.1.250:8090`) and nothing in the app searches the network. Item (2) is the next pass, planned first; TestFlight's own setup (App Store Connect record, privacy manifest for `UserDefaults`, first-ever Release build, his dad as an internal tester) follows it. Nothing is built from this yet (DECISIONS.md, 2026-10-06 (Pass 135)).
@@ -2727,3 +2739,29 @@ See the Open Questions sections of `reports/2026-09-05-pass2-server-recon.md` (s
   parsing S10 depends on was measured against the running 1.11.1 (Pass 120).
 - **`HLS-CLIENT-API.md` in the marlin-dvr repo is current on its version and still silent on the single-file route.** At `0fa05e1` its header says **1.10.0** (`HLS-CLIENT-API.md:7`), it is 670 lines and runs to **§12**, the change notices — and **`"file"`, `video.mp4` and `/api/play/file` appear nowhere in it** (read from GitHub and searched, Pass 118; blob `8f1e7941`, the same bytes Pass 115 read). So §2.3 of `reports/2026-09-08-pass41-single-file-route-recon.md` is still the only written description of that route, read from their Go source (Pass 41), and the route stays undocumented on their side — recorded, closed with the rest on 2026-09-20, not to be raised unless the owner asks. It supersedes this line's earlier wording — *"byte-unchanged across the whole 1.8.0 delivery, its header still says 1.7.0"* — which was true at Pass 41 and had gone stale by Pass 115.
 - **There is no reference clone any more; the last server commit read is `0fa05e1`** (`0fa05e13927b202df469a430789df9c9683c73c4`, source at 1.10.0), read straight from GitHub in Pass 115 under the rule in *Where things live*. The old clone — `eb0c098`, a tree at 1.8.1 (Pass 72; still there at Pass 85) — was removed from this Mac on 2026-09-19, not by this project; earlier reports' server `file:line` citations were read at the commit each report names and stay as written. Server facts are still measured against the running server's own responses and its `GET /api/logs`, never against the source (Pass 72).
+
+## The server line of `COLD-START.md` superseded by the 1.19.1 line (moved by Pass 136, byte-for-byte)
+
+- **The server is marlin-dvr 1.13.3**, as `GET /api/status` answered on 2026-10-06 (Pass 133, and again at
+  Pass 134's wrap-up). It supersedes the 1.11.6 reading of 2026-09-25 (Pass 129, recorded by Pass 130),
+  moved to `COLD-START-HISTORY.md` by Pass 134 with the chain before it. **1.13.0 plays a recording while
+  it is still being written** (contract §15, published and installed 2026-10-06; the owner's note of the
+  same day, pasted from the server's side, is the ask Pass 133 built): an episode of `GET
+  /api/library/shows/{id}` carries `inProgress` always, and `liveChannelId` and `scheduledLength` only
+  while it is true; a `GET /api/schedule` item whose status is `"Recording"` carries `recordingId`; a
+  `"recording"` session asked for as `"hls"` is an EVENT playlist that grows with the file and closes
+  130 s after its last byte, its answer's `duration` the scheduled length and its `start` the position
+  playback really begins at; `"file"` is refused with 502 until the recording finishes; in a recording's
+  first seconds a session can answer 502 "has only just started"; `GET /api/play/info?rec=` carries the
+  same two flags; and an episode's `dateLabel` is now the show's original air date when the guide gave
+  one ("September 7th 2026"), `airedLabel` when it was recorded ("recorded Sep 8 at 12:03 AM, 8 min";
+  "started today at 6:00 PM" while in progress). What 1.13.1–1.13.3 changed beyond that was not read;
+  the owner's note says nothing else about finished recordings, live channels or cameras changed. **The
+  standing server facts this app was built on stay as they were:** **1.10.0 announces channel and
+  collection changes live on `GET /api/events`** — a server-sent event stream whose every notice is the
+  one word `channels` or `collections`, with a keep-alive comment every 15 s and no replay (contract §12;
+  `reports/2026-09-19-pass115-events-recon.md`), and **the Guide listens to it, and only the Guide**
+  (Pass 116); **1.9.1 writes an `.mp4` sidecar beside the `.mpg` when a recording finishes and serves
+  that file directly on `format:"file"` with byte ranges and no remux** — relayed by the owner from the
+  marlin-dvr project, 2026-09-16 (Pass 101); the query parsing S10 depends on was measured against the
+  running 1.11.1 (Pass 120).
