@@ -1173,6 +1173,11 @@ true numbers live.
 ## Next step — the superseded paragraphs (the newest is in `COLD-START.md`)
 
 
+*Moved here by Pass 138 (2026-10-26), byte-for-byte — the paragraph of Pass 137:*
+
+**Nothing is open, nothing is owed, and nothing is unpushed as of Pass 137's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". **The next step is whatever the owner asks for**; in his order of 2026-10-26 the pieces still ahead from the REA report are Recordings onto the rails container (his 3a) and the Sort / Genre / Rating menus in the filter bar's slot (his 2a; the server gives `categories` and `rating` per airing), each its own pass, planned first; TestFlight and the app finding the server (below) come after.
+
+
 *Moved here by Pass 137 (2026-10-26), byte-for-byte — the paragraph of Pass 136:*
 
 **Nothing is open, nothing is owed, and nothing is unpushed as of Pass 136's wrap-up** except the wrap-up's own notebook commit, local until the owner says "push it". **The next step is Pass 137, planned first in the chat and not yet built**: the REA report's three screen containers and, first among them, the filter bar — On Now's pill row moves onto it in that pass, which cures the overflow that shifts On Now's screen left (owner's 1b, 2026-10-26) — then the image-aspect contract and the shared status badges (REA §2.3, §3.3, §5.1 items 2, 4, 14). TestFlight and the app finding the server (below) come after.

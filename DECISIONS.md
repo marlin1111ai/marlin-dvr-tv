@@ -4416,3 +4416,97 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   it by hand — the one server fact came from GitHub.
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
   (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+
+## 2026-10-26 (Pass 138 — the last-channel flip; a Guide plan cancelled first; `1927d00` and `70d6e6e` pushed; the bedroom not yet up; wrap-up)
+
+- **Pass 137's wrap-up commit `1927d00` was pushed on the owner's word**: `git push origin main` answered
+  `992d3a3..1927d00`; after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote
+  origin refs/heads/main` all read `1927d00ab1c8eb790ae52311cc9eb0e6d1d85372`.
+- **A first Pass 138 plan, for the Guide, was given and then cancelled by the owner**: "Stop — Pass 138 is cancelled,
+  the Guide stays as it is." The plan (≤20 lines: the layout's numbers, Play/Pause to now, a day/time jump, numeric
+  entry, the filter chips, a long-press menu, and a tidy of `ArtView`'s reported frame) was words only; **no file was
+  changed**, and the tree was confirmed at `1927d00` with no diff, nothing staged and the scratch folder empty. The
+  server files read for it (`sources.go`, `guide.go` at `674a7a7`) were deleted after reading. **The Guide stays as it
+  is**; the pass number went to the flip below.
+- **Questions answered, nothing changed**: what the Player has today for its time bar (Apple's own bar — played,
+  loaded-ahead and the position, no commercial marks; the break list is read only for the Skip prompt), for live TV
+  (Apple's live bar, no app time readout while playing, the paused screen's "Paused at … · now … behind live", no way to
+  switch; the server stamps each live segment with the clock time), and at a recording's end (marked watched, the ended
+  screen's 10-second countdown to the next-newer episode in the show's list — watched or not — and "Back to the show";
+  the server has watched flags and an unwatched count but no next-episode route), read from the app and from
+  `HLS-CLIENT-API.md`, `stream.go` and `library.go` at `674a7a7` (deleted after); and **that nothing in the app
+  jumped back to the previous channel or remembered one** — the only things kept on the Apple TV were resume positions,
+  the Guide's collection pick, the client id and the weather location.
+- **The plan for the flip (≤15 lines, Apple TV only) was given first and he answered**: **A1** — remember the channels
+  on this Apple TV across a relaunch, as resume positions are (over only while the app is open); **B1** — read once
+  what is on the channel at the flip so Apple's bar shows the right programme (over the channel name only); **C1** —
+  0.4 s between the two presses (over 0.3 s); and **his condition**: "in the first minute after tuning, where the app
+  does its own 0.35 s delayed pause, a double-click must still flip and not pause twice." The plan stated plainly that
+  no click can know a second is coming, so the first is never delayed, and that a pause-then-resume inside 0.4 s
+  becomes a flip.
+- **Built, one commit, Apple TV only** (new `LastChannel.swift`; changed `PlayerHost.swift`, `PlayerScreen.swift`; the
+  new harness `Pass138UITests.swift`; no project-file change):
+  - **`LastChannel`**: the current and the previous live channel in `UserDefaults` (`marlinLastChannel.current` and
+    `.previous`, each the channel's id, source id, number and name). A channel is recorded when its Player reaches the
+    playing state — the session created and the stream attached — so a failed tune never becomes previous; the
+    channel already current changes nothing; another pushes the current one to previous, so a flip swaps the two.
+    **At the flip the channel is read fresh**: one `GET /api/guide/now?source=<source id>` (his B1), and only when
+    that lists nothing airing on it — the route lists a channel only while a programme airs, read in `guide.go` at
+    `674a7a7`, and the server matches `source` by id or name (`sources.go`) — one `GET /api/channels?source=`, the
+    channel then starting with no programme as Favorites starts a favourite with no listing. Not listed by either, or
+    a failed read: said on the console, and the playing channel carries on.
+  - **`PlayerHost`**: a second centre click on a live channel whose press begins within 0.4 s of the first
+    (`UIPress.timestamp`) is offered to the screen; when it is taken the press and its release are swallowed and
+    **Pass 7C's pending pause or resume from the first click is cancelled**, which is his condition. The first click
+    is never held back. Pass 7C's work item now clears itself when it runs — no change to what it does — so the
+    console can say which case a double-click met. Once the live window reaches 60 s Apple's own recognizer sees
+    both clicks (Pass 38 measured that not calling `super` cannot stop it), so the old channel pauses and resumes in
+    the instant before it is stopped — said in the plan's wake, traced, not run.
+  - **`PlayerScreen`**: records each live channel on reaching the playing state; flips — only while a live channel
+    plays, the info panel is down, a previous channel exists and no flip is already under way — by stopping the
+    session, which frees its tuner, and starting a `.live` request for the channel and what is on it, the way
+    `playNext` swaps in the next episode, so the Starting, tuner-busy and failure screens are as from On Now.
+- **Run on Home Theater — `Pass138UITests`**: the record, `testDoubleClickFlipsToThePreviousChannel`, `launch()`,
+  **passed on its second run** (102.7 s): 2.1 WMAR-HD then 8.1 WGAL-TV from On Now; a double-click with the two remote
+  calls 218 ms apart in WGAL's first minute went to WMAR, playing and not paused, with "Flip Side · until 8:00 PM" in
+  the transport bar; a second, 242 ms apart in WMAR's first minute, went back to WGAL; a single click paused WGAL and a
+  second single click resumed it, the channel unchanged; after quitting and launching again, a double-click on WMAR
+  went to WGAL, its programme in the bar. **The first run failed on the harness, not the app**: the flips had both
+  worked, but its title lookup read the paused-live screen's one-line "ch8.1 WGAL-TV · <programme> · until …" as the
+  title; the lookup now skips a line carrying " · ". **The console drive**, `testTheFirstMinuteWithTheConsoleAttached`
+  — the app launched by `devicectl … --console`, the drive by `xcodebuild test-without-building`, which kept the
+  console attached — **passed**, and the app's own lines answer his condition: at **243 ms** "the first click's own
+  pause/resume was still pending — cancelled, so no pause", then the flip; at **369 ms** "window 0 s < 60 → app paused"
+  once, then "no own pause/resume pending from the first click", the flip, and no second pause or resume. The
+  screenshots were looked at by eye. **Traced, not run**: no previous channel (a double-click is two single clicks),
+  a channel no longer playable or a failed read at the flip, and the long-window case above.
+- **Pushed on his "push it"** after he had tried it on Home Theater: `git push origin main` answered
+  `1927d00..70d6e6e`; after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote
+  origin refs/heads/main` all read `70d6e6ed599747691759b612956a5a6ca0818d07`. Home Theater had been installed from
+  the committed build before the push (`xcrun devicectl device install app`, the bundle installed).
+- **The bedroom Apple TV was not brought up — blocked, not skipped.** Its build to `platform=tvOS,name=Master Bedroom
+  ATV` stopped before compiling: "Timed out waiting for all destinations … Browsing on the local area network for Master
+  Bedroom ATV, which has previously reported preparation errors. Ensure the device is unlocked and associated with the
+  same local area network as this Mac." `devicectl list devices` still listed it as available and paired, but
+  `devicectl device info details` read **Device State: unavailable**, last connected at 6:24 PM that day. That is a
+  sleeping or disconnected television, which the builder cannot wake (Pass 117), so **no install was attempted and
+  nothing was retried**. **It is owed**: the standing rule's install of `70d6e6e`, once the owner wakes it, recorded in
+  the next entry.
+- **Facts recorded**: the server is still marlin-dvr 1.19.1 (not re-read); its repo's tip is still `674a7a7`. Seven app
+  files now keep data in `UserDefaults` (was six) — the TestFlight privacy-manifest line in `COLD-START.md` counts them,
+  re-counted by hand with `git grep` at both commits.
+- **Wrap-up (the sixth run of `.claude/commands/wrap.md`)**: (1) open questions — **one**: waking the bedroom Apple TV
+  so it can be brought up; asked in the response. (2) nothing to commit — the tree was clean after the push. (3)
+  cleanup — the two result bundles, three run logs, the console log and the exported screenshots in the session
+  scratchpad were deleted, and the console-attached `devicectl` process was stopped (none left running); `build/` and the
+  bedroom build folder were not touched; the harness stays as the pass's evidence file (31 → 32). (4) `COLD-START.md`
+  brought current: the Player bullet and the harness list carry Pass 138; *Next step* says Home Theater is on
+  `70d6e6e`, the bedroom on `992d3a3` with its install owed, the Guide stays as it is, and the privacy-manifest count is
+  seven. By Pass 89's rule Pass 137's *Next step* paragraph was **moved into `COLD-START-HISTORY.md` byte-for-byte**,
+  checked by the script that moved it. (5) this entry. (6) the notebook commit, local. (7) the scope check and (8) the
+  push verdict are in the response.
+- **No `design/` file, `icon-source/` file, `rea/` file, project file or existing report was changed by this pass.** The
+  app sent its own reads, launch pings and the live sessions the harness's channels opened and closed; no other write
+  was sent to the server, and nothing was read from it by hand — every server fact came from GitHub at `674a7a7`.
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
+  (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
