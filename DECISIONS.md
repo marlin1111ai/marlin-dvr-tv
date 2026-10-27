@@ -4540,3 +4540,92 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   was sent to the server.
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
   (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+
+## 2026-10-26 (Pass 139 — the `marlindvr://` deep links and the notify banner for Home Assistant; Pass 140 — Now Playing; `dd672f8` pushed; both Apple TVs on Pass 140's build; wrap-up)
+
+- **The question that opened the evening** — does the app register a URL scheme? **No**: `Info.plist` held the
+  location and local-networking keys only and no Swift file handled a URL. The ≤20-line plan for Pass 139 and the
+  owner's calls: **A-a** the live link takes the channel number as the Guide prints it, the raw id also accepted;
+  **B-a** a section link while something plays stops it and opens the section; **C-a** a bad or unknown target is a
+  banner only, nothing else moves; **D-a** Now Playing: measure first, then the system player's metadata; **E-a** a
+  second notify replaces the first and restarts the five seconds. He added item 3 mid-plan: `marlindvr://notify?text=`
+  as the Channels app's banner (REA report §2.4, §2.6). "Go on Pass 139"; commit locally; push after he had tried the
+  links and the banner from HA.
+- **Pass 139, built as `dd672f8`** (`Info.plist`, `DeepLink.swift`, `NotifyBanner.swift`, `ContentView.swift`,
+  `PlayerScreen.swift`, `ChannelFilter.swift`, `Models.swift`, `Pass139UITests.swift`): the `marlindvr` scheme; the
+  four link shapes; the Player swapped in place through `DeepLinkRouter` (swaps one at a time, only the newest
+  waiting) or closed Menu's way; the banner in a `UIWindow` of its own at `.alert + 1`, over the Player's cover,
+  taking no interaction; every failure said on it (COLD-START.md, *The screens*). **How Home Assistant sends one**:
+  `media_player.play_media`, content type `app` or `url`, content id the link — both reach pyatv's `launch_app` (read
+  in `homeassistant/components/apple_tv/media_player.py`). **How ids are found**: recording ids are twelve hex
+  characters (`recordingID`, library.go:172 at `5e6c28c` — the first six bytes of the path's SHA-1), listed with show
+  and episode title at `/api/library/recordings?limit=500` in a browser (the route is server Pass 175's, before
+  1.19.1); channels at `/api/channels`. **Run on Home Theater** (tvOS 27.0, 21:42–21:49): a cold start from a notify
+  link; a second notify delivered to the running app by `devicectl … --payload-url` without `--terminate-existing`
+  (the earlier `--console` stream kept printing — same process); then nine links from a script, each confirmed on the
+  console and in the harness's screenshots — a banner over Home; 2.1 started; 8.1 swapped in over 2.1 (session
+  `smvq0wpflf97542` deleted, `smvq0x72ebcbb8a` created, `[lastchannel] now 8.1; previous 2.1`); 99.9 → "No channel
+  99.9 on this server" over the picture; a banner over the Player; `guide` → the Player stopped and closed, the Guide
+  open; a bad recording id → "No recording 000000000000 on this server" after the pages were read (2 s); `bogus` →
+  "Unknown Marlin TV section “bogus”" over the Guide; `home` → Home. **Traced**: a real recording link (no id read
+  that pass), a second notify inside the five seconds. **Harness facts**: `XCUIApplication.open(_:)` is not in the
+  tvOS SDK, so links are sent from the shell; a polling watch's five label queries take 10–20 s between them with the
+  Guide in the tree, so the harness missed the 5 s "No recording" banner the console shows and its state lines lag the
+  screenshots; the second window's banner is readable by identifier and shows in `XCUIScreen` screenshots.
+- **The owner's reading of Now Playing before Pass 140**: "HA's Apple TV media player showed nothing — not even state"
+  (his words that evening). The probe Pass 140 added reads `MPNowPlayingInfoCenter.default().nowPlayingInfo` **empty
+  (0 keys) while `AVPlayerViewController` plays**, so Apple's player publishes through a path the app cannot read and
+  nothing about what HA sees can be measured from the Mac. His "all good push" came later with Pass 140's build
+  playing 8.1 and 2.1 — the acceptance on record for the links, the banner and what HA then showed.
+- **Pass 140, the pasted spec** ("improve the Now Playing info … like Channels DVR": title, subtitle/artist, artwork,
+  updates at the programme boundary and on a channel change, recordings the same way; externalMetadata if
+  `AVPlayerViewController`, the Now Playing centre if a custom player; artwork off the main thread, cached, never
+  delaying playback) — **built as `f7dcf5f`** on the externalMetadata route, since the Player is Apple's;
+  `NowPlaying.swift` new, `PlayerModel.swift` publishing at attach, adding the picture when fetched and following live
+  airings (`GET /api/guide/now` for the channel's source two seconds past the airing's end; the same airing again in a
+  minute, none every five minutes, a failed read again in a minute); a channel change is a new model and so a new
+  item. **Choices made and told, not asked**: Apple's transport bar now shows the programme and the channel line
+  instead of "ch8.1 WGAL-TV · programme · until 11:00 PM" (the paused-live card and the info panel keep their strings;
+  the "until" time is in neither — the guide's description takes the description field); a recording's subtitle is the
+  channel it was recorded from, else its S/E line; a recording's picture is the show's poster, then its thumbnail; the
+  artwork is the server's bytes as served (JPEG or PNG by their first bytes; the largest seen 313 KB), kept in memory
+  by URL; no programme in the guide → the channel's name. **Evidence, the console on Home Theater**: 22:50
+  `marlindvr://live/8.1` → "Line of Fire: Cabin Pressure" · "8.1 WGAL-TV", 312,990 bytes JPEG from `/api/art/feed`;
+  the owner's own switch to 2.1 → "NFL Football: Dallas Cowboys at Philadelphia Eagles" · "2.1 WMAR-HD", 26,229 bytes;
+  his double-click back to 8.1; **23:00:02, nothing pressed, the airing changed** → "News 8 at 11:00" until 11:34 PM,
+  45,373 bytes. **The recording, run at this wrap-up on his call** (`Pass140UITests.testRecordingOnly`, joined,
+  23:11–23:12): the Recordings shelves' first card, *History's Greatest Mysteries* S4 E14, resumed at 207 s →
+  "History's Greatest Mysteries: Who Is D.B. Cooper?" · "9001 HISTORY", 35,271 bytes JPEG from `/api/art/show`; the
+  paused screenshot shows Apple's bar with exactly those two lines, the clock 03:41 / −39:10 and an Info button. Its
+  first run (23:08) failed in the harness, not the app: `goHome` took Home's texts under the Player's cover for Home
+  and never left 8.1 (it paused and resumed the live channel instead) — fixed (Home is Home only with focus on a tile)
+  and committed with the method as **`1cf4514`**. The live half was never run as a harness; the console was its
+  evidence.
+- **Pushed: `dd672f8`** on his "all good push": `git push origin main` answered `68e9cdc..dd672f8`; after `git fetch
+  origin`, `git rev-parse main` and `git rev-parse origin/main` both read `dd672f8`. **Not pushed: `f7dcf5f`,
+  `1cf4514` and this wrap-up's commit** — his push came before Pass 140 was committed, and nothing is pushed on a word
+  that predates the commit.
+- **Both Apple TVs run Pass 140's app code**: Home Theater installed at 22:50 from the build later committed as
+  `f7dcf5f` (launched by the pass, the console attached); the bedroom installed from the same build at 23:01 on his
+  "is the bedroom updated" — **install only, not launched**, `App installed`, the television answering first time. The
+  tree at that build differed from `f7dcf5f` only in the harness file. The app carries no commit id of its own.
+- **Server facts** came from GitHub at `5e6c28c` (`appVersion = "1.20.0"` in `main.go`; the commit message says 1.20.0
+  was installed on Unraid that evening; this app's own last reading is 1.19.1): `main.go`, `library.go`, `artwork.go`
+  and `guide.go`, deleted after reading (COLD-START.md, *How to build*). Nothing was read from the live server by
+  hand, and nothing was written to it beyond the app's own reads, launch pings and the sessions the links and the
+  harness opened and closed — and the resume position the recording run moved from 207 s on, as any play does.
+- **Wrap-up (the eighth run of `.claude/commands/wrap.md`, on his "wrap it")**: (1) open questions — two, asked one at
+  a time: **the recording check → "Run it now"**, done above; **the banner over Home's date line → "Keep it where it
+  is"**, so nothing changes there. The remote-access facts stay open as before (his word of 2026-10-26). (2) `1cf4514`
+  committed. (3) cleanup — the session scratchpad's two result bundles, the exported screenshots, the build, install,
+  console, harness and link logs, the link script, the two edit scripts and the four server files were deleted; the
+  console-attached `devicectl` process was stopped and no `xcodebuild` is left; `build/` was not touched; the two
+  harnesses stay as the passes' evidence files (32 → 34). (4) `COLD-START.md` brought current: the Player bullet
+  carries Passes 139 and 140, a new *Deep links and the notify banner* bullet, the harness list, the `5e6c28c` server
+  line and *Next step*; by Pass 89's rule the superseded *Next step* block and the `674a7a7` server line were **moved
+  into `COLD-START-HISTORY.md` byte-for-byte**, checked by the script that moved them. (5) this entry. (6) the
+  notebook commit, local. (7) the scope check and (8) the push verdict are in the response.
+- **No `design/` file, `icon-source/` file, `rea/` file or existing report was changed by either pass.** `Info.plist`
+  gained the URL type and nothing else; signing and entitlements were not touched.
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
+  (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
