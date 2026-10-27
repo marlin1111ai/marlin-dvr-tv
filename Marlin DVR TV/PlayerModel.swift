@@ -8,10 +8,17 @@
 //  session (§3), the live time-shift buffer as the seekable range (§4), the resume store,
 //  and watched-on-end. Everything runs on the main actor; AVFoundation callbacks hop to it.
 //
+//  Pass 140 (owner, 2026-10-26): what the item publishes to Now Playing — `NowPlaying.swift`'s text and
+//  artwork, set as the item's `externalMetadata` at attach and again when the picture arrives, and on a
+//  live channel again at each airing's end (`followAiring`: one GET /api/guide/now for the channel's
+//  source two seconds past the airing's end, the info panel's `followTheAiring` rule). A channel change
+//  is a new model and so a new item. The text goes up at once; the picture never holds playback.
+//
 
 import AVFoundation
 import AVKit
 import Foundation
+import MediaPlayer
 import SwiftUI
 
 @Observable
@@ -101,6 +108,11 @@ final class PlayerModel {
     // per item, so a `.readyToPlay` that arrives twice cannot seek twice.
     private var pendingResumeSeek: Double?
     private var resumeSeekDone = false
+    // Pass 140 — Now Playing. The airing the metadata describes (live: the request's at attach, then
+    // whatever GET /api/guide/now says at each end), the task that follows the airings, and the picture fetch.
+    private var nowPlayingProgram: Program?
+    private var airingTask: Task<Void, Never>?
+    private var artworkTask: Task<Void, Never>?
 
     static let defaultFrameRate: Double = 30
     /// Frame durations are built at 90 kHz: 1/25, 1/30 and 1/29.97 all land within a microsecond.
@@ -202,7 +214,8 @@ final class PlayerModel {
     private func attach(_ url: URL) {
         let item = AVPlayerItem(url: url)
         item.preferredForwardBufferDuration = 0
-        item.externalMetadata = Self.metadata(for: request)
+        if case .live(_, let program) = request { nowPlayingProgram = program } else { nowPlayingProgram = nil }
+        publishNowPlaying(on: item)
         // Pass 96 (S2): before the item is observed, so the `.readyToPlay` that `observe` is about
         // to start listening for finds the target already in hand.
         armResumeSeek()
@@ -214,6 +227,7 @@ final class PlayerModel {
         phase = .playing
         showHUD(for: 6)
         loadCommercialsOnce()
+        followAiring(on: item)
     }
 
     /// Pass 96 (S2). Decide where this item is to begin, and say so in `position` straight away.
@@ -243,17 +257,78 @@ final class PlayerModel {
         print(String(format: "[resume] will seek to %.2f s once the item is ready", target))
     }
 
-    private static func metadata(for request: PlayRequest) -> [AVMetadataItem] {
-        func item(_ identifier: AVMetadataIdentifier, _ value: String) -> AVMetadataItem {
-            let m = AVMutableMetadataItem()
-            m.identifier = identifier
-            m.value = value as NSString
-            m.extendedLanguageTag = "und"
-            return m
+    // MARK: Now Playing (Pass 140)
+
+    /// The text now, the picture when it arrives — each as the whole `externalMetadata`, which Apple's
+    /// player publishes to Now Playing. A publish for a new airing cancels a picture still on its way.
+    private func publishNowPlaying(on item: AVPlayerItem) {
+        let text = NowPlaying.text(for: request, program: nowPlayingProgram)
+        item.externalMetadata = NowPlaying.items(text, artwork: nil)
+        let candidates = NowPlaying.artCandidates(for: request, program: nowPlayingProgram)
+        print("[nowplaying] title \"\(text.title)\" · subtitle \"\(text.subtitle)\" · \(candidates.count) picture(s) to try")
+        artworkTask?.cancel()
+        guard !candidates.isEmpty else { return }
+        artworkTask = Task { [weak self] in
+            let artwork = await NowPlaying.artwork(from: candidates)
+            guard !Task.isCancelled, let self, self.player.currentItem === item else { return }
+            if let artwork {
+                item.externalMetadata = NowPlaying.items(text, artwork: artwork)
+                print("[nowplaying] artwork \(artwork.data.count) bytes (\(artwork.kind)) from \(artwork.url.path)")
+            } else {
+                print("[nowplaying] no artwork — no candidate answered with a picture")
+            }
+            self.readBackNowPlayingCentre()
         }
-        var items = [item(.commonIdentifierTitle, request.title)]
-        if !request.subtitle.isEmpty { items.append(item(.iTunesMetadataTrackSubTitle, request.subtitle)) }
-        return items
+    }
+
+    /// Live only: two seconds past the airing's end, read what is on now and publish it when it changed.
+    /// The same airing still (the guide not yet advanced) is looked at again in a minute; no airing in the
+    /// guide, every five minutes. A read that fails is tried again in a minute.
+    private func followAiring(on item: AVPlayerItem) {
+        airingTask?.cancel()
+        guard case .live(let channel, _) = request else { return }
+        airingTask = Task { [weak self] in
+            var delay = Self.airingDelay(nowPlayingProgram)
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled, let self, self.player.currentItem === item else { return }
+                delay = await self.refreshAiring(channel: channel, on: item)
+            }
+        }
+    }
+
+    private static func airingDelay(_ program: Program?) -> Double {
+        guard let program else { return 300 }
+        let wait = Double(program.end) - Date().timeIntervalSince1970 + 2
+        return wait > 0 ? wait : 60
+    }
+
+    private func refreshAiring(channel: MergedChannel, on item: AVPlayerItem) async -> Double {
+        do {
+            let program = try await api.onNow(source: channel.sourceId).first { $0.channel.id == channel.id }?.program
+            guard program?.start != nowPlayingProgram?.start else {
+                return program == nil ? 300 : 60
+            }
+            print("[nowplaying] the airing changed → \(program.map { "\"\($0.title)\" until \(TimeFormat.clock(unix: $0.end))" } ?? "nothing in the guide")")
+            nowPlayingProgram = program
+            publishNowPlaying(on: item)
+            return Self.airingDelay(program)
+        } catch {
+            print("[nowplaying] guide/now failed, again in a minute: \(error)")
+            return 60
+        }
+    }
+
+    /// Evidence only: what the app's Now Playing centre holds two seconds after the picture went up —
+    /// the one in-app reading of what Apple's player published.
+    private func readBackNowPlayingCentre() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            let info = MPNowPlayingInfoCenter.default().nowPlayingInfo
+            let title = info?[MPMediaItemPropertyTitle] as? String ?? "nil"
+            let artist = info?[MPMediaItemPropertyArtist] as? String ?? "nil"
+            print("[nowplaying] centre reads: title \(title) · artist \(artist) · artwork \(info?[MPMediaItemPropertyArtwork] != nil) · \(info?.count ?? 0) keys")
+        }
     }
 
     // MARK: Observation
@@ -936,6 +1011,8 @@ final class PlayerModel {
         hudTask?.cancel()
         commercialPromptTask?.cancel()
         countdownTask?.cancel()
+        airingTask?.cancel()
+        artworkTask?.cancel()
         if let id = session?.id { await sessions.stop(id: id) }
         session = nil
     }
