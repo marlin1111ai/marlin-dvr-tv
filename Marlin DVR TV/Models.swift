@@ -577,3 +577,13 @@ struct PlayInfo: Decodable {
     let showId: String?
     let watched: Bool?
 }
+
+// MARK: Recordings pages (library.go:821-871 at 5e6c28c; GET /api/library/recordings)
+
+/// Pass 139: one page of the Library's All view — `{items, total, offset, limit, sort, filter}`; the rows are
+/// Show Detail's episode rows, trashed recordings left out. Read by the `marlindvr://recording/<id>` link to find
+/// the recording and its show. The four fields not read are left undecoded.
+struct RecordingsPage: Decodable {
+    let items: [Episode]
+    let total: Int
+}

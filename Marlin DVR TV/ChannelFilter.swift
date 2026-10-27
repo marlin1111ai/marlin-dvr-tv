@@ -127,6 +127,14 @@ extension APIClient {
         try await get("/api/library/shows/\(id)", query: trash ? [URLQueryItem(name: "trash", value: "1")] : [])
     }
 
+    /// Pass 139: one page of GET /api/library/recordings?offset=&limit= — the server caps `limit` at 500 and
+    /// defaults it to 48 (`pageParams`, library.go:697-713 at 5e6c28c). Newest first; trashed recordings are
+    /// not listed. Read by `DeepLink.resolveRecording`.
+    func recordings(offset: Int, limit: Int) async throws -> RecordingsPage {
+        try await get("/api/library/recordings", query: [URLQueryItem(name: "offset", value: String(offset)),
+                                                         URLQueryItem(name: "limit", value: String(limit))])
+    }
+
     /// GET /api/play/info?rec={id} (stream.go:1143-1156) — read for the show a recording belongs
     /// to. Pass 133: the Guide's "Watch recording" starts from a schedule item, which names only
     /// the recording's id (`recordingId`, contract §15.1), and the Player is handed an `Episode`

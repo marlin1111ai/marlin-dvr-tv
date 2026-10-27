@@ -24,6 +24,11 @@
 //  plays switches to the channel watched before it — `flipToPreviousChannel`, offered the second click
 //  by `PlayerContainerController`. Nothing else in the Player changes.
 //
+//  Pass 139 (owner, 2026-10-26): a `marlindvr://` play link arriving while this Player is up swaps its content in
+//  place — `DeepLinkRouter`'s `.play`, taken in `act(on:)`, the same stop-then-start `flipToPreviousChannel` and
+//  `playNext` do — and a section link closes it the way Menu does (`.close`; owner's B-a). Links queue behind a
+//  swap under way, latest wins.
+//
 
 import SwiftUI
 
@@ -31,6 +36,8 @@ struct PlayerScreen: View {
     let api: APIClient
     let clientName: String
     let onDismiss: () -> Void
+    /// Pass 139: what a deep link asks of this Player while it is up.
+    let router: DeepLinkRouter
     @State private var model: PlayerModel
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focused: String?
@@ -39,10 +46,14 @@ struct PlayerScreen: View {
     /// Pass 138: a switch to the previous channel is under way — reading it from the server, stopping
     /// this session, starting the new one — so a second double-click cannot start another beside it.
     @State private var flipping = false
+    /// Pass 139: a deep-link swap is under way; the newest request waiting for it, if another link arrived meanwhile.
+    @State private var swapping = false
+    @State private var pendingSwap: PlayRequest?
 
-    init(request: PlayRequest, api: APIClient, clientName: String, onDismiss: @escaping () -> Void) {
+    init(request: PlayRequest, api: APIClient, clientName: String, router: DeepLinkRouter, onDismiss: @escaping () -> Void) {
         self.api = api
         self.clientName = clientName
+        self.router = router
         self.onDismiss = onDismiss
         _model = State(initialValue: PlayerModel(request: request, api: api, clientName: clientName))
     }
@@ -101,6 +112,10 @@ struct PlayerScreen: View {
         // own `.onExitCommand` is nearer to its focused button and normally takes the press first;
         // this covers the moment before its focus lands.
         .onExitCommand { if infoPanelOpen { infoPanelOpen = false } else { dismiss() } }
+        // Pass 139: a deep link while this Player is up — one sent in the moment before this view read the
+        // router is taken on appearance.
+        .onChange(of: router.serial) { _, _ in act(on: router.take()) }
+        .onAppear { act(on: router.take()) }
         // The system may dismiss the cover on Menu before the app sees the press (observed
         // in Pass 6 testing); the session is stopped on any disappearance, never left running.
         .onDisappear { Task { await model.stop() } }
@@ -156,6 +171,35 @@ struct PlayerScreen: View {
             await model.start()
         }
         return true
+    }
+
+    /// Pass 139: a deep link while this Player is up. `.close` is Menu's path — stop, then dismiss (owner's B-a).
+    /// `.play` swaps the content in place the way `flipToPreviousChannel` and `playNext` do: this session stopped,
+    /// which frees its tuner, then the new one started, with the Starting, tuner-busy and failure screens exactly
+    /// as from a screen. Swaps run one at a time; a link arriving mid-swap waits its turn, and only the newest waits.
+    private func act(on command: DeepLinkRouter.PlayerCommand?) {
+        guard let command else { return }
+        switch command {
+        case .close:
+            print("[deeplink] closing the Player for a section link")
+            dismiss()
+        case .play(let request):
+            infoPanelOpen = false
+            model.cancelCountdown()
+            pendingSwap = request
+            guard !swapping else { return }
+            swapping = true
+            Task {
+                while let next = pendingSwap {
+                    pendingSwap = nil
+                    print("[deeplink] swapping the Player to \(next.title)")
+                    await model.stop()
+                    model = PlayerModel(request: next, api: api, clientName: clientName)
+                    await model.start()
+                }
+                swapping = false
+            }
+        }
     }
 
     /// Frame 6e: the next-newer episode of the same show, from the top.
