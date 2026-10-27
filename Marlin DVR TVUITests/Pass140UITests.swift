@@ -11,8 +11,9 @@
 //  screen, resumes and leaves; then the Recordings shelves' first card, the same way. It makes no write
 //  beyond the sessions playing opens and closes, and a resume position the recording saves as always.
 //
-//  Status at the Pass 140 commit: written, NOT RUN — the owner was using Home Theater at the time; the live
-//  publish, the picture, a channel change and the 11:00 PM airing change were read from the console instead.
+//  Status: the live half was never run as a harness — the live publish, the picture, a channel change and the
+//  11:00 PM airing change were read from the console while the owner used the TV. `testRecordingOnly` is the
+//  wrap-up's run of the recording half (owner's call, 2026-10-26); its result is in DECISIONS.md.
 //
 //  Run (the app first, then this):
 //    xcrun devicectl device process launch --device "Home Theater" --console --terminate-existing com.marlin1111.MarlinDVRTV &
@@ -90,9 +91,17 @@ final class Pass140UITests: XCTestCase {
 
     // MARK: driving
 
+    /// Home is reached when its greeting is on screen *and* focus sits on a tile: with the Player's cover up,
+    /// Home's texts are still in the tree underneath but nothing of Home has focus (the first run of this
+    /// harness, 23:08, took that for Home and never left the live channel).
     private func goHome() {
         for _ in 0..<7 {
-            if app.staticTexts["Marlin"].waitForExistence(timeout: 8) { sleep(2); return }
+            if app.staticTexts["Marlin"].waitForExistence(timeout: 8) {
+                sleep(2)
+                let focus = focusedLabel()
+                if Self.homeTiles.contains(where: { focus == $0 || focus.hasPrefix("\($0), ") }) { return }
+                log("Home is in the tree but focus is \"\(focus)\" — something is over it; pressing Menu")
+            }
             remote.press(.menu)
             sleep(3)
         }
@@ -141,7 +150,17 @@ final class Pass140UITests: XCTestCase {
         sleep(3)
         goHome()
 
-        // ---- recording: the Recordings shelves' first card ----
+        recordingRun()
+    }
+
+    /// The owner's wrap-up call (2026-10-26): the recording alone, from wherever the app is.
+    func testRecordingOnly() {
+        goHome()
+        recordingRun()
+    }
+
+    /// The Recordings shelves' first card, played, paused for Apple's bar, resumed and left.
+    private func recordingRun() {
         openFromHome("Recordings")
         XCTAssertTrue(app.staticTexts[shelvesNote].waitForExistence(timeout: 40), "the Recordings shelves did not appear")
         sleep(3)
