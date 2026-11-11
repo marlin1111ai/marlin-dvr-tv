@@ -4629,3 +4629,75 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   gained the URL type and nothing else; signing and entitlements were not touched.
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
   (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+
+## 2026-11-11 (Pass 141 — live channels always start: the pause-point rescue waits for the first play; `a338dd0` pushed; both Apple TVs on it; COLD-START's lost lines restored; wrap-up)
+
+- **The ask**: the owner pasted the server session's note of 2026-11-11 (marlin-dvr 1.22.2, "nothing changed for the
+  app"): pressing a live channel sometimes showed no picture and pressing again usually worked — seen nine times on Fox
+  News, ch6073, on 2026-11-10 and 11. The server had checked six tries in a row clean (every piece starting on a
+  keyframe, 2.03–2.06 s long, sound and picture within about 15 ms, no gaps). Its request log showed good tries fetching
+  `seg00002`, `seg00003`, `seg00004` onward, and failed ones fetching `seg00002` once and then `seg00000` every 1–2 s,
+  14–31 times (type A). One try fetched `seg00002`…`seg00012` normally with no picture (type B, session
+  `smwc5uacg6f2b1f`). Its guess, labelled unproven: something seeks to the start of the playlist right after the player
+  began at the live edge. **At the session's start** the notebook was read, and `git fetch origin` found `main` =
+  `origin/main` = `0183c66`: Pass 139–140's wrap-up and its two commits had been pushed (the owner's "wrap it and push"
+  of 2026-10-26, from the builder's memory; the reading of record is this fetch). Nothing had been built since.
+- **Traced first, read only**: `timeControlChanged` calls `recoverIfPausePointLeftWindow` — contract §4's rescue for a
+  pause point that has left the time-shift buffer, from Pass 7 (`b0b03ec`) — on every `.waitingToPlayAtSpecifiedRate`
+  of a live item. It seeks to `range.start + 2` whenever the clock reads under `range.start + 1`, and with the buffer
+  starting at piece 0 that target is 2 s, inside `seg00000`. A plan was given (catch it on today's build, fix, check
+  the fix, commit locally, the bedroom after his word) with two questions. **The owner's answers: "1. do what u need im
+  not watching 2. black screen with like a loading logo"**.
+- **Measured on Home Theater**, with temporary logging in `PlayerModel.swift` — the KVO arrivals, the time-control
+  status with its waiting reason, the item's status, its clock and its seekable range — **disclosed, removed before the
+  commit and never committed**. Each try was a `marlindvr://guide` link, five seconds, then `marlindvr://live/6073`, both
+  sent by `devicectl … --payload-url` to a process that `devicectl … --console` had started, then 22 s watched.
+  **Before the fix, 4 of 9 tries never played** (one trial and eight more; sessions `smwc6ewqhbc8b44`,
+  `smwc6g4u86b3a5a`, `smwc6hcd2ecd3dc` and `smwc6hy6f96f71f`, 08:50–08:52 by the Mac's clock). Each of the four ran the
+  rescue's seek to 2.0 between 8,931 and 9,201 times in about 20 s. In the trial's log the item stayed `.unknown`
+  throughout, its clock read 0.000 and its seekable range grew from 0.00–4.19 to 0.00–12.39, and **every seek fired the
+  `timeControlStatus` observation again, with the status unchanged** — hundreds a second, so the item never became
+  ready. The other five tries played at +0.31–0.47 s with no seek. This is the server's type A; the owner's "black
+  screen with like a loading logo" fits a player that never leaves waiting, though the screen itself was not seen in
+  these runs.
+- **The fix, `a338dd0`** (`PlayerModel.swift` only, +11 −1): `hasPlayed`, set on `.playing` and reset at attach;
+  `recoverIfPausePointLeftWindow` acts only when it is true. **After the fix, with the same logging: 20 of 20 tries
+  played in 0.34–0.59 s with no seek. The committed build (no logging — `strings` finds none): 5 of 5 with no seek**,
+  every keep-alive answered 206 as before the fix, and every session stopped on leaving. **The owner tested it and said
+  "it works".** **Traced, not run**: live pause and resume (a resume reaches `.playing`, which sets `hasPlayed` before
+  the rescue runs, as before), the rescue after a real pause of more than an hour, and the 404 arm — all unchanged once
+  the item has played. **Type B** was not seen in these runs and is not matched to anything measured; nothing is open
+  about it. If the black screen comes back, the time and the channel are what to ask him for.
+- **Found beside it, not acted on — passed to the owner for the server session**: in most sessions, good ones included,
+  the player logged CoreMedia −12888 "Playlist File unchanged for longer than 1.5 * target duration", at +5.0–5.3 s
+  after the session started in all eight before-run sessions. Playback carried on, and it is not the cause. **The note
+  for the server session** (written for the owner to paste) gave the cause, the four failed sessions and that
+  observation. **Its two open items are that session's to settle**; asked, the builder said 1.22.2 makes no difference to
+  the app and that its notes may say the cause was in the Apple TV app. **Harness fact**: `Pass138UITests` cannot pass
+  since Pass 140, because it reads the channel from a "ch<number> <name>" title that Pass 140 replaced. This was found
+  by reading its code, not by running it, and is recorded rather than amended.
+- **Pushed: `a338dd0`** on his "push it it works and update bedroom": `git push origin main` answered
+  `0183c66..a338dd0`; after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote
+  origin refs/heads/main` all read `a338dd01f796daf5a75d1129a1a3b1fcfc384012`.
+- **Both Apple TVs run `a338dd0`**: Home Theater from the committed build, installed about 09:05 and launched by the
+  last run (left on the app's Home); "Master Bedroom ATV" from the same bundle after the push — install only, not
+  launched, `App installed`, with `devicectl device info apps` listing Marlin DVR TV 1.0 (1). It took the install while
+  listed "available (paired)". The bundle carries `hasPlayed` and no `[diag]` string (`strings` on the debug dylib).
+- **Wrap-up (the ninth run of `.claude/commands/wrap.md`, on his "wrap it")**: (1) Open questions — one. **COLD-START.md
+  had been partly broken since Pass 136's wrap-up (`a3c5b1e`)**: the second build command ran into the server bullet;
+  the closing code fence, the *What is built* heading with its one-paragraph introduction, and the *The server* heading
+  were lost; and five lines of the server bullet were duplicated, so everything after line 32 rendered as a code block.
+  Asked whether to repair it, **the owner chose "Fix it now"**: the lost lines were put back byte-for-byte from the file
+  as it stood before `a3c5b1e`, the duplicate was removed, and nothing else in those sections changed. (2) Nothing was
+  uncommitted. (3) Cleanup — deleted from the session scratchpad: the two run scripts, the temporary-logging patch,
+  three build logs, four run folders (console, devicectl and mark logs) and the wrap-up's own edit script. No
+  `devicectl` or `xcodebuild` process is left; `build/` was not touched; `default.profraw` at the root predates this
+  session. (4) `COLD-START.md` brought current: the repair, a relayed-1.22.2 server bullet, Pass 141 in the Player
+  bullet, the harness list and *Next step*. By Pass 89's rule the superseded *Next step* block was **moved into
+  `COLD-START-HISTORY.md` byte-for-byte** (+17 −0), checked by the script that moved it. (5) This entry. (6) The
+  notebook commit, local. (7) The scope check and (8) the push verdict are in the response.
+- **No `design/`, `icon-source/`, `rea/` or report file was changed; signing, entitlements and `Info.plist` were not
+  touched. Nothing was read from the server or its repository by hand** — only the app's own reads, plus the 34 live
+  sessions the runs opened and closed (9 before the fix, 20 after it, 5 on the committed build).
+- **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
+  (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
