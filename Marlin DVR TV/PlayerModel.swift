@@ -92,6 +92,8 @@ final class PlayerModel {
     /// failed start until a retry attaches — and until then `position` has never meant a place in
     /// the recording, so `restart(at:)` must not write it to the resume store.
     private var everAttached = false
+    /// Pass 141: whether this item has played yet. The live rescue (`recoverIfPausePointLeftWindow`) waits for it.
+    private var hasPlayed = false
     private var lastResumeSave = Date.distantPast
     private var restartingBeyond = false
 
@@ -219,6 +221,7 @@ final class PlayerModel {
         // Pass 96 (S2): before the item is observed, so the `.readyToPlay` that `observe` is about
         // to start listening for finds the target already in hand.
         armResumeSeek()
+        hasPlayed = false
         observe(item)
         player.replaceCurrentItem(with: item)
         player.play()
@@ -406,6 +409,7 @@ final class PlayerModel {
                 print("[player] paused (\(isLive ? "\(Int(behindLive)) s behind live" : PlayerTime.clock(position)))")
             }
         case .playing:
+            hasPlayed = true
             if isPaused {
                 isPaused = false
                 pausedAt = nil
@@ -422,8 +426,14 @@ final class PlayerModel {
 
     /// Contract §4: a pause longer than the buffer loses the pause point; re-seek to the
     /// earliest seekable time and say so (standing call), never to the live edge.
+    ///
+    /// **Pass 141: only once the item has played.** Before its first frame the clock reads 0 while
+    /// the buffer already starts at 0, which looked like a lost pause point: the check sent a
+    /// starting channel back to 2 s, inside the first piece, and every seek fired the check again
+    /// (hundreds of seeks a second, seen on Home Theater on 2026-11-11), so the picture never came
+    /// and the server saw piece 0 fetched over and over.
     private func recoverIfPausePointLeftWindow() {
-        guard let item = player.currentItem, let range = seekableRange else { return }
+        guard hasPlayed, let item = player.currentItem, let range = seekableRange else { return }
         let t = item.currentTime().seconds
         if t < range.start + 1 {
             let target = CMTime(seconds: range.start + 2, preferredTimescale: 10)
