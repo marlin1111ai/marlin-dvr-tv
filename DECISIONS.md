@@ -4701,3 +4701,19 @@ airing on the channels his collections hold. `reports/2026-09-12-pass82-on-later
   sessions the runs opened and closed (9 before the fix, 20 after it, 5 on the committed build).
 - **The wrap-up commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
   (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
+
+## 2026-11-11 (Pass 141 addendum — `3e09491` pushed; wrap-up)
+
+- **The owner asked "update all the records is that what u asking if so do it"**. The builder answered that the
+  records were already updated by the wrap-up, and that what remained was the push, which waits for his "push it" —
+  so "do it" was not taken as one. **He then said "push it"**: `git push origin main` answered `a338dd0..3e09491`;
+  after `git fetch origin`, `git rev-parse main`, `git rev-parse origin/main` and `git ls-remote origin
+  refs/heads/main` all read `3e09491d442e0e099d140c454cafebb18ed190b5`. Nothing else changed: no app code, and no
+  device was touched.
+- **Wrap-up (the tenth run of `.claude/commands/wrap.md`, on his "wrap it")**: (1) No open questions. (2) Nothing was
+  uncommitted. (3) Nothing to clean: the session scratchpad held only this addendum's edit script, deleted after use,
+  and no `devicectl` or `xcodebuild` process is left. (4) `COLD-START.md`'s *Next step* now records `3e09491` as
+  pushed; the superseded block was moved into `COLD-START-HISTORY.md` byte-for-byte (+16 −0). (5) This entry. (6) The
+  notebook commit, local. (7) The scope check and (8) the push verdict are in the response.
+- **The addendum commit's own SHA is not written into this entry, and cannot be** — a commit cannot contain its own SHA
+  (DECISIONS.md, 2026-09-11 (Pass 68)). It lives in the response and in the next pass's entry.
